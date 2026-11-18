@@ -1,0 +1,13 @@
+{
+  "@@locale": "zh",
+  "appTitle": "生活助手",
+  "tabToday": "今天",
+  "tabSchedule": "课表",
+  "tabDiet": "饮食",
+  "tabWorkout": "训练",
+  "tabAi": "AI",
+  "settings": "设置",
+  "bodyData": "身体数据",
+  "busSchedule": "校车时刻表",
+  "notifDiag": "通知诊断"
+}

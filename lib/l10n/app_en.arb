@@ -1,0 +1,13 @@
+{
+  "@@locale": "en",
+  "appTitle": "Life Assistant",
+  "tabToday": "Today",
+  "tabSchedule": "Schedule",
+  "tabDiet": "Diet",
+  "tabWorkout": "Workout",
+  "tabAi": "AI",
+  "settings": "Settings",
+  "bodyData": "Body Data",
+  "busSchedule": "Bus Schedule",
+  "notifDiag": "Notification Check"
+}
