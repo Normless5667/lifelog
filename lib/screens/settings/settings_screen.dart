@@ -17,11 +17,11 @@ import 'about_screen.dart';
 import 'battery_diagnostics_screen.dart';
 import 'notification_diagnostics_screen.dart';
 
-/// 设置页：
+/// 设置页（v2.0）：
 /// - 外观与语言（跟随系统 / 简体中文 / English，三档字号调节）
 /// - 天气城市与定位方式（GPS 优先 6h 缓存 + 手动固定城市防代理跑偏）
 /// - API Base URL 与模型名称预设
-/// - 通知与震动诊断页入口 + JSON / CSV 数据导出
+/// - 使用遥测统计、耗电/通知诊断、桌面小组件引导与 JSON / CSV 导出
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -169,7 +169,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     buf.writeln('=== meals ===');
     buf.writeln('date,meal_type,name,amount,calories,protein,carbs,fat');
     for (final m in (data['meals'] as List? ?? const [])) {
-      buf.writeln('${m['date']},${m['meal_type']},"${m['name']}","${m['amount'] ?? ''}",${m['calories']},${m['protein']},${m['carbs']},${m['fat']}');
+      buf.writeln(
+          '${m['date']},${m['meal_type']},"${m['name']}","${m['amount'] ?? ''}",${m['calories']},${m['protein']},${m['carbs']},${m['fat']}');
     }
     buf.writeln('\n=== body_records ===');
     buf.writeln('date,weight_kg,body_fat_pct,waist_cm');
@@ -179,7 +180,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     buf.writeln('\n=== cardio_records ===');
     buf.writeln('date,type,duration_minutes,distance_km,calories');
     for (final c in (data['cardio_records'] as List? ?? const [])) {
-      buf.writeln('${c['date']},${c['type']},${c['duration_minutes']},${c['distance_km'] ?? ''},${c['calories']}');
+      buf.writeln(
+          '${c['date']},${c['type']},${c['duration_minutes']},${c['distance_km'] ?? ''},${c['calories']}');
     }
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/life_assistant_export_${today()}.csv');
@@ -198,77 +200,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.analytics_rounded, color: Color(0xFF2B5B84)),
-              const SizedBox(width: 8),
-              Expanded(child: Text(l.usageExportDialogTitle)),
+        builder: (ctx, setD) {
+          final primary = AppColors.primary(ctx);
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(ctx, primary),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(Icons.analytics_rounded, color: primary, size: 20),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(l.usageExportDialogTitle, style: AppTypography.sectionTitle(ctx)),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(l.usageExportRangeLabel, style: AppTypography.badge(ctx)),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    ChoiceChip(
+                      label: Text(l.usageRange1d),
+                      selected: selectedDays == 1,
+                      onSelected: (_) => setD(() => selectedDays = 1),
+                    ),
+                    ChoiceChip(
+                      label: Text(l.usageRange7d),
+                      selected: selectedDays == 7,
+                      onSelected: (_) => setD(() => selectedDays = 7),
+                    ),
+                    ChoiceChip(
+                      label: Text(l.usageRange30d),
+                      selected: selectedDays == 30,
+                      onSelected: (_) => setD(() => selectedDays = 30),
+                    ),
+                    ChoiceChip(
+                      label: Text(l.usageRangeAll),
+                      selected: selectedDays == null,
+                      onSelected: (_) => setD(() => selectedDays = null),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await UsageTelemetryService.instance.exportAndShare(
+                      format: 'json',
+                      days: selectedDays,
+                    );
+                  },
+                  icon: const Icon(Icons.data_object_rounded, size: 18),
+                  label: Text(l.usageExportJsonBtn),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await UsageTelemetryService.instance.exportAndShare(
+                      format: 'csv',
+                      days: selectedDays,
+                    );
+                  },
+                  icon: const Icon(Icons.table_chart_rounded, size: 18),
+                  label: Text(l.usageExportCsvBtn),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
             ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l.usageExportRangeLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _systemTile({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required IconData trailingIcon,
+    required VoidCallback onTap,
+    Widget? customLeading,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            customLeading ??
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, color),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ChoiceChip(
-                    label: Text(l.usageRange1d),
-                    selected: selectedDays == 1,
-                    onSelected: (_) => setD(() => selectedDays = 1),
-                  ),
-                  ChoiceChip(
-                    label: Text(l.usageRange7d),
-                    selected: selectedDays == 7,
-                    onSelected: (_) => setD(() => selectedDays = 7),
-                  ),
-                  ChoiceChip(
-                    label: Text(l.usageRange30d),
-                    selected: selectedDays == 30,
-                    onSelected: (_) => setD(() => selectedDays = 30),
-                  ),
-                  ChoiceChip(
-                    label: Text(l.usageRangeAll),
-                    selected: selectedDays == null,
-                    onSelected: (_) => setD(() => selectedDays = null),
-                  ),
+                  Text(title, style: AppTypography.cardTitle(context)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: AppTypography.bodySecondary(context)),
                 ],
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await UsageTelemetryService.instance.exportAndShare(
-                    format: 'json',
-                    days: selectedDays,
-                  );
-                },
-                icon: const Icon(Icons.data_object_rounded),
-                label: Text(l.usageExportJsonBtn),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await UsageTelemetryService.instance.exportAndShare(
-                    format: 'csv',
-                    days: selectedDays,
-                  );
-                },
-                icon: const Icon(Icons.table_chart_rounded),
-                label: Text(l.usageExportCsvBtn),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(trailingIcon, size: 20, color: AppColors.textTertiary(context)),
           ],
         ),
       ),
+    );
+  }
+
+  ButtonStyle _segmentedStyle(BuildContext context, Color accentColor) {
+    return SegmentedButton.styleFrom(
+      backgroundColor: AppColors.surfaceSubtle(context),
+      selectedBackgroundColor: AppColors.softBg(
+        context,
+        accentColor,
+        lightAlpha: 0.14,
+        darkAlpha: 0.22,
+      ),
+      selectedForegroundColor: accentColor,
+      foregroundColor: AppColors.textSecondary(context),
+      side: BorderSide(color: AppColors.border(context)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
     );
   }
 
@@ -279,6 +357,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       listenable: prefs,
       builder: (context, _) {
         final l = context.l10n;
+        final primary = AppColors.primary(context);
+        final teal = AppColors.teal(context);
+        final accent = AppColors.accent(context);
+        final aiColor = AppColors.moduleAi(context);
+        final scheduleColor = AppColors.moduleSchedule(context);
+
         final chatBasePresets = <(String label, String url)>[
           (l.settingsPresetDeepseek, 'https://api.deepseek.com'),
           (l.settingsPresetOpenai, 'https://api.openai.com/v1'),
@@ -287,492 +371,574 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(l.settingsTitle),
+            titleSpacing: AppSpacing.sm,
+            title: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, primary, lightAlpha: 0.12, darkAlpha: 0.20),
+                    borderRadius: AppRadius.bSm,
+                    border: Border.all(color: AppColors.softBorder(context, primary)),
+                  ),
+                  child: Icon(Icons.settings_rounded, color: primary, size: 18),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    l.settingsTitle,
+                    style: AppTypography.pageTitle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             actions: [
-              TextButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.check_rounded),
-                label: Text(l.commonSave),
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppColors.softBg(context, primary),
+                    foregroundColor: primary,
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                  ),
+                  onPressed: _save,
+                  icon: const Icon(Icons.check_rounded, size: 17),
+                  label: Text(l.commonSave),
+                ),
               ),
             ],
           ),
           body: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.xxxl,
+                  ),
                   children: [
                     SectionTitle(
                       l.settingsAppearanceSection,
                       icon: Icons.palette_rounded,
-                      iconColor: const Color(0xFF2B5B84),
+                      iconColor: primary,
                     ),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l.settingsThemeMode, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            const SizedBox(height: 8),
-                            SegmentedButton<ThemeMode>(
-                              segments: [
-                                ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_rounded), label: Text(l.settingsThemeSystem)),
-                                ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_rounded), label: Text(l.settingsThemeLight)),
-                                ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_rounded), label: Text(l.settingsThemeDark)),
-                              ],
-                              selected: {prefs.themeMode},
-                              onSelectionChanged: (s) => prefs.setThemeMode(s.first),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(l.settingsFontSize, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            const SizedBox(height: 8),
-                            SegmentedButton<double>(
-                              segments: [
-                                ButtonSegment(value: 0.9, label: Text(l.settingsFontSmall)),
-                                ButtonSegment(value: 1.0, label: Text(l.settingsFontMedium)),
-                                ButtonSegment(value: 1.15, label: Text(l.settingsFontLarge)),
-                              ],
-                              selected: {prefs.textScale},
-                              onSelectionChanged: (s) => prefs.setTextScale(s.first),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(l.settingsLanguage, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            const SizedBox(height: 8),
-                            SegmentedButton<String>(
-                              segments: [
-                                ButtonSegment(value: 'system', icon: const Icon(Icons.phonelink_setup_rounded), label: Text(l.settingsLangSystem)),
-                                ButtonSegment(value: 'zh', icon: const Icon(Icons.translate_rounded), label: Text(l.settingsLangZh)),
-                                ButtonSegment(value: 'en', icon: const Icon(Icons.language_rounded), label: Text(l.settingsLangEn)),
-                              ],
-                              selected: {prefs.lang},
-                              onSelectionChanged: (s) => prefs.setLang(s.first),
-                            ),
-                          ],
-                        ),
+                    SurfaceCard(
+                      padding: AppSpacing.cardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(l.settingsThemeMode, style: AppTypography.badge(context)),
+                          const SizedBox(height: AppSpacing.sm),
+                          SegmentedButton<ThemeMode>(
+                            style: _segmentedStyle(context, primary),
+                            segments: [
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                icon: const Icon(Icons.brightness_auto_rounded, size: 17),
+                                label: Text(l.settingsThemeSystem),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                icon: const Icon(Icons.light_mode_rounded, size: 17),
+                                label: Text(l.settingsThemeLight),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                icon: const Icon(Icons.dark_mode_rounded, size: 17),
+                                label: Text(l.settingsThemeDark),
+                              ),
+                            ],
+                            selected: {prefs.themeMode},
+                            onSelectionChanged: (s) => prefs.setThemeMode(s.first),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(l.settingsFontSize, style: AppTypography.badge(context)),
+                          const SizedBox(height: AppSpacing.sm),
+                          SegmentedButton<double>(
+                            style: _segmentedStyle(context, primary),
+                            segments: [
+                              ButtonSegment(value: 0.9, label: Text(l.settingsFontSmall)),
+                              ButtonSegment(value: 1.0, label: Text(l.settingsFontMedium)),
+                              ButtonSegment(value: 1.15, label: Text(l.settingsFontLarge)),
+                            ],
+                            selected: {prefs.textScale},
+                            onSelectionChanged: (s) => prefs.setTextScale(s.first),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(l.settingsLanguage, style: AppTypography.badge(context)),
+                          const SizedBox(height: AppSpacing.sm),
+                          SegmentedButton<String>(
+                            style: _segmentedStyle(context, primary),
+                            segments: [
+                              ButtonSegment(
+                                value: 'system',
+                                icon: const Icon(Icons.phonelink_setup_rounded, size: 17),
+                                label: Text(l.settingsLangSystem),
+                              ),
+                              ButtonSegment(
+                                value: 'zh',
+                                icon: const Icon(Icons.translate_rounded, size: 17),
+                                label: Text(l.settingsLangZh),
+                              ),
+                              ButtonSegment(
+                                value: 'en',
+                                icon: const Icon(Icons.language_rounded, size: 17),
+                                label: Text(l.settingsLangEn),
+                              ),
+                            ],
+                            selected: {prefs.lang},
+                            onSelectionChanged: (s) => prefs.setLang(s.first),
+                          ),
+                        ],
                       ),
                     ),
                     SectionTitle(
                       l.settingsWeatherSection,
                       icon: Icons.location_on_rounded,
-                      iconColor: const Color(0xFF26A69A),
+                      iconColor: teal,
                     ),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _manualWeatherCity == null
-                                  ? l.settingsWeatherModeAuto
-                                  : l.settingsWeatherModeManual(_manualWeatherCity!),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              l.settingsWeatherProxyHint,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                ChoiceChip(
-                                  avatar: const Icon(Icons.my_location_rounded, size: 16),
-                                  label: Text(l.settingsWeatherAutoChip),
-                                  selected: _manualWeatherCity == null,
+                    SurfaceCard(
+                      padding: AppSpacing.cardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _manualWeatherCity == null
+                                ? l.settingsWeatherModeAuto
+                                : l.settingsWeatherModeManual(_manualWeatherCity!),
+                            style: AppTypography.cardTitle(context),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(l.settingsWeatherProxyHint, style: AppTypography.bodySecondary(context)),
+                          const SizedBox(height: AppSpacing.md),
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.sm,
+                            children: [
+                              ChoiceChip(
+                                avatar: Icon(Icons.my_location_rounded, size: 15, color: teal),
+                                label: Text(l.settingsWeatherAutoChip),
+                                selected: _manualWeatherCity == null,
+                                onSelected: (_) async {
+                                  await WeatherService.setAutoLocationMode();
+                                  await WeatherService.getWeather(forceRefresh: true);
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _manualWeatherCity = null;
+                                    _customCityCtrl.clear();
+                                  });
+                                  if (context.mounted) toast(context, l.settingsWeatherAutoToast);
+                                },
+                              ),
+                              ...WeatherService.presetCities.map((p) {
+                                final selected = _manualWeatherCity == p.city;
+                                final displayLabel = L10nHelper.weatherPresetLabel(context, p);
+                                return ChoiceChip(
+                                  label: Text(displayLabel),
+                                  selected: selected,
                                   onSelected: (_) async {
-                                    await WeatherService.setAutoLocationMode();
+                                    await WeatherService.setManualCity(
+                                      city: p.city,
+                                      lat: p.lat,
+                                      lon: p.lon,
+                                    );
                                     await WeatherService.getWeather(forceRefresh: true);
                                     if (!mounted) return;
                                     setState(() {
-                                      _manualWeatherCity = null;
-                                      _customCityCtrl.clear();
+                                      _manualWeatherCity = p.city;
+                                      _customCityCtrl.text = p.city;
                                     });
-                                    toast(context, l.settingsWeatherAutoToast);
-                                  },
-                                ),
-                                ...WeatherService.presetCities.map((p) {
-                                  final selected = _manualWeatherCity == p.city;
-                                  final displayLabel = L10nHelper.weatherPresetLabel(context, p);
-                                  return ChoiceChip(
-                                    label: Text(displayLabel),
-                                    selected: selected,
-                                    onSelected: (_) async {
-                                      await WeatherService.setManualCity(city: p.city, lat: p.lat, lon: p.lon);
-                                      await WeatherService.getWeather(forceRefresh: true);
-                                      if (!mounted) return;
-                                      setState(() {
-                                        _manualWeatherCity = p.city;
-                                        _customCityCtrl.text = p.city;
-                                      });
+                                    if (context.mounted) {
                                       toast(context, l.settingsWeatherLockedToast(displayLabel));
-                                    },
-                                  );
-                                }),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _customCityCtrl,
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      labelText: l.settingsWeatherCustomLabel,
-                                      hintText: l.settingsWeatherCustomHint,
-                                      prefixIcon: const Icon(Icons.location_city_rounded, size: 18),
+                                    }
+                                  },
+                                );
+                              }),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _customCityCtrl,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    labelText: l.settingsWeatherCustomLabel,
+                                    hintText: l.settingsWeatherCustomHint,
+                                    prefixIcon: Icon(
+                                      Icons.location_city_rounded,
+                                      size: 18,
+                                      color: teal,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                FilledButton.tonalIcon(
-                                  onPressed: _searchingCity
-                                      ? null
-                                      : () async {
-                                          final q = _customCityCtrl.text.trim();
-                                          if (q.isEmpty) return;
-                                          setState(() => _searchingCity = true);
-                                          try {
-                                            final resolved = await WeatherService.searchAndSetManualCity(q);
-                                            await WeatherService.getWeather(forceRefresh: true);
-                                            if (!mounted) return;
-                                            setState(() {
-                                              _manualWeatherCity = resolved;
-                                              _customCityCtrl.text = resolved;
-                                            });
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              FilledButton.tonalIcon(
+                                onPressed: _searchingCity
+                                    ? null
+                                    : () async {
+                                        final q = _customCityCtrl.text.trim();
+                                        if (q.isEmpty) return;
+                                        setState(() => _searchingCity = true);
+                                        try {
+                                          final resolved =
+                                              await WeatherService.searchAndSetManualCity(q);
+                                          await WeatherService.getWeather(forceRefresh: true);
+                                          if (!mounted) return;
+                                          setState(() {
+                                            _manualWeatherCity = resolved;
+                                            _customCityCtrl.text = resolved;
+                                          });
+                                          if (context.mounted) {
                                             toast(context, l.settingsWeatherLockedToast(resolved));
-                                          } catch (e) {
-                                            if (!mounted) return;
-                                            toast(context, e.toString().replaceAll('Exception: ', ''));
-                                          } finally {
-                                            if (mounted) setState(() => _searchingCity = false);
                                           }
-                                        },
-                                  icon: _searchingCity
-                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                                      : const Icon(Icons.search_rounded, size: 18),
-                                  label: Text(l.settingsWeatherSetBtn),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                        } catch (e) {
+                                          if (!mounted) return;
+                                          if (context.mounted) {
+                                            toast(context, e.toString().replaceAll('Exception: ', ''));
+                                          }
+                                        } finally {
+                                          if (mounted) setState(() => _searchingCity = false);
+                                        }
+                                      },
+                                icon: _searchingCity
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.search_rounded, size: 17),
+                                label: Text(l.settingsWeatherSetBtn),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     SectionTitle(
                       l.settingsChatAiSection,
                       icon: Icons.smart_toy_rounded,
-                      iconColor: const Color(0xFFFF7A22),
+                      iconColor: aiColor,
                     ),
-                    Text(
-                      l.settingsChatAiHint,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: chatBasePresets.map((p) {
-                        final selected = _chatUrl.text.trim() == p.$2;
-                        return ChoiceChip(
-                          label: Text(p.$1),
-                          selected: selected,
-                          onSelected: (_) => setState(() {
-                            _chatUrl.text = p.$2;
-                            if (p.$2.contains('deepseek')) _chatModel.text = 'deepseek-chat';
-                            if (p.$2.contains('openai')) _chatModel.text = 'gpt-4o-mini';
-                            if (p.$2.contains('dashscope')) _chatModel.text = 'qwen-plus';
-                          }),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _chatUrl,
-                      decoration: InputDecoration(
-                        labelText: l.settingsBaseUrlLabel,
-                        hintText: 'https://api.deepseek.com',
-                        prefixIcon: const Icon(Icons.link_rounded, color: Color(0xFF2B5B84)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _chatKey,
-                      obscureText: _obscureChat,
-                      decoration: InputDecoration(
-                        labelText: l.settingsApiKeyLabel,
-                        hintText: 'sk-...',
-                        prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFFFF7A22)),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureChat ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscureChat = !_obscureChat),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      children: _chatModelPresets.map((m) {
-                        return ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: Text(m, style: const TextStyle(fontSize: 12)),
-                          onPressed: () => setState(() => _chatModel.text = m),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _chatModel,
-                      decoration: InputDecoration(
-                        labelText: l.settingsModelNameLabel,
-                        hintText: 'deepseek-chat / deepseek-reasoner',
-                        prefixIcon: const Icon(Icons.memory_rounded, color: Color(0xFF26A69A)),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.tonalIcon(
-                        onPressed: _testing ? null : () => _test(_currentChat()),
-                        icon: const Icon(Icons.bolt_rounded),
-                        label: Text(_testing ? l.settingsTestingBtn : l.settingsTestConnectionBtn),
-                      ),
-                    ),
-                    const Divider(height: 28),
-                    SectionTitle(l.settingsVisionSection, icon: Icons.camera_enhance_rounded, iconColor: const Color(0xFF26A69A)),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(l.settingsVisionSameSwitch),
-                      subtitle: Text(l.settingsVisionSameSub),
-                      value: _visionSame,
-                      onChanged: (v) => setState(() => _visionSame = v),
-                    ),
-                    if (!_visionSame) ...[
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: _visionPresets.map((p) {
-                          return ActionChip(
-                            label: Text(p.$1),
-                            onPressed: () => setState(() {
-                              _visionUrl.text = p.$2;
-                              _visionModel.text = p.$3;
-                              if (_visionKey.text.isEmpty && p.$2 == _chatUrl.text.trim()) {
-                                _visionKey.text = _chatKey.text;
-                              }
-                            }),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _visionUrl,
-                        decoration: InputDecoration(
-                          labelText: l.settingsVisionBaseUrlLabel,
-                          prefixIcon: const Icon(Icons.link_rounded),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _visionKey,
-                        obscureText: _obscureVision,
-                        decoration: InputDecoration(
-                          labelText: l.settingsVisionApiKeyLabel,
-                          prefixIcon: const Icon(Icons.key_rounded),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscureVision ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscureVision = !_obscureVision),
+                    SurfaceCard(
+                      padding: AppSpacing.cardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(l.settingsChatAiHint, style: AppTypography.bodySecondary(context)),
+                          const SizedBox(height: AppSpacing.sm),
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.xs + 2,
+                            children: chatBasePresets.map((p) {
+                              final selected = _chatUrl.text.trim() == p.$2;
+                              return ChoiceChip(
+                                label: Text(p.$1),
+                                selected: selected,
+                                onSelected: (_) => setState(() {
+                                  _chatUrl.text = p.$2;
+                                  if (p.$2.contains('deepseek')) _chatModel.text = 'deepseek-chat';
+                                  if (p.$2.contains('openai')) _chatModel.text = 'gpt-4o-mini';
+                                  if (p.$2.contains('dashscope')) _chatModel.text = 'qwen-plus';
+                                }),
+                              );
+                            }).toList(),
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.md),
+                          TextField(
+                            controller: _chatUrl,
+                            decoration: InputDecoration(
+                              labelText: l.settingsBaseUrlLabel,
+                              hintText: 'https://api.deepseek.com',
+                              prefixIcon: Icon(Icons.link_rounded, color: primary, size: 18),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          TextField(
+                            controller: _chatKey,
+                            obscureText: _obscureChat,
+                            decoration: InputDecoration(
+                              labelText: l.settingsApiKeyLabel,
+                              hintText: 'sk-...',
+                              prefixIcon: Icon(Icons.key_rounded, color: accent, size: 18),
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscureChat ? Icons.visibility : Icons.visibility_off),
+                                onPressed: () => setState(() => _obscureChat = !_obscureChat),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Wrap(
+                            spacing: AppSpacing.xs + 2,
+                            runSpacing: AppSpacing.xs + 2,
+                            children: _chatModelPresets.map((m) {
+                              return ActionChip(
+                                visualDensity: VisualDensity.compact,
+                                label: Text(m, style: AppTypography.badge(context)),
+                                onPressed: () => setState(() => _chatModel.text = m),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          TextField(
+                            controller: _chatModel,
+                            decoration: InputDecoration(
+                              labelText: l.settingsModelNameLabel,
+                              hintText: 'deepseek-chat / deepseek-reasoner',
+                              prefixIcon: Icon(Icons.memory_rounded, color: teal, size: 18),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FilledButton.tonalIcon(
+                              onPressed: _testing ? null : () => _test(_currentChat()),
+                              icon: const Icon(Icons.bolt_rounded, size: 17),
+                              label: Text(_testing ? l.settingsTestingBtn : l.settingsTestConnectionBtn),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _visionModel,
-                        decoration: InputDecoration(
-                          labelText: l.settingsVisionModelLabel,
-                          hintText: 'qwen-vl-max / deepseek-flash',
-                          prefixIcon: const Icon(Icons.visibility_rounded),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: OutlinedButton.icon(
-                          onPressed: _testing ? null : () => _test(_currentVision()),
-                          icon: const Icon(Icons.bolt_rounded),
-                          label: Text(_testing ? l.settingsTestingBtn : l.settingsTestVisionBtn),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    FilledButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.save_rounded),
-                      label: Text(l.settingsSaveAiBtn),
                     ),
-                    const Divider(height: 28),
+                    SectionTitle(
+                      l.settingsVisionSection,
+                      icon: Icons.camera_enhance_rounded,
+                      iconColor: teal,
+                    ),
+                    SurfaceCard(
+                      padding: AppSpacing.cardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l.settingsVisionSameSwitch, style: AppTypography.cardTitle(context)),
+                            subtitle: Text(
+                              l.settingsVisionSameSub,
+                              style: AppTypography.bodySecondary(context),
+                            ),
+                            value: _visionSame,
+                            onChanged: (v) => setState(() => _visionSame = v),
+                          ),
+                          if (!_visionSame) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Wrap(
+                              spacing: AppSpacing.xs + 2,
+                              runSpacing: AppSpacing.xs + 2,
+                              children: _visionPresets.map((p) {
+                                return ActionChip(
+                                  label: Text(p.$1),
+                                  onPressed: () => setState(() {
+                                    _visionUrl.text = p.$2;
+                                    _visionModel.text = p.$3;
+                                    if (_visionKey.text.isEmpty &&
+                                        p.$2 == _chatUrl.text.trim()) {
+                                      _visionKey.text = _chatKey.text;
+                                    }
+                                  }),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            TextField(
+                              controller: _visionUrl,
+                              decoration: InputDecoration(
+                                labelText: l.settingsVisionBaseUrlLabel,
+                                prefixIcon: const Icon(Icons.link_rounded, size: 18),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            TextField(
+                              controller: _visionKey,
+                              obscureText: _obscureVision,
+                              decoration: InputDecoration(
+                                labelText: l.settingsVisionApiKeyLabel,
+                                prefixIcon: const Icon(Icons.key_rounded, size: 18),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureVision ? Icons.visibility : Icons.visibility_off,
+                                  ),
+                                  onPressed: () => setState(() => _obscureVision = !_obscureVision),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            TextField(
+                              controller: _visionModel,
+                              decoration: InputDecoration(
+                                labelText: l.settingsVisionModelLabel,
+                                hintText: 'qwen-vl-max / deepseek-flash',
+                                prefixIcon: const Icon(Icons.visibility_rounded, size: 18),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                onPressed: _testing ? null : () => _test(_currentVision()),
+                                icon: const Icon(Icons.bolt_rounded, size: 17),
+                                label: Text(
+                                  _testing ? l.settingsTestingBtn : l.settingsTestVisionBtn,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.md),
+                          FilledButton.icon(
+                            onPressed: _save,
+                            icon: const Icon(Icons.save_rounded, size: 18),
+                            label: Text(l.settingsSaveAiBtn),
+                          ),
+                        ],
+                      ),
+                    ),
                     SectionTitle(
                       l.usageSectionTitle,
                       icon: Icons.bar_chart_rounded,
-                      iconColor: const Color(0xFF2B5B84),
+                      iconColor: primary,
                     ),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(l.usageSwitchTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              subtitle: Text(l.usageCountSub(_usageEventCount), style: const TextStyle(fontSize: 12)),
-                              value: _usageEnabled,
-                              onChanged: (v) async {
-                                await UsageTelemetryService.instance.setEnabled(v);
-                                final cnt = await UsageTelemetryService.instance.getEventCount();
-                                if (!mounted) return;
-                                setState(() {
-                                  _usageEnabled = v;
-                                  _usageEventCount = cnt;
-                                });
-                              },
+                    SurfaceCard(
+                      padding: AppSpacing.cardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l.usageSwitchTitle, style: AppTypography.cardTitle(context)),
+                            subtitle: Text(
+                              l.usageCountSub(_usageEventCount),
+                              style: AppTypography.bodySecondary(context),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonalIcon(
-                                    onPressed: _openUsageExportDialog,
-                                    icon: const Icon(Icons.ios_share_rounded, size: 18),
-                                    label: Text(l.usageExportBtn),
-                                  ),
+                            value: _usageEnabled,
+                            onChanged: (v) async {
+                              await UsageTelemetryService.instance.setEnabled(v);
+                              final cnt = await UsageTelemetryService.instance.getEventCount();
+                              if (!mounted) return;
+                              setState(() {
+                                _usageEnabled = v;
+                                _usageEventCount = cnt;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: _openUsageExportDialog,
+                                  icon: const Icon(Icons.ios_share_rounded, size: 17),
+                                  label: Text(l.usageExportBtn),
                                 ),
-                                const SizedBox(width: 10),
-                                OutlinedButton.icon(
-                                  onPressed: () async {
-                                    if (await confirm(context, l.usageClearConfirm)) {
-                                      await UsageTelemetryService.instance.clearAll();
-                                      final cnt = await UsageTelemetryService.instance.getEventCount();
-                                      if (!context.mounted) return;
-                                      setState(() => _usageEventCount = cnt);
-                                      toast(context, l.usageClearedToast);
-                                    }
-                                  },
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                  label: Text(l.usageClearBtn),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm + 2),
+                              OutlinedButton.icon(
+                                onPressed: () async {
+                                  if (await confirm(context, l.usageClearConfirm)) {
+                                    await UsageTelemetryService.instance.clearAll();
+                                    final cnt =
+                                        await UsageTelemetryService.instance.getEventCount();
+                                    if (!context.mounted) return;
+                                    setState(() => _usageEventCount = cnt);
+                                    toast(context, l.usageClearedToast);
+                                  }
+                                },
+                                icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                                label: Text(l.usageClearBtn),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const Divider(height: 28),
-                    SectionTitle(l.settingsSystemDataSection, icon: Icons.security_rounded, iconColor: const Color(0xFF42A5F5)),
-                    Card(
+                    SectionTitle(
+                      l.settingsSystemDataSection,
+                      icon: Icons.security_rounded,
+                      iconColor: scheduleColor,
+                    ),
+                    SurfaceCard(
+                      padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF26A69A).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.battery_charging_full_rounded, color: Color(0xFF26A69A)),
-                            ),
-                            title: Text(l.batteryDiagTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.batteryDiagTileSub),
-                            trailing: const Icon(Icons.chevron_right_rounded),
+                          _systemTile(
+                            icon: Icons.battery_charging_full_rounded,
+                            color: teal,
+                            title: l.batteryDiagTitle,
+                            subtitle: l.batteryDiagTileSub,
+                            trailingIcon: Icons.chevron_right_rounded,
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const BatteryDiagnosticsScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const BatteryDiagnosticsScreen(),
+                                ),
                               );
                             },
                           ),
                           const Divider(height: 1),
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2B5B84).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.widgets_rounded, color: Color(0xFF2B5B84)),
-                            ),
-                            title: Text(l.widgetGuideTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.widgetGuideTileSub),
-                            trailing: const Icon(Icons.add_to_home_screen_rounded),
+                          _systemTile(
+                            icon: Icons.widgets_rounded,
+                            color: primary,
+                            title: l.widgetGuideTitle,
+                            subtitle: l.widgetGuideTileSub,
+                            trailingIcon: Icons.add_to_home_screen_rounded,
                             onTap: () => showAddHomeWidgetGuideDialog(context),
                           ),
                           const Divider(height: 1),
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF7A22).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.health_and_safety_rounded, color: Color(0xFFFF7A22)),
-                            ),
-                            title: Text(l.settingsDiagTileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.settingsDiagTileSub),
-                            trailing: const Icon(Icons.chevron_right_rounded),
+                          _systemTile(
+                            icon: Icons.health_and_safety_rounded,
+                            color: accent,
+                            title: l.settingsDiagTileTitle,
+                            subtitle: l.settingsDiagTileSub,
+                            trailingIcon: Icons.chevron_right_rounded,
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const NotificationDiagnosticsScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationDiagnosticsScreen(),
+                                ),
                               );
                             },
                           ),
                           const Divider(height: 1),
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF26A69A).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.data_object_rounded, color: Color(0xFF26A69A)),
-                            ),
-                            title: Text(l.settingsExportJsonTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.settingsExportJsonSub),
-                            trailing: const Icon(Icons.ios_share_rounded),
+                          _systemTile(
+                            icon: Icons.data_object_rounded,
+                            color: teal,
+                            title: l.settingsExportJsonTitle,
+                            subtitle: l.settingsExportJsonSub,
+                            trailingIcon: Icons.ios_share_rounded,
                             onTap: _exportJson,
                           ),
                           const Divider(height: 1),
-                          ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.table_chart_rounded, color: Color(0xFF42A5F5)),
-                            ),
-                            title: Text(l.settingsExportCsvTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.settingsExportCsvSub),
-                            trailing: const Icon(Icons.ios_share_rounded),
+                          _systemTile(
+                            icon: Icons.table_chart_rounded,
+                            color: scheduleColor,
+                            title: l.settingsExportCsvTitle,
+                            subtitle: l.settingsExportCsvSub,
+                            trailingIcon: Icons.ios_share_rounded,
                             onTap: _exportCsv,
                           ),
                           const Divider(height: 1),
-                          ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset('assets/icon/dafeiyu_mascot.png', width: 40, height: 40, fit: BoxFit.cover),
+                          _systemTile(
+                            icon: Icons.info_outline_rounded,
+                            color: primary,
+                            title: l.settingsAboutTileTitle,
+                            subtitle: l.settingsAboutTileSub,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            customLeading: ClipRRect(
+                              borderRadius: AppRadius.bMd,
+                              child: Image.asset(
+                                'assets/icon/dafeiyu_mascot.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                            title: Text(l.settingsAboutTileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(l.settingsAboutTileSub),
-                            trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () {
                               Navigator.push(
                                 context,

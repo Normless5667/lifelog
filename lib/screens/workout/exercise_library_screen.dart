@@ -37,65 +37,71 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF5350).withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
+        builder: (ctx, setD) {
+          final workoutColor = AppColors.moduleWorkout(ctx);
+          final info = AppColors.info(ctx);
+          final teal = AppColors.teal(ctx);
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(ctx, workoutColor),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(Icons.fitness_center_rounded, color: workoutColor, size: 19),
                 ),
-                child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350), size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(l.exerciseCustomDialogTitle)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: cat,
-                decoration: InputDecoration(
-                  labelText: l.exerciseCategoryLabel,
-                  prefixIcon: const Icon(Icons.category_rounded, color: Color(0xFF42A5F5)),
-                ),
-                items: AppDatabase.exerciseCategories.map((c) {
-                  final vis = categoryVisual(c);
-                  return DropdownMenuItem(
-                    value: c,
-                    child: Row(
-                      children: [
-                        Icon(vis.icon, size: 18, color: vis.color),
-                        const SizedBox(width: 8),
-                        Text(L10nHelper.exerciseCategoryLabel(ctx, c)),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (v) => setD(() => cat = v ?? cat),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: name,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: l.exerciseNameLabel,
-                  prefixIcon: const Icon(Icons.edit_rounded, color: Color(0xFF26A69A)),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.add_rounded),
-              label: Text(l.commonAdd),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: Text(l.exerciseCustomDialogTitle, style: AppTypography.sectionTitle(ctx))),
+              ],
             ),
-          ],
-        ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: cat,
+                  decoration: InputDecoration(
+                    labelText: l.exerciseCategoryLabel,
+                    prefixIcon: Icon(Icons.category_rounded, color: info),
+                  ),
+                  items: AppDatabase.exerciseCategories.map((c) {
+                    final vis = categoryVisual(c);
+                    return DropdownMenuItem(
+                      value: c,
+                      child: Row(
+                        children: [
+                          Icon(vis.icon, size: 18, color: AppColors.adaptForDark(ctx, vis.color)),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(L10nHelper.exerciseCategoryLabel(ctx, c)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setD(() => cat = v ?? cat),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: l.exerciseNameLabel,
+                    prefixIcon: Icon(Icons.edit_rounded, color: teal),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l.commonAdd),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (ok == true && name.text.trim().isNotEmpty) {

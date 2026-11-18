@@ -134,34 +134,34 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               controller: _name,
               decoration: InputDecoration(
                 labelText: l.courseEditNameLabel,
-                prefixIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF26A69A)),
+                prefixIcon: Icon(Icons.menu_book_rounded, color: AppColors.teal(context)),
               ),
               validator: (v) => (v == null || v.trim().isEmpty) ? l.courseEditNameRequired : null,
               autofocus: widget.course == null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Row(children: [
               Expanded(
                 child: TextFormField(
                   controller: _location,
                   decoration: InputDecoration(
                     labelText: l.courseEditLocationLabel,
-                    prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFFEF5350)),
+                    prefixIcon: Icon(Icons.location_on_rounded, color: AppColors.moduleWorkout(context)),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: TextFormField(
                   controller: _teacher,
                   decoration: InputDecoration(
                     labelText: l.courseEditTeacherLabel,
-                    prefixIcon: const Icon(Icons.person_rounded, color: Color(0xFF42A5F5)),
+                    prefixIcon: Icon(Icons.person_rounded, color: AppColors.moduleSchedule(context)),
                   ),
                 ),
               ),
             ]),
-            SectionTitle(l.courseEditWeekdayTitle, icon: Icons.calendar_today_rounded, iconColor: const Color(0xFF42A5F5)),
+            SectionTitle(l.courseEditWeekdayTitle, icon: Icons.calendar_today_rounded, iconColor: AppColors.moduleSchedule(context)),
             Wrap(
               spacing: 6,
               children: [
@@ -174,14 +174,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                   ),
               ],
             ),
-            SectionTitle(l.courseEditSectionTitle, icon: Icons.access_time_rounded, iconColor: const Color(0xFFFFA726)),
+            SectionTitle(l.courseEditSectionTitle, icon: Icons.access_time_rounded, iconColor: AppColors.warning(context)),
             Row(children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
                   initialValue: _start,
                   decoration: InputDecoration(
                     labelText: l.courseEditStartSection,
-                    prefixIcon: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFF26A69A)),
+                    prefixIcon: Icon(Icons.play_circle_outline_rounded, color: AppColors.teal(context)),
                   ),
                   items: sectionItems,
                   onChanged: (v) => setState(() {
@@ -190,21 +190,21 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                   }),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: DropdownButtonFormField<int>(
                   key: ValueKey('end-$_start-$_end'),
                   initialValue: _end,
                   decoration: InputDecoration(
                     labelText: l.courseEditEndSection,
-                    prefixIcon: const Icon(Icons.stop_circle_outlined, color: Color(0xFFEF5350)),
+                    prefixIcon: Icon(Icons.stop_circle_outlined, color: AppColors.danger(context)),
                   ),
                   items: sectionItems,
                   onChanged: (v) => setState(() => _end = v ?? _end),
                 ),
               ),
             ]),
-            SectionTitle(l.courseEditWeeksTitle, icon: Icons.date_range_rounded, iconColor: const Color(0xFFAB47BC)),
+            SectionTitle(l.courseEditWeeksTitle, icon: Icons.date_range_rounded, iconColor: AppColors.moduleAi(context)),
             Text(
               l.courseEditWeeksSummary(
                 _weeks.start.round(),
@@ -229,7 +229,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               selected: {_weekType},
               onSelectionChanged: (s) => setState(() => _weekType = s.first),
             ),
-            SectionTitle(l.courseEditColorTitle, icon: Icons.palette_rounded, iconColor: const Color(0xFFEC407A)),
+            SectionTitle(l.courseEditColorTitle, icon: Icons.palette_rounded, iconColor: AppColors.accent(context)),
             Wrap(
               spacing: 10,
               runSpacing: 10,

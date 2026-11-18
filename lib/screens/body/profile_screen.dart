@@ -92,27 +92,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final bodyColor = AppColors.moduleBody(context);
+    final info = AppColors.info(context);
+    final teal = AppColors.teal(context);
+    final warning = AppColors.warning(context);
+    final workoutColor = AppColors.moduleWorkout(context);
+    final aiColor = AppColors.moduleAi(context);
+    final danger = AppColors.danger(context);
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.sm,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFF42A5F5).withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.softBg(context, info),
+                borderRadius: AppRadius.bSm,
               ),
-              child: const Icon(Icons.badge_rounded, color: Color(0xFF42A5F5), size: 20),
+              child: Icon(Icons.badge_rounded, color: info, size: 18),
             ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(l.profileTitle, overflow: TextOverflow.ellipsis)),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l.profileTitle,
+                style: AppTypography.pageTitle(context),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.check_rounded),
-            label: Text(l.commonSave),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: TextButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.check_rounded, size: 17),
+              label: Text(l.commonSave),
+            ),
           ),
         ],
       ),
@@ -121,9 +140,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  SectionTitle(l.profileGenderSection, icon: Icons.wc_rounded, iconColor: const Color(0xFF42A5F5)),
+                  SectionTitle(l.profileGenderSection, icon: Icons.wc_rounded, iconColor: info),
                   SegmentedButton<String>(
                     segments: [
                       ButtonSegment(value: 'male', label: Text(l.profileMale), icon: const Icon(Icons.male_rounded)),
@@ -132,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     selected: {_gender},
                     onSelectionChanged: (s) => setState(() => _gender = s.first),
                   ),
-                  SectionTitle(l.profileAgeHeightSection, icon: Icons.straighten_rounded, iconColor: const Color(0xFF26A69A)),
+                  SectionTitle(l.profileAgeHeightSection, icon: Icons.straighten_rounded, iconColor: teal),
                   Row(
                     children: [
                       Expanded(
@@ -141,21 +160,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: InputDecoration(
                             labelText: l.profileAgeLabel,
                             suffixText: l.profileAgeUnit,
-                            prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFFFFA726)),
+                            prefixIcon: Icon(Icons.cake_rounded, color: warning),
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           validator: (v) => _validateNum(v, 10, 100),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: TextFormField(
                           controller: _height,
                           decoration: InputDecoration(
                             labelText: l.profileHeightLabel,
                             suffixText: 'cm',
-                            prefixIcon: const Icon(Icons.height_rounded, color: Color(0xFF26A69A)),
+                            prefixIcon: Icon(Icons.height_rounded, color: teal),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) => _validateNum(v, 100, 250),
@@ -163,22 +182,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  SectionTitle(l.profileActivityGoalSection, icon: Icons.flag_rounded, iconColor: const Color(0xFFEF5350)),
+                  SectionTitle(l.profileActivityGoalSection, icon: Icons.flag_rounded, iconColor: workoutColor),
                   DropdownButtonFormField<double>(
                     initialValue: _activity,
                     decoration: InputDecoration(
                       labelText: l.profileActivityLabel,
-                      prefixIcon: const Icon(Icons.directions_run_rounded, color: Color(0xFFAB47BC)),
+                      prefixIcon: Icon(Icons.directions_run_rounded, color: aiColor),
                     ),
                     items: Nutrition.activityLevels.keys
                         .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.activityLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _activity = v ?? _activity),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: Nutrition.goals.keys.map((k) {
                       return ChoiceChip(
                         label: Text(L10nHelper.goalLabel(context, k)),
@@ -187,30 +206,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md + 2),
                   TextFormField(
                     controller: _target,
                     decoration: InputDecoration(
                       labelText: l.profileTargetWeightLabel,
                       suffixText: 'kg',
-                      prefixIcon: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
+                      prefixIcon: Icon(Icons.monitor_weight_rounded, color: bodyColor),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) => (v == null || v.isEmpty) ? null : _validateNum(v, 30, 250),
                   ),
-                  SectionTitle(l.profileTrainingConditionSection, icon: Icons.fitness_center_rounded, iconColor: const Color(0xFFAB47BC)),
+                  SectionTitle(l.profileTrainingConditionSection, icon: Icons.fitness_center_rounded, iconColor: aiColor),
                   DropdownButtonFormField<String>(
                     initialValue: _experience,
                     decoration: InputDecoration(
                       labelText: l.profileExperienceLabel,
-                      prefixIcon: const Icon(Icons.military_tech_rounded, color: Color(0xFFFFA726)),
+                      prefixIcon: Icon(Icons.military_tech_rounded, color: warning),
                     ),
                     items: Nutrition.experiences.keys
                         .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.experienceLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _experience = v ?? _experience),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
@@ -218,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           initialValue: _weeklyDays,
                           decoration: InputDecoration(
                             labelText: l.profileWeeklyDaysLabel,
-                            prefixIcon: const Icon(Icons.calendar_today_rounded, color: Color(0xFF42A5F5)),
+                            prefixIcon: Icon(Icons.calendar_today_rounded, color: info),
                           ),
                           items: [
                             for (var d = 1; d <= 7; d++)
@@ -227,13 +246,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onChanged: (v) => setState(() => _weeklyDays = v ?? _weeklyDays),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: _sessionMinutes,
                           decoration: InputDecoration(
                             labelText: l.profileSessionMinsLabel,
-                            prefixIcon: const Icon(Icons.timer_rounded, color: Color(0xFF26A69A)),
+                            prefixIcon: Icon(Icons.timer_rounded, color: teal),
                           ),
                           items: [
                             for (final m in [30, 45, 60, 75, 90, 120])
@@ -244,28 +263,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(
                     initialValue: _equipment,
                     decoration: InputDecoration(
                       labelText: l.profileEquipmentLabel,
-                      prefixIcon: const Icon(Icons.handyman_rounded, color: Color(0xFFEF5350)),
+                      prefixIcon: Icon(Icons.handyman_rounded, color: workoutColor),
                     ),
                     items: Nutrition.equipments.keys
                         .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.equipmentLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _equipment = v ?? _equipment),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _injuries,
                     decoration: InputDecoration(
                       labelText: l.profileInjuriesLabel,
                       hintText: l.profileInjuriesHint,
-                      prefixIcon: const Icon(Icons.healing_rounded, color: Color(0xFFEC407A)),
+                      prefixIcon: Icon(Icons.healing_rounded, color: danger),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
                   FilledButton.icon(
                     onPressed: _save,
                     icon: const Icon(Icons.check_rounded),

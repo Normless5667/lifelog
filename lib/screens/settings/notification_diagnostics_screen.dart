@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/reminder_service.dart';
 import '../../widgets/common.dart';
 
-/// 通知诊断页：显示当前通知权限状态、渠道重要性、震动/声音开关、是否被系统降级，
+/// 通知诊断页（v2.0）：显示当前通知权限状态、渠道重要性、震动/声音开关、是否被系统降级，
 /// 并提供一键跳转应用通知设置与渠道设置的按钮。
 class NotificationDiagnosticsScreen extends StatefulWidget {
   const NotificationDiagnosticsScreen({super.key});
@@ -68,14 +68,34 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final primary = AppColors.primary(context);
+    final teal = AppColors.teal(context);
+    final accent = AppColors.accent(context);
     final allGood = _enabled && _importance >= 4 && _vibrate && _exactAlarm;
+    final bannerColor = allGood ? teal : accent;
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: Row(
           children: [
-            const Icon(Icons.health_and_safety_rounded, color: Color(0xFF2B5B84)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(l.diagTitle, overflow: TextOverflow.ellipsis)),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, primary),
+                borderRadius: AppRadius.bSm,
+              ),
+              child: Icon(Icons.health_and_safety_rounded, color: primary, size: 18),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l.diagTitle,
+                style: AppTypography.pageTitle(context),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -89,44 +109,55 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.xxxl,
+              ),
               children: [
-                Card(
-                  color: allGood
-                      ? const Color(0xFF26A69A).withValues(alpha: 0.14)
-                      : const Color(0xFFFF7A22).withValues(alpha: 0.16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
+                SurfaceCard(
+                  backgroundColor: AppColors.softBg(context, bannerColor, lightAlpha: 0.10, darkAlpha: 0.16),
+                  borderColor: AppColors.softBorder(context, bannerColor),
+                  padding: AppSpacing.cardPadding,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.softBg(context, bannerColor, lightAlpha: 0.18, darkAlpha: 0.25),
+                          borderRadius: AppRadius.bMd,
+                        ),
+                        child: Icon(
                           allGood ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-                          size: 38,
-                          color: allGood ? const Color(0xFF26A69A) : const Color(0xFFFF7A22),
+                          size: 24,
+                          color: bannerColor,
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                allGood ? l.diagStatusGood : l.diagStatusWarn,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                l.diagDeviceChannelSub(_device, _channelName, _channelId),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              allGood ? l.diagStatusGood : l.diagStatusWarn,
+                              style: AppTypography.cardTitle(context),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              l.diagDeviceChannelSub(_device, _channelName, _channelId),
+                              style: AppTypography.bodySecondary(context),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 SectionTitle(l.diagSectionPermissions, icon: Icons.fact_check_rounded),
-                Card(
+                SurfaceCard(
+                  padding: EdgeInsets.zero,
                   child: Column(
                     children: [
                       _diagRow(
@@ -161,50 +192,49 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                     ],
                   ),
                 ),
-                SectionTitle(l.diagSectionColorOs, icon: Icons.build_circle_rounded),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          l.diagColorOsGuide,
-                          style: const TextStyle(fontSize: 12, height: 1.5),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            await ReminderService.openAppNotificationSettings();
-                            await Future<void>.delayed(const Duration(seconds: 1));
-                            _refresh();
-                          },
-                          icon: const Icon(Icons.notifications_active_rounded),
-                          label: Text(l.diagBtn1AppNotif),
-                        ),
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            await ReminderService.openNotificationSettings();
-                            await Future<void>.delayed(const Duration(seconds: 1));
-                            _refresh();
-                          },
-                          icon: const Icon(Icons.tune_rounded),
-                          label: Text(l.diagBtn2Channel),
-                        ),
-                        const SizedBox(height: 8),
-                        FilledButton.tonalIcon(
-                          onPressed: () async {
-                            await ReminderService.testNotification();
-                            if (context.mounted) {
-                              toast(context, l.diagTestSentToast);
-                            }
-                          },
-                          icon: const Icon(Icons.vibration_rounded),
-                          label: Text(l.diagBtn3Test),
-                        ),
-                      ],
-                    ),
+                SectionTitle(
+                  l.diagSectionColorOs,
+                  icon: Icons.build_circle_rounded,
+                  iconColor: accent,
+                ),
+                SurfaceCard(
+                  padding: AppSpacing.cardPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(l.diagColorOsGuide, style: AppTypography.body(context).copyWith(fontSize: 13)),
+                      const SizedBox(height: AppSpacing.md),
+                      FilledButton.icon(
+                        onPressed: () async {
+                          await ReminderService.openAppNotificationSettings();
+                          await Future<void>.delayed(const Duration(seconds: 1));
+                          _refresh();
+                        },
+                        icon: const Icon(Icons.notifications_active_rounded, size: 18),
+                        label: Text(l.diagBtn1AppNotif),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await ReminderService.openNotificationSettings();
+                          await Future<void>.delayed(const Duration(seconds: 1));
+                          _refresh();
+                        },
+                        icon: const Icon(Icons.tune_rounded, size: 18),
+                        label: Text(l.diagBtn2Channel),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FilledButton.tonalIcon(
+                        onPressed: () async {
+                          await ReminderService.testNotification();
+                          if (context.mounted) {
+                            toast(context, l.diagTestSentToast);
+                          }
+                        },
+                        icon: const Icon(Icons.vibration_rounded, size: 18),
+                        label: Text(l.diagBtn3Test),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -213,16 +243,40 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
   }
 
   Widget _diagRow({required bool ok, required String title, required String subtitle}) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: (ok ? const Color(0xFF26A69A) : const Color(0xFFEF5350)).withValues(alpha: 0.15),
-        child: Icon(
-          ok ? Icons.check_rounded : Icons.priority_high_rounded,
-          color: ok ? const Color(0xFF26A69A) : const Color(0xFFEF5350),
-        ),
+    final rowColor = ok ? AppColors.teal(context) : AppColors.danger(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, rowColor),
+              borderRadius: AppRadius.bMd,
+            ),
+            child: Icon(
+              ok ? Icons.check_rounded : Icons.priority_high_rounded,
+              color: rowColor,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTypography.subtitle(context)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: AppTypography.bodySecondary(context)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

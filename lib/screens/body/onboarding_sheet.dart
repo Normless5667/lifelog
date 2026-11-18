@@ -132,7 +132,7 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
               ),
             ),
           ),
-          SectionTitle(l.onboardingStep1, icon: Icons.person_rounded, iconColor: const Color(0xFF42A5F5)),
+          SectionTitle(l.onboardingStep1, icon: Icons.person_rounded, iconColor: AppColors.info(context)),
           SegmentedButton<String>(
             segments: [
               ButtonSegment(value: 'male', icon: const Icon(Icons.male_rounded), label: Text(l.profileMale)),
@@ -141,7 +141,7 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
             selected: {_gender},
             onSelectionChanged: (s) => setState(() => _gender = s.first),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -152,11 +152,11 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   decoration: InputDecoration(
                     labelText: l.profileAgeLabel,
                     suffixText: l.profileAgeUnit,
-                    prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFFFFA726)),
+                    prefixIcon: Icon(Icons.cake_rounded, color: AppColors.warning(context)),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm + 2),
               Expanded(
                 child: TextField(
                   controller: _height,
@@ -164,13 +164,13 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   decoration: InputDecoration(
                     labelText: l.profileHeightLabel,
                     suffixText: 'cm',
-                    prefixIcon: const Icon(Icons.height_rounded, color: Color(0xFF26A69A)),
+                    prefixIcon: Icon(Icons.height_rounded, color: AppColors.teal(context)),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -180,11 +180,11 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   decoration: InputDecoration(
                     labelText: l.onboardingCurrentWeight,
                     suffixText: 'kg',
-                    prefixIcon: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
+                    prefixIcon: Icon(Icons.monitor_weight_rounded, color: AppColors.moduleBody(context)),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm + 2),
               Expanded(
                 child: TextField(
                   controller: _targetWeight,
@@ -192,16 +192,16 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   decoration: InputDecoration(
                     labelText: l.onboardingTargetWeight,
                     suffixText: 'kg',
-                    prefixIcon: const Icon(Icons.flag_rounded, color: Color(0xFFEF5350)),
+                    prefixIcon: Icon(Icons.flag_rounded, color: AppColors.moduleWorkout(context)),
                   ),
                 ),
               ),
             ],
           ),
-          SectionTitle(l.onboardingStep2, icon: Icons.track_changes_rounded, iconColor: const Color(0xFFEF5350)),
+          SectionTitle(l.onboardingStep2, icon: Icons.track_changes_rounded, iconColor: AppColors.moduleWorkout(context)),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: Nutrition.goals.keys.map((k) {
               return ChoiceChip(
                 label: Text(L10nHelper.goalLabel(context, k)),
@@ -210,23 +210,23 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<double>(
             initialValue: _activity,
             decoration: InputDecoration(
               labelText: l.profileActivityLabel,
-              prefixIcon: const Icon(Icons.directions_walk_rounded, color: Color(0xFF26A69A)),
+              prefixIcon: Icon(Icons.directions_walk_rounded, color: AppColors.teal(context)),
             ),
             items: Nutrition.activityLevels.keys
                 .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.activityLabel(context, k))))
                 .toList(),
             onChanged: (v) => setState(() => _activity = v ?? _activity),
           ),
-          SectionTitle(l.onboardingStep3, icon: Icons.fitness_center_rounded, iconColor: const Color(0xFFAB47BC)),
-          Text(l.profileExperienceLabel, style: const TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
+          SectionTitle(l.onboardingStep3, icon: Icons.fitness_center_rounded, iconColor: AppColors.moduleAi(context)),
+          Text(l.profileExperienceLabel, style: AppTypography.caption(context)),
+          const SizedBox(height: AppSpacing.xs + 2),
           Wrap(
-            spacing: 8,
+            spacing: AppSpacing.sm,
             children: Nutrition.experiences.keys.map((k) {
               return ChoiceChip(
                 label: Text(L10nHelper.experienceLabel(context, k)),
@@ -235,7 +235,7 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -243,7 +243,7 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   initialValue: _weeklyDays,
                   decoration: InputDecoration(
                     labelText: l.profileWeeklyDaysLabel,
-                    prefixIcon: const Icon(Icons.calendar_today_rounded, color: Color(0xFF42A5F5)),
+                    prefixIcon: Icon(Icons.calendar_today_rounded, color: AppColors.moduleSchedule(context)),
                   ),
                   items: [
                     for (var d = 1; d <= 7; d++)
@@ -252,13 +252,13 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
                   onChanged: (v) => setState(() => _weeklyDays = v ?? _weeklyDays),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm + 2),
               Expanded(
                 child: DropdownButtonFormField<int>(
                   initialValue: [30, 45, 60, 75, 90, 120].contains(_sessionMinutes) ? _sessionMinutes : 60,
                   decoration: InputDecoration(
                     labelText: l.profileSessionMinsLabel,
-                    prefixIcon: const Icon(Icons.timer_rounded, color: Color(0xFFFFA726)),
+                    prefixIcon: Icon(Icons.timer_rounded, color: AppColors.warning(context)),
                   ),
                   items: [
                     for (final m in [30, 45, 60, 75, 90, 120])
@@ -269,11 +269,11 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(l.profileEquipmentLabel, style: const TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.md),
+          Text(l.profileEquipmentLabel, style: AppTypography.caption(context)),
+          const SizedBox(height: AppSpacing.xs + 2),
           Wrap(
-            spacing: 8,
+            spacing: AppSpacing.sm,
             children: Nutrition.equipments.keys.map((k) {
               return ChoiceChip(
                 label: Text(L10nHelper.equipmentLabel(context, k)),
@@ -282,22 +282,25 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md + 2),
           TextField(
             controller: _injuries,
             decoration: InputDecoration(
               labelText: l.profileInjuriesLabel,
               hintText: l.profileInjuriesHint,
-              prefixIcon: const Icon(Icons.healing_rounded, color: Color(0xFFEF5350)),
+              prefixIcon: Icon(Icons.healing_rounded, color: AppColors.danger(context)),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           FilledButton.icon(
             onPressed: _submit,
             icon: const Icon(Icons.check_circle_rounded),
             label: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(l.onboardingFinishBtn, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Text(
+                l.onboardingFinishBtn,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],

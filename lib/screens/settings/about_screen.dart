@@ -2,69 +2,77 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/common.dart';
 
-/// 关于页（展示大肥鱼 Q 版形象与说明）
+/// 关于页（v2.0）：展示大肥鱼 Q 版形象与说明
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = context.l10n;
+    final primary = AppColors.primary(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l.aboutTitle)),
+      appBar: AppBar(title: Text(l.aboutTitle, style: AppTypography.pageTitle(context))),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
+          SurfaceCard(
+            isHero: true,
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.bXxl,
+                    border: Border.all(color: AppColors.softBorder(context, primary)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: AppRadius.bXl,
                     child: Image.asset(
                       'assets/icon/dafeiyu_mascot.png',
-                      width: 136,
-                      height: 136,
+                      width: 128,
+                      height: 128,
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l.appTitle,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(l.appTitle, style: AppTypography.pageTitle(context)),
+                const SizedBox(height: AppSpacing.xs),
+                Text(l.aboutVersion, style: AppTypography.caption(context)),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md + 2,
+                    vertical: AppSpacing.sm,
                   ),
-                  const SizedBox(height: 4),
-                  Text(l.aboutVersion, style: TextStyle(color: cs.outline, fontSize: 13)),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF2B5B84)),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            l.aboutBadge,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, primary),
+                    borderRadius: AppRadius.bPill,
+                    border: Border.all(color: AppColors.softBorder(context, primary)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified_rounded, size: 16, color: primary),
+                      const SizedBox(width: AppSpacing.xs + 2),
+                      Flexible(
+                        child: Text(
+                          l.aboutBadge,
+                          style: AppTypography.subtitle(context, color: primary).copyWith(fontSize: 12.5),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l.aboutDesc,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, height: 1.5),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  l.aboutDesc,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.body(context),
+                ),
+              ],
             ),
           ),
         ],

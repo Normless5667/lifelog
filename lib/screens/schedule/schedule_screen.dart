@@ -533,16 +533,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 if (_weather != null && _weather!.isRainy)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    color: const Color(0xFF42A5F5).withValues(alpha: 0.16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xs + 2,
+                    ),
+                    color: AppColors.softBg(context, AppColors.info(context), lightAlpha: 0.14, darkAlpha: 0.20),
                     child: Row(
                       children: [
-                        const Icon(Icons.umbrella_rounded, size: 16, color: Color(0xFF2B5B84)),
-                        const SizedBox(width: 6),
+                        Icon(Icons.umbrella_rounded, size: 16, color: AppColors.primary(context)),
+                        const SizedBox(width: AppSpacing.xs + 2),
                         Expanded(
                           child: Text(
                             l.scheduleRainBanner(fmtNum(_weather!.precipProb)),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            style: AppTypography.badge(context, color: AppColors.textPrimary(context))
+                                .copyWith(fontSize: 12),
                           ),
                         ),
                       ],

@@ -64,19 +64,32 @@ class _MealEditDialogState extends State<MealEditDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
+    final warning = AppColors.warning(context);
+    final teal = AppColors.teal(context);
+    final info = AppColors.info(context);
+    final proteinColor = AppColors.macroProtein(context);
+    final carbsColor = AppColors.macroCarbs(context);
+    final fatColor = AppColors.macroFat(context);
+
     return AlertDialog(
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFA726).withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.softBg(context, warning),
+              borderRadius: AppRadius.bMd,
             ),
-            child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFA726), size: 22),
+            child: Icon(Icons.restaurant_menu_rounded, color: warning, size: 20),
           ),
-          const SizedBox(width: 10),
-          Text(widget.existing == null ? l.mealEditAddTitle : l.mealEditUpdateTitle),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              widget.existing == null ? l.mealEditAddTitle : l.mealEditUpdateTitle,
+              style: AppTypography.sectionTitle(context),
+            ),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -87,7 +100,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
               initialValue: _mealType,
               decoration: InputDecoration(
                 labelText: l.mealEditTypeLabel,
-                prefixIcon: Icon(_mealIcons[_mealType], color: const Color(0xFFFFA726)),
+                prefixIcon: Icon(_mealIcons[_mealType], color: warning),
               ),
               items: [
                 for (var i = 0; i < 4; i++)
@@ -96,7 +109,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
                     child: Row(
                       children: [
                         Icon(_mealIcons[i], size: 18),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Text(L10nHelper.mealTypeLabel(context, i)),
                       ],
                     ),
@@ -104,34 +117,34 @@ class _MealEditDialogState extends State<MealEditDialog> {
               ],
               onChanged: (v) => setState(() => _mealType = v ?? _mealType),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _name,
               autofocus: widget.existing == null,
               decoration: InputDecoration(
                 labelText: l.mealEditNameLabel,
-                prefixIcon: const Icon(Icons.restaurant_rounded, color: Color(0xFF26A69A)),
+                prefixIcon: Icon(Icons.restaurant_rounded, color: teal),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _amount,
               decoration: InputDecoration(
                 labelText: l.mealEditAmountLabel,
-                prefixIcon: const Icon(Icons.scale_rounded, color: Color(0xFF42A5F5)),
+                prefixIcon: Icon(Icons.scale_rounded, color: info),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _kcal,
               keyboardType: numKb,
               decoration: InputDecoration(
                 labelText: l.mealEditKcalLabel,
                 suffixText: 'kcal',
-                prefixIcon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFEF5350)),
+                prefixIcon: Icon(Icons.local_fire_department_rounded, color: AppColors.danger(context)),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
@@ -140,29 +153,29 @@ class _MealEditDialogState extends State<MealEditDialog> {
                     keyboardType: numKb,
                     decoration: InputDecoration(
                       labelText: l.foodConfirmProtein,
-                      prefixIcon: const Icon(Icons.egg_alt_rounded, size: 18, color: Color(0xFFEF5350)),
+                      prefixIcon: Icon(Icons.egg_alt_rounded, size: 17, color: proteinColor),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextField(
                     controller: _c,
                     keyboardType: numKb,
                     decoration: InputDecoration(
                       labelText: l.foodConfirmCarbs,
-                      prefixIcon: const Icon(Icons.rice_bowl_rounded, size: 18, color: Color(0xFFFFA726)),
+                      prefixIcon: Icon(Icons.rice_bowl_rounded, size: 17, color: carbsColor),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextField(
                     controller: _f,
                     keyboardType: numKb,
                     decoration: InputDecoration(
                       labelText: l.foodConfirmFat,
-                      prefixIcon: const Icon(Icons.water_drop_rounded, size: 18, color: Color(0xFF42A5F5)),
+                      prefixIcon: Icon(Icons.water_drop_rounded, size: 17, color: fatColor),
                     ),
                   ),
                 ),
