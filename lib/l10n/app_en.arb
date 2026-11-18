@@ -923,7 +923,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v1.8.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v2.1.4 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -988,7 +988,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v1.8.0 (Build 8)",
+  "aboutVersion": "Version v2.1.4 (Build 10)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
 
