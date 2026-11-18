@@ -385,5 +385,8 @@ class L10nHelper {
   }
 
   static const planSchemaPromptInstruction =
-      '\nWhen the user asks for a workout plan, include a JSON code block at the end of your reply in the exact format: {"plan_name":"...","days":[{"day":"...","focus":"...","exercises":[{"name":"...","sets":4,"reps":"8-10","weight_hint":"..."}]}]} so the user can import it in one tap.';
+      '\nWhen the user asks for a workout plan, write your explanation first, and at the very end of your reply wrap the structured plan JSON strictly inside <<<PLAN_JSON>>> and <<<END_PLAN>>> markers (do NOT use ```json markdown fences for the plan). Exact format:\n'
+      '<<<PLAN_JSON>>>\n'
+      '{"plan_name":"...","days":[{"day":"...","focus":"...","exercises":[{"name":"...","sets":4,"reps":"8-10","weight_hint":"..."}]}]}\n'
+      '<<<END_PLAN>>>';
 }
