@@ -621,5 +621,14 @@
   "aiPlanGeneratingPlaceholder": "正在生成计划…",
   "aiPlanParseFailedHint": "结构化计划数据解析失败，可点击下方查看原始回复。",
   "aiPlanShowRawReplyBtn": "显示原始回复",
-  "aiPlanHideRawReplyBtn": "收起原始回复"
+  "aiPlanHideRawReplyBtn": "收起原始回复",
+
+  "weatherForecast15Title": "未来 15 天天气预报",
+  "weatherForecast15Badge": "15天",
+  "weatherOpenSystemBtn": "手机天气",
+  "weatherSwitchCityBtn": "切换城市",
+  "weatherSystemNotFound": "未检测到手机内置天气应用",
+  "weatherForecastEmpty": "暂未获取到未来 15 天预报，请点击刷新重试",
+  "weatherTodayTag": "今天",
+  "weatherTomorrowTag": "明天"
 }

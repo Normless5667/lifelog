@@ -3654,6 +3654,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide Raw Reply'**
   String get aiPlanHideRawReplyBtn;
+
+  /// No description provided for @weatherForecast15Title.
+  ///
+  /// In en, this message translates to:
+  /// **'15-Day Weather Forecast'**
+  String get weatherForecast15Title;
+
+  /// No description provided for @weatherForecast15Badge.
+  ///
+  /// In en, this message translates to:
+  /// **'15-Day'**
+  String get weatherForecast15Badge;
+
+  /// No description provided for @weatherOpenSystemBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'System Weather'**
+  String get weatherOpenSystemBtn;
+
+  /// No description provided for @weatherSwitchCityBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch City'**
+  String get weatherSwitchCityBtn;
+
+  /// No description provided for @weatherSystemNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No built-in weather app found on this device'**
+  String get weatherSystemNotFound;
+
+  /// No description provided for @weatherForecastEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'15-day forecast unavailable — tap refresh'**
+  String get weatherForecastEmpty;
+
+  /// No description provided for @weatherTodayTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get weatherTodayTag;
+
+  /// No description provided for @weatherTomorrowTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get weatherTomorrowTag;
 }
 
 class _AppLocalizationsDelegate

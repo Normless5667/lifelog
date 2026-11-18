@@ -1992,4 +1992,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiPlanHideRawReplyBtn => '收起原始回复';
+
+  @override
+  String get weatherForecast15Title => '未来 15 天天气预报';
+
+  @override
+  String get weatherForecast15Badge => '15天';
+
+  @override
+  String get weatherOpenSystemBtn => '手机天气';
+
+  @override
+  String get weatherSwitchCityBtn => '切换城市';
+
+  @override
+  String get weatherSystemNotFound => '未检测到手机内置天气应用';
+
+  @override
+  String get weatherForecastEmpty => '暂未获取到未来 15 天预报，请点击刷新重试';
+
+  @override
+  String get weatherTodayTag => '今天';
+
+  @override
+  String get weatherTomorrowTag => '明天';
 }

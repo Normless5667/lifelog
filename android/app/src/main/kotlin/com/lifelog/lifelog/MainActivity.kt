@@ -276,6 +276,9 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                         }
                         startActivityForResult(intent, pickJsonReqCode)
                     }
+                    "openSystemWeather" -> {
+                        result.success(openSystemWeatherApp())
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -421,6 +424,45 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    private fun openSystemWeatherApp(): Boolean {
+        val catIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_APP_WEATHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            if (catIntent.resolveActivity(packageManager) != null) {
+                startActivity(catIntent)
+                return true
+            }
+        } catch (_: Exception) {}
+
+        val oemPackages = listOf(
+            "com.coloros.weather2",
+            "com.heytap.weather",
+            "com.coloros.weather",
+            "net.oneplus.weather",
+            "com.miui.weather2",
+            "com.vivo.weather",
+            "com.huawei.android.totemweather",
+            "com.hihonor.android.totemweather",
+            "com.sec.android.daemonapp",
+            "com.google.android.apps.weather",
+            "com.meizu.flyme.weather",
+            "com.lenovo.weather"
+        )
+        for (pkg in oemPackages) {
+            try {
+                val launch = packageManager.getLaunchIntentForPackage(pkg)
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(launch)
+                    return true
+                }
+            } catch (_: Exception) {}
+        }
+        return false
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}

@@ -2061,4 +2061,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiPlanHideRawReplyBtn => 'Hide Raw Reply';
+
+  @override
+  String get weatherForecast15Title => '15-Day Weather Forecast';
+
+  @override
+  String get weatherForecast15Badge => '15-Day';
+
+  @override
+  String get weatherOpenSystemBtn => 'System Weather';
+
+  @override
+  String get weatherSwitchCityBtn => 'Switch City';
+
+  @override
+  String get weatherSystemNotFound =>
+      'No built-in weather app found on this device';
+
+  @override
+  String get weatherForecastEmpty =>
+      '15-day forecast unavailable — tap refresh';
+
+  @override
+  String get weatherTodayTag => 'Today';
+
+  @override
+  String get weatherTomorrowTag => 'Tomorrow';
 }

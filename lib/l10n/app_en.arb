@@ -1081,5 +1081,14 @@
   "aiPlanGeneratingPlaceholder": "Generating workout plan…",
   "aiPlanParseFailedHint": "Structured plan block could not be parsed.",
   "aiPlanShowRawReplyBtn": "Show Raw Reply",
-  "aiPlanHideRawReplyBtn": "Hide Raw Reply"
+  "aiPlanHideRawReplyBtn": "Hide Raw Reply",
+
+  "weatherForecast15Title": "15-Day Weather Forecast",
+  "weatherForecast15Badge": "15-Day",
+  "weatherOpenSystemBtn": "System Weather",
+  "weatherSwitchCityBtn": "Switch City",
+  "weatherSystemNotFound": "No built-in weather app found on this device",
+  "weatherForecastEmpty": "15-day forecast unavailable — tap refresh",
+  "weatherTodayTag": "Today",
+  "weatherTomorrowTag": "Tomorrow"
 }

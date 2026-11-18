@@ -66,5 +66,21 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.APP_WEATHER"/>
+        </intent>
+        <package android:name="com.miui.weather2"/>
+        <package android:name="com.coloros.weather2"/>
+        <package android:name="com.coloros.weather"/>
+        <package android:name="com.heytap.weather"/>
+        <package android:name="net.oneplus.weather"/>
+        <package android:name="com.vivo.weather"/>
+        <package android:name="com.huawei.android.totemweather"/>
+        <package android:name="com.hihonor.android.totemweather"/>
+        <package android:name="com.sec.android.daemonapp"/>
+        <package android:name="com.google.android.apps.weather"/>
+        <package android:name="com.meizu.flyme.weather"/>
+        <package android:name="com.lenovo.weather"/>
     </queries>
 </manifest>

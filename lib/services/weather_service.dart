@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
@@ -28,6 +29,50 @@ class WeatherCityPreset {
       };
 }
 
+class WeatherDailyForecast {
+  final String date;
+  final double maxTemp;
+  final double minTemp;
+  final int weatherCode;
+  final double precipProb;
+
+  const WeatherDailyForecast({
+    required this.date,
+    required this.maxTemp,
+    required this.minTemp,
+    required this.weatherCode,
+    required this.precipProb,
+  });
+
+  bool get isRainy =>
+      precipProb >= 45 ||
+      (weatherCode >= 51 && weatherCode <= 67) ||
+      (weatherCode >= 80 && weatherCode <= 99);
+
+  String get emoji {
+    if (weatherCode == 0) return '☀️';
+    if (weatherCode <= 3) return '⛅';
+    if (isRainy) return '🌧️';
+    return '🌤️';
+  }
+
+  Map<String, dynamic> toJson() => {
+        'date': date,
+        'maxTemp': maxTemp,
+        'minTemp': minTemp,
+        'weatherCode': weatherCode,
+        'precipProb': precipProb,
+      };
+
+  factory WeatherDailyForecast.fromJson(Map<String, dynamic> j) => WeatherDailyForecast(
+        date: (j['date'] ?? '').toString(),
+        maxTemp: ((j['maxTemp'] ?? 28) as num).toDouble(),
+        minTemp: ((j['minTemp'] ?? 22) as num).toDouble(),
+        weatherCode: ((j['weatherCode'] ?? 1) as num).toInt(),
+        precipProb: ((j['precipProb'] ?? 0) as num).toDouble(),
+      );
+}
+
 class WeatherInfo {
   final double temperature;
   final double maxTemp;
@@ -36,6 +81,7 @@ class WeatherInfo {
   final double precipProb;
   final String city;
   final int fetchedAtMs;
+  final List<WeatherDailyForecast> dailyForecast;
 
   const WeatherInfo({
     required this.temperature,
@@ -45,6 +91,7 @@ class WeatherInfo {
     required this.precipProb,
     required this.city,
     required this.fetchedAtMs,
+    this.dailyForecast = const [],
   });
 
   bool get isRainy =>
@@ -99,6 +146,7 @@ class WeatherInfo {
         'precipProb': precipProb,
         'city': city,
         'fetchedAtMs': fetchedAtMs,
+        'dailyForecast': dailyForecast.map((d) => d.toJson()).toList(),
       };
 
   factory WeatherInfo.fromJson(Map<String, dynamic> j) => WeatherInfo(
@@ -109,6 +157,10 @@ class WeatherInfo {
         precipProb: ((j['precipProb'] ?? 10) as num).toDouble(),
         city: (j['city'] ?? 'Ho Chi Minh City').toString(),
         fetchedAtMs: ((j['fetchedAtMs'] ?? 0) as num).toInt(),
+        dailyForecast: ((j['dailyForecast'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((m) => WeatherDailyForecast.fromJson(Map<String, dynamic>.from(m)))
+            .toList(),
       );
 }
 
@@ -116,11 +168,12 @@ class WeatherInfo {
 /// 1) 若用户在设置中手动指定了「天气城市」，优先使用用户指定的城市坐标（彻底不受代理/VPN 影响）
 /// 2) 否则优先使用 `geolocator` 真实 GPS 定位（5 秒超时，首次启动请求权限）
 /// 3) 若 GPS 权限被拒或超时，再 fallback 到 `https://ipwho.is/` IP 定位
-/// 4) 定位结果本地缓存 **6 小时**，天气数据本地缓存 **30 分钟**
+/// 4) 定位结果本地缓存 **6 小时**，天气数据本地缓存 **30 分钟**（含未来 15 天逐日预报）
 class WeatherService {
   WeatherService._();
 
-  static const _weatherCacheKey = 'weather_cache_v2';
+  static const _channel = MethodChannel('com.lifelog/reminders');
+  static const _weatherCacheKey = 'weather_cache_v3';
   static const _locCacheKey = 'weather_loc_cache_v1';
   static const _manualCityKey = 'weather_manual_city_v1';
 
@@ -394,31 +447,72 @@ class WeatherService {
         'https://api.open-meteo.com/v1/forecast'
         '?latitude=${loc.lat}&longitude=${loc.lon}'
         '&current=temperature_2m,weather_code'
-        '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max'
-        '&timezone=auto&forecast_days=1',
+        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+        '&timezone=auto&forecast_days=15',
       );
       final resp = await http.get(url).timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) {
         final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
         final cur = (j['current'] as Map<String, dynamic>?) ?? const {};
         final daily = (j['daily'] as Map<String, dynamic>?) ?? const {};
+        final timeList = (daily['time'] as List?) ?? const [];
+        final codeList = (daily['weather_code'] as List?) ?? const [];
         final maxList = (daily['temperature_2m_max'] as List?) ?? const [28];
         final minList = (daily['temperature_2m_min'] as List?) ?? const [22];
         final popList = (daily['precipitation_probability_max'] as List?) ?? const [0];
 
+        final forecast = <WeatherDailyForecast>[];
+        final dayCount = timeList.length.clamp(0, 15);
+        for (var i = 0; i < dayCount; i++) {
+          forecast.add(
+            WeatherDailyForecast(
+              date: timeList[i].toString(),
+              weatherCode: i < codeList.length && codeList[i] != null
+                  ? (codeList[i] as num).toInt()
+                  : 1,
+              maxTemp: i < maxList.length && maxList[i] != null
+                  ? (maxList[i] as num).toDouble()
+                  : 28,
+              minTemp: i < minList.length && minList[i] != null
+                  ? (minList[i] as num).toDouble()
+                  : 22,
+              precipProb: i < popList.length && popList[i] != null
+                  ? (popList[i] as num).toDouble()
+                  : 0,
+            ),
+          );
+        }
+
         final info = WeatherInfo(
           temperature: ((cur['temperature_2m'] ?? 26) as num).toDouble(),
           weatherCode: ((cur['weather_code'] ?? 1) as num).toInt(),
-          maxTemp: (maxList.first as num).toDouble(),
-          minTemp: (minList.first as num).toDouble(),
-          precipProb: (popList.first as num).toDouble(),
+          maxTemp: forecast.isNotEmpty
+              ? forecast.first.maxTemp
+              : (maxList.isNotEmpty ? (maxList.first as num).toDouble() : 28),
+          minTemp: forecast.isNotEmpty
+              ? forecast.first.minTemp
+              : (minList.isNotEmpty ? (minList.first as num).toDouble() : 22),
+          precipProb: forecast.isNotEmpty
+              ? forecast.first.precipProb
+              : (popList.isNotEmpty ? (popList.first as num).toDouble() : 0),
           city: loc.city,
           fetchedAtMs: nowMs,
+          dailyForecast: forecast,
         );
         await Repo.setKv(_weatherCacheKey, jsonEncode(info.toJson()));
         return info;
       }
     } catch (_) {}
     return cached;
+  }
+
+  /// 调用 Android 原生 Intent 尝试拉起手机内置天气 App
+  static Future<bool> openSystemWeatherApp() async {
+    try {
+      final res = await _channel.invokeMethod<bool>('openSystemWeather');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 }

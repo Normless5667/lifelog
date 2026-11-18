@@ -556,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         if (w != null)
           SurfaceCard(
-            onTap: _openWeatherCityQuickSheet,
+            onTap: _openWeather15DaySheet,
             padding: AppSpacing.cardCompactPadding,
             child: Row(
               children: [
@@ -576,8 +576,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             '${fmtNum(w.temperature)}°',
@@ -590,6 +589,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               style: AppTypography.subtitle(context),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.softBg(context, scheduleColor),
+                              borderRadius: AppRadius.bXs,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  l.weatherForecast15Badge,
+                                  style: AppTypography.badge(context, color: scheduleColor)
+                                      .copyWith(fontSize: 10),
+                                ),
+                                Icon(Icons.chevron_right_rounded, size: 12, color: scheduleColor),
+                              ],
                             ),
                           ),
                         ],
@@ -640,6 +658,294 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
       ],
+    );
+  }
+
+  /// 点击天气卡片弹出：15 天逐日预报弹窗 + 一键调用手机内置天气 App + 切换城市
+  Future<void> _openWeather15DaySheet() async {
+    var sheetWeather = _weather;
+    var loadingForecast = sheetWeather == null || sheetWeather.dailyForecast.isEmpty;
+    var initialFetchTriggered = false;
+
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final l = ctx.l10n;
+          final scheduleColor = AppColors.moduleSchedule(ctx);
+          final accent = AppColors.accent(ctx);
+          final info = AppColors.info(ctx);
+
+          Future<void> triggerFetch() async {
+            final fresh = await WeatherService.getWeather(forceRefresh: true);
+            if (!mounted) return;
+            if (fresh != null) {
+              setState(() => _weather = fresh);
+              sheetWeather = fresh;
+            }
+            loadingForecast = false;
+            if (ctx.mounted) setSheetState(() {});
+          }
+
+          if (!initialFetchTriggered && loadingForecast) {
+            initialFetchTriggered = true;
+            triggerFetch();
+          }
+
+          final cur = sheetWeather;
+          final days = cur?.dailyForecast ?? const <WeatherDailyForecast>[];
+          double globalMin = 0;
+          double globalMax = 35;
+          if (days.isNotEmpty) {
+            globalMin = days.map((d) => d.minTemp).reduce((a, b) => a < b ? a : b);
+            globalMax = days.map((d) => d.maxTemp).reduce((a, b) => a > b ? a : b);
+          }
+          final tempSpan = (globalMax - globalMin).abs() < 1 ? 1.0 : (globalMax - globalMin);
+
+          String dayTitle(int index, String isoDate) {
+            if (index == 0) return l.weatherTodayTag;
+            if (index == 1) return l.weatherTomorrowTag;
+            final dt = DateTime.tryParse(isoDate);
+            if (dt == null) return isoDate;
+            return '${dt.month}/${dt.day} ${L10nHelper.weekdayLabel(ctx, dt.weekday)}';
+          }
+
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.74,
+            maxChildSize: 0.92,
+            minChildSize: 0.48,
+            builder: (ctx, scrollCtrl) => Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.softBg(ctx, scheduleColor),
+                          borderRadius: AppRadius.bMd,
+                        ),
+                        child: Text(cur?.emoji ?? '🌤️', style: const TextStyle(fontSize: 24)),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cur != null ? '${cur.city} · ${l.weatherForecast15Title}' : l.weatherForecast15Title,
+                              style: AppTypography.cardTitle(ctx),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (cur != null)
+                              Text(
+                                '${fmtNum(cur.temperature)}°C ${L10nHelper.weatherConditionLabel(ctx, cur.weatherCode)} · ${L10nHelper.weatherShortTipLabel(ctx, cur)}',
+                                style: AppTypography.bodySecondary(ctx),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: l.commonRefresh,
+                        icon: loadingForecast
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: scheduleColor),
+                              )
+                            : Icon(Icons.refresh_rounded, size: 20, color: AppColors.textSecondary(ctx)),
+                        onPressed: loadingForecast
+                            ? null
+                            : () {
+                                setSheetState(() => loadingForecast = true);
+                                triggerFetch();
+                              },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _openWeatherCityQuickSheet();
+                          },
+                          icon: const Icon(Icons.location_on_outlined, size: 16),
+                          label: Text(
+                            l.weatherSwitchCityBtn,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.softBg(ctx, scheduleColor, lightAlpha: 0.14, darkAlpha: 0.22),
+                            foregroundColor: scheduleColor,
+                          ),
+                          onPressed: () async {
+                            final opened = await WeatherService.openSystemWeatherApp();
+                            if (!opened && mounted) {
+                              toast(context, l.weatherSystemNotFound);
+                            }
+                          },
+                          icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                          label: Text(
+                            l.weatherOpenSystemBtn,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Expanded(
+                    child: loadingForecast && days.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : days.isEmpty
+                            ? Center(
+                                child: EmptyHint(
+                                  icon: Icons.cloud_off_rounded,
+                                  text: l.weatherForecastEmpty,
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: scrollCtrl,
+                                itemCount: days.length,
+                                itemBuilder: (_, i) {
+                                  final d = days[i];
+                                  final isToday = i == 0;
+                                  final startFrac = ((d.minTemp - globalMin) / tempSpan).clamp(0.0, 1.0);
+                                  final endFrac = ((d.maxTemp - globalMin) / tempSpan).clamp(0.0, 1.0);
+                                  final barWidthFrac = (endFrac - startFrac).clamp(0.12, 1.0 - startFrac);
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                      vertical: AppSpacing.sm + 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isToday
+                                          ? AppColors.softBg(ctx, scheduleColor, lightAlpha: 0.08, darkAlpha: 0.16)
+                                          : AppColors.surfaceSubtle(ctx),
+                                      borderRadius: AppRadius.bLg,
+                                      border: isToday
+                                          ? Border.all(color: AppColors.softBorder(ctx, scheduleColor))
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 82,
+                                          child: Text(
+                                            dayTitle(i, d.date),
+                                            style: AppTypography.subtitle(
+                                              ctx,
+                                              color: isToday ? scheduleColor : AppColors.textPrimary(ctx),
+                                            ).copyWith(
+                                              fontSize: 13,
+                                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Text(d.emoji, style: const TextStyle(fontSize: 19)),
+                                        const SizedBox(width: AppSpacing.xs + 2),
+                                        SizedBox(
+                                          width: 38,
+                                          child: d.precipProb >= 15
+                                              ? Text(
+                                                  '${fmtNum(d.precipProb)}%',
+                                                  style: AppTypography.badge(ctx, color: info)
+                                                      .copyWith(fontSize: 10.5),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                        const Spacer(),
+                                        SizedBox(
+                                          width: 30,
+                                          child: Text(
+                                            '${fmtNum(d.minTemp)}°',
+                                            textAlign: TextAlign.right,
+                                            style: AppTypography.caption(ctx).copyWith(fontSize: 12.5),
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSpacing.sm),
+                                        SizedBox(
+                                          width: 68,
+                                          height: 6,
+                                          child: LayoutBuilder(
+                                            builder: (_, box) {
+                                              final left = box.maxWidth * startFrac;
+                                              final width = box.maxWidth * barWidthFrac;
+                                              return Stack(
+                                                children: [
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.border(ctx),
+                                                      borderRadius: AppRadius.bPill,
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    left: left,
+                                                    width: width,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [scheduleColor, accent],
+                                                        ),
+                                                        borderRadius: AppRadius.bPill,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSpacing.sm),
+                                        SizedBox(
+                                          width: 32,
+                                          child: Text(
+                                            '${fmtNum(d.maxTemp)}°',
+                                            textAlign: TextAlign.right,
+                                            style: AppTypography.metricMedium(ctx).copyWith(fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
