@@ -349,12 +349,12 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
-            const SizedBox(width: 8),
-            Expanded(child: Text(l.busValidationFailedTitle)),
+            Icon(Icons.error_outline_rounded, color: AppColors.danger(ctx)),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(l.busValidationFailedTitle, style: AppTypography.cardTitle(ctx))),
           ],
         ),
-        content: Text(msg),
+        content: Text(msg, style: AppTypography.body(ctx)),
         actions: [
           FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonGotIt)),
         ],
@@ -472,14 +472,37 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
     return '${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
   }
 
+  Widget _appBarActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: IconButton(
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.surfaceSubtle(context),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+          minimumSize: const Size(36, 36),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+        ),
+        icon: Icon(icon, size: 19, color: AppColors.textPrimary(context)),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = _data;
     final l = context.l10n;
+    final primary = AppColors.primary(context);
 
     if (_loading || d == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.busBoardTitle)),
+        appBar: AppBar(title: Text(l.busBoardTitle, style: AppTypography.pageTitle(context))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -490,58 +513,77 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: Row(
           children: [
-            const Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84), size: 20),
-            const SizedBox(width: 8),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, primary, lightAlpha: 0.12, darkAlpha: 0.20),
+                borderRadius: AppRadius.bSm,
+                border: Border.all(color: AppColors.softBorder(context, primary)),
+              ),
+              child: Icon(Icons.directions_bus_rounded, color: primary, size: 17),
+            ),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 l.busBoardTitle,
+                style: AppTypography.pageTitle(context),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: AppSpacing.xs),
             // 独立局部刷新的时钟胶囊（不引发整页 setState）
             ValueListenableBuilder<DateTime>(
               valueListenable: _nowNotifier,
-              builder: (_, now, _) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              builder: (ctx, now, _) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2B5B84).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.softBg(ctx, primary),
+                  borderRadius: AppRadius.bPill,
+                  border: Border.all(color: AppColors.softBorder(ctx, primary)),
                 ),
                 child: Text(
                   _formatClock(now),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                    color: Color(0xFF2B5B84),
-                  ),
+                  style: AppTypography.badge(ctx, color: primary),
                 ),
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: l.commonRefresh,
-            icon: RotationTransition(
-              turns: _refreshSpinCtrl,
-              child: const Icon(Icons.refresh_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
+            child: IconButton(
+              tooltip: l.commonRefresh,
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surfaceSubtle(context),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.all(AppSpacing.sm),
+              ),
+              icon: RotationTransition(
+                turns: _refreshSpinCtrl,
+                child: Icon(Icons.refresh_rounded, size: 19, color: AppColors.textPrimary(context)),
+              ),
+              onPressed: () async {
+                await _load(animateSpin: true);
+                if (context.mounted) toast(context, l.busRefreshSpinToast);
+              },
             ),
-            onPressed: () async {
-              await _load(animateSpin: true);
-              if (context.mounted) toast(context, l.busRefreshSpinToast);
-            },
           ),
-          IconButton(
+          _appBarActionButton(
             tooltip: l.busStopReminderSettings,
-            icon: Icon(_showSettingsPanel ? Icons.tune_rounded : Icons.notifications_active_outlined),
+            icon: _showSettingsPanel ? Icons.tune_rounded : Icons.notifications_active_outlined,
             onPressed: () => setState(() => _showSettingsPanel = !_showSettingsPanel),
           ),
           PopupMenuButton<String>(
             tooltip: l.busRouteActions,
+            icon: Icon(Icons.more_vert_rounded, color: AppColors.textPrimary(context)),
             onSelected: (v) {
               if (v == 'switch') _openRouteSelectorSheet();
               if (v == 'export') _exportCurrentRoute();
@@ -577,17 +619,32 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 36),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         children: [
           _buildRouteAndOriginDestHeader(d),
           if (sameStopError)
-            Card(
-              color: Colors.redAccent.withValues(alpha: 0.14),
-              child: ListTile(
-                leading: const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
-                title: Text(
-                  l.busSameStopError,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: SurfaceCard(
+                backgroundColor: AppColors.softBg(context, AppColors.danger(context)),
+                borderColor: AppColors.softBorder(context, AppColors.danger(context)),
+                padding: AppSpacing.cardCompactPadding,
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded, color: AppColors.danger(context), size: 20),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        l.busSameStopError,
+                        style: AppTypography.subtitle(context, color: AppColors.danger(context)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -610,26 +667,32 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                       )
                     : boardItems.first;
 
+                final warning = AppColors.warning(context);
+                final tertiary = AppColors.textTertiary(context);
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (isWeekend)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm + 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+                          color: AppColors.softBg(context, warning),
+                          borderRadius: AppRadius.bMd,
+                          border: Border.all(color: AppColors.softBorder(context, warning)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.weekend_rounded, size: 18, color: Color(0xFFFF8F00)),
-                            const SizedBox(width: 8),
+                            Icon(Icons.weekend_rounded, size: 18, color: warning),
+                            const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
                                 l.busWeekendBanner,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: AppTypography.subtitle(context).copyWith(fontSize: 12.5),
                               ),
                             ),
                           ],
@@ -637,29 +700,37 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                       )
                     else if (allEnded)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: Colors.blueGrey.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.35)),
+                          color: AppColors.surfaceSubtle(context),
+                          borderRadius: AppRadius.bLg,
+                          border: Border.all(color: AppColors.border(context)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.nights_stay_rounded, size: 22, color: Colors.blueGrey),
-                            const SizedBox(width: 10),
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: AppColors.softBg(context, tertiary),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Icon(Icons.nights_stay_rounded, size: 20, color: tertiary),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     l.busNoMoreTripsToday,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: AppTypography.cardTitle(context),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     l.busNoMoreTripsSub(segmentStops.first.times.first),
-                                    style: const TextStyle(fontSize: 12),
+                                    style: AppTypography.bodySecondary(context),
                                   ),
                                 ],
                               ),
@@ -668,7 +739,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                         ),
                       ),
                     _buildSlotSelectorBar(boardItems, activeItem, allEnded),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.md),
                     _LiveRouteTimelineCard(
                       item: activeItem,
                       segmentStops: segmentStops,
@@ -680,7 +751,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                 );
               },
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
           _buildFooterCard(),
         ],
       ),
@@ -690,154 +761,201 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
   /// 顶部：当前路线 + 起点/终点双下拉 + 一键交换按钮 + 去程/回程切换
   Widget _buildRouteAndOriginDestHeader(BusRouteData d) {
     final l = context.l10n;
+    final primary = AppColors.primary(context);
+    final teal = AppColors.teal(context);
+    final accent = AppColors.accent(context);
+    final border = AppColors.border(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.38),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.alt_route_rounded, color: Color(0xFF2B5B84), size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        context.isEnLocale ? d.nameEn : d.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+        SurfaceCard(
+          padding: AppSpacing.cardCompactPadding,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(context, primary),
+                      borderRadius: AppRadius.bSm,
                     ),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      ),
-                      onPressed: _openRouteSelectorSheet,
-                      icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                      label: Text(l.busSwitchImportBtn, style: const TextStyle(fontSize: 12)),
-                    ),
-                  ],
-                ),
-                const Divider(height: 14),
-                // 2.1 起点 + 终点双下拉 + 一键交换按钮
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          DropdownButtonFormField<String>(
-                            key: ValueKey('orig-${d.id}-$_originStop'),
-                            initialValue: _stops.contains(_originStop) ? _originStop : (_stops.isNotEmpty ? _stops.first : null),
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: l.busOriginLabel,
-                              prefixIcon: const Icon(Icons.trip_origin_rounded, size: 18, color: Color(0xFF26A69A)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            ),
-                            items: _stops
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-                                    ))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v == null) return;
-                              setState(() {
-                                _originStop = v;
-                                _selectedSlotIndex = null;
-                              });
-                              _ensureDirectionMatchesStops();
-                              _saveOriginDestAndPrefs();
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            key: ValueKey('dest-${d.id}-$_destStop'),
-                            initialValue: _stops.contains(_destStop) ? _destStop : (_stops.isNotEmpty ? _stops.last : null),
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: l.busDestinationLabel,
-                              prefixIcon: const Icon(Icons.place_rounded, size: 18, color: Color(0xFFFF7A22)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            ),
-                            items: _stops
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-                                    ))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v == null) return;
-                              setState(() {
-                                _destStop = v;
-                                _selectedSlotIndex = null;
-                              });
-                              _ensureDirectionMatchesStops();
-                              _saveOriginDestAndPrefs();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: l.busSwapStopsTooltip,
-                      onPressed: _swapOriginDest,
-                      icon: const Icon(Icons.swap_vert_rounded, size: 24),
-                    ),
-                  ],
-                ),
-                if (_showSettingsPanel) ...[
-                  const Divider(height: 14),
-                  SwitchListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(l.busVibrationSwitchTitle),
-                    value: _remEnabled,
-                    onChanged: (v) {
-                      setState(() => _remEnabled = v);
-                      _saveOriginDestAndPrefs();
-                    },
+                    child: Icon(Icons.alt_route_rounded, color: primary, size: 18),
                   ),
-                  if (_remEnabled)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      context.isEnLocale ? d.nameEn : d.name,
+                      style: AppTypography.cardTitle(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: AppColors.softBg(context, primary),
+                      foregroundColor: primary,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.bSm),
+                    ),
+                    onPressed: _openRouteSelectorSheet,
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 15),
+                    label: Text(
+                      l.busSwitchImportBtn,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Divider(height: 1),
+              const SizedBox(height: AppSpacing.md),
+              // 2.1 起点 + 终点双下拉 + 一键交换按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
                       children: [
-                        Text(l.busRemindBeforeLabel, style: const TextStyle(fontSize: 13)),
-                        DropdownButton<int>(
-                          value: _remMins,
-                          items: [
-                            for (final m in [5, 10, 15])
-                              DropdownMenuItem(value: m, child: Text(l.busRemindMinsOption(m))),
-                          ],
+                        DropdownButtonFormField<String>(
+                          key: ValueKey('orig-${d.id}-$_originStop'),
+                          initialValue: _stops.contains(_originStop)
+                              ? _originStop
+                              : (_stops.isNotEmpty ? _stops.first : null),
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: l.busOriginLabel,
+                            prefixIcon: Icon(Icons.trip_origin_rounded, size: 18, color: teal),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          items: _stops
+                              .map((s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      s,
+                                      style: AppTypography.subtitle(context).copyWith(fontSize: 13),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList(),
                           onChanged: (v) {
                             if (v == null) return;
-                            setState(() => _remMins = v);
+                            setState(() {
+                              _originStop = v;
+                              _selectedSlotIndex = null;
+                            });
+                            _ensureDirectionMatchesStops();
+                            _saveOriginDestAndPrefs();
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey('dest-${d.id}-$_destStop'),
+                          initialValue: _stops.contains(_destStop)
+                              ? _destStop
+                              : (_stops.isNotEmpty ? _stops.last : null),
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: l.busDestinationLabel,
+                            prefixIcon: Icon(Icons.place_rounded, size: 18, color: accent),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          items: _stops
+                              .map((s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      s,
+                                      style: AppTypography.subtitle(context).copyWith(fontSize: 13),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() {
+                              _destStop = v;
+                              _selectedSlotIndex = null;
+                            });
+                            _ensureDirectionMatchesStops();
                             _saveOriginDestAndPrefs();
                           },
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  IconButton.filledTonal(
+                    tooltip: l.busSwapStopsTooltip,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.softBg(context, primary),
+                      foregroundColor: primary,
+                      minimumSize: const Size(42, 42),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                    ),
+                    onPressed: _swapOriginDest,
+                    icon: const Icon(Icons.swap_vert_rounded, size: 22),
+                  ),
                 ],
+              ),
+              if (_showSettingsPanel) ...[
+                const SizedBox(height: AppSpacing.md),
+                const Divider(height: 1),
+                const SizedBox(height: AppSpacing.xs),
+                SwitchListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l.busVibrationSwitchTitle, style: AppTypography.subtitle(context)),
+                  value: _remEnabled,
+                  onChanged: (v) {
+                    setState(() => _remEnabled = v);
+                    _saveOriginDestAndPrefs();
+                  },
+                ),
+                if (_remEnabled)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(l.busRemindBeforeLabel, style: AppTypography.body(context)),
+                      DropdownButton<int>(
+                        value: _remMins,
+                        items: [
+                          for (final m in [5, 10, 15])
+                            DropdownMenuItem(value: m, child: Text(l.busRemindMinsOption(m))),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) return;
+                          setState(() => _remMins = v);
+                          _saveOriginDestAndPrefs();
+                        },
+                      ),
+                    ],
+                  ),
               ],
-            ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.md),
         SegmentedButton<bool>(
+          style: SegmentedButton.styleFrom(
+            backgroundColor: AppColors.surface(context),
+            selectedBackgroundColor: AppColors.softBg(context, primary, lightAlpha: 0.14, darkAlpha: 0.22),
+            selectedForegroundColor: primary,
+            foregroundColor: AppColors.textSecondary(context),
+            side: BorderSide(color: border),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
+          ),
           segments: [
             ButtonSegment<bool>(
               value: false,
-              icon: const Icon(Icons.directions_bus_rounded, size: 18),
+              icon: const Icon(Icons.directions_bus_rounded, size: 17),
               label: Text(l.busOutboundSegment),
             ),
             ButtonSegment<bool>(
               value: true,
-              icon: const Icon(Icons.home_rounded, size: 18),
+              icon: const Icon(Icons.home_rounded, size: 17),
               label: Text(l.busInboundSegment),
             ),
           ],
@@ -863,7 +981,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
             _saveOriginDestAndPrefs();
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
@@ -871,85 +989,126 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
   /// 班次快选横条（按即将发车升序排列，最近一班排最前，已发车沉后置灰）
   Widget _buildSlotSelectorBar(List<_SlotBoardItem> items, _SlotBoardItem activeItem, bool allEnded) {
     final l = context.l10n;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          Text(l.busSelectSlotLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 6),
-          ...items.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final it = entry.value;
-            final selected = it.slotIndex == activeItem.slotIndex;
-            final isDeparted = it.state == _SlotState.departed || it.state == _SlotState.endedToday;
-            final isNext = idx == 0 && !isDeparted;
+    final danger = AppColors.danger(context);
+    final warning = AppColors.warning(context);
+    final primary = AppColors.primary(context);
+    final tertiary = AppColors.textTertiary(context);
 
-            final Color chipColor;
-            switch (it.state) {
-              case _SlotState.imminent:
-                chipColor = const Color(0xFFFF3D00);
-              case _SlotState.soon:
-                chipColor = const Color(0xFFFF8F00);
-              case _SlotState.upcoming:
-                chipColor = const Color(0xFF1976D2);
-              case _SlotState.departed:
-              case _SlotState.endedToday:
-                chipColor = Colors.grey;
-            }
+    return Row(
+      children: [
+        Text(l.busSelectSlotLabel, style: AppTypography.badge(context)),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: SizedBox(
+            height: 40,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              itemBuilder: (_, idx) {
+                final it = items[idx];
+                final selected = it.slotIndex == activeItem.slotIndex;
+                final isDeparted = it.state == _SlotState.departed || it.state == _SlotState.endedToday;
+                final isNext = idx == 0 && !isDeparted;
 
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: ChoiceChip(
-                visualDensity: VisualDensity.compact,
-                selected: selected,
-                selectedColor: chipColor.withValues(alpha: 0.22),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Slot ${it.slotIndex + 1} (${it.originTimeStr})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: selected || isNext ? FontWeight.bold : FontWeight.normal,
-                        color: isDeparted ? Colors.grey : chipColor,
-                        decoration: isDeparted ? TextDecoration.lineThrough : null,
-                      ),
+                final Color chipColor;
+                switch (it.state) {
+                  case _SlotState.imminent:
+                    chipColor = danger;
+                  case _SlotState.soon:
+                    chipColor = warning;
+                  case _SlotState.upcoming:
+                    chipColor = primary;
+                  case _SlotState.departed:
+                  case _SlotState.endedToday:
+                    chipColor = tertiary;
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.xs + 2),
+                  child: ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    selected: selected,
+                    backgroundColor: AppColors.surface(context),
+                    selectedColor: AppColors.softBg(context, chipColor, lightAlpha: 0.16, darkAlpha: 0.24),
+                    side: BorderSide(
+                      color: selected
+                          ? AppColors.softBorder(context, chipColor)
+                          : AppColors.border(context),
                     ),
-                    if (isNext) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: chipColor,
-                          borderRadius: BorderRadius.circular(4),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Slot ${it.slotIndex + 1} (${it.originTimeStr})',
+                          style: AppTypography.badge(
+                            context,
+                            color: isDeparted ? tertiary : chipColor,
+                          ).copyWith(
+                            fontSize: 12,
+                            fontWeight: selected || isNext ? FontWeight.w700 : FontWeight.w500,
+                            decoration: isDeparted ? TextDecoration.lineThrough : null,
+                          ),
                         ),
-                        child: Text(
-                          l.busNextBadge,
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                onSelected: (_) => setState(() => _selectedSlotIndex = it.slotIndex),
-              ),
-            );
-          }),
-        ],
-      ),
+                        if (isNext) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: chipColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l.busNextBadge,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    onSelected: (_) => setState(() => _selectedSlotIndex = it.slotIndex),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildFooterCard() {
     final l = context.l10n;
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.touch_app_rounded, color: Colors.teal),
-        title: Text(l.busFooterTipTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        subtitle: Text(
-          l.busFooterTipSub,
-          style: const TextStyle(fontSize: 12),
-        ),
+    final teal = AppColors.teal(context);
+    return SurfaceCard(
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, teal),
+              borderRadius: AppRadius.bSm,
+            ),
+            child: Icon(Icons.touch_app_rounded, color: teal, size: 19),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.busFooterTipTitle, style: AppTypography.subtitle(context)),
+                const SizedBox(height: 2),
+                Text(l.busFooterTipSub, style: AppTypography.bodySecondary(context)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -961,146 +1120,184 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.alt_route_rounded, color: Color(0xFF2B5B84)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(l.busSheetTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _downloadTemplate();
-                  },
-                  icon: const Icon(Icons.download_rounded, size: 16),
-                  label: Text(l.busDownloadTemplateBtn),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _allRoutes.length,
-                itemBuilder: (_, i) {
-                  final r = _allRoutes[i];
-                  final selected = r.id == _data?.id;
-                  return Card(
-                    color: selected
-                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.55)
-                        : null,
-                    child: ListTile(
-                      leading: Icon(
-                        selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                        color: selected ? const Color(0xFF2B5B84) : null,
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              context.isEnLocale ? r.nameEn : r.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      builder: (ctx) {
+        final primary = AppColors.primary(ctx);
+        final accent = AppColors.accent(ctx);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(ctx, primary),
+                      borderRadius: AppRadius.bMd,
+                    ),
+                    child: Icon(Icons.alt_route_rounded, color: primary, size: 18),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(l.busSheetTitle, style: AppTypography.sectionTitle(ctx)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _downloadTemplate();
+                    },
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: Text(l.busDownloadTemplateBtn),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _allRoutes.length,
+                  itemBuilder: (_, i) {
+                    final r = _allRoutes[i];
+                    final selected = r.id == _data?.id;
+                    final badgeColor = r.isBuiltin ? primary : accent;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: SurfaceCard(
+                        backgroundColor: selected
+                            ? AppColors.softBg(ctx, primary, lightAlpha: 0.10, darkAlpha: 0.18)
+                            : AppColors.surfaceSubtle(ctx),
+                        borderColor: selected ? AppColors.softBorder(ctx, primary) : AppColors.border(ctx),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm + 2,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _switchRoute(r);
+                        },
+                        child: Row(
+                          children: [
+                            Icon(
+                              selected
+                                  ? Icons.radio_button_checked_rounded
+                                  : Icons.radio_button_off_rounded,
+                              color: selected ? primary : AppColors.textTertiary(ctx),
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: (r.isBuiltin ? const Color(0xFF2B5B84) : const Color(0xFFFF7A22))
-                                  .withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              r.isBuiltin
-                                  ? l.busBadgeBuiltin
-                                  : (r.source == 'imported' ? l.busBadgeImported : l.busBadgeCustom),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: r.isBuiltin ? const Color(0xFF2B5B84) : const Color(0xFFFF7A22),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          context.isEnLocale ? r.nameEn : r.name,
+                                          style: AppTypography.subtitle(ctx),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.softBg(ctx, badgeColor),
+                                          borderRadius: AppRadius.bXs,
+                                        ),
+                                        child: Text(
+                                          r.isBuiltin
+                                              ? l.busBadgeBuiltin
+                                              : (r.source == 'imported'
+                                                  ? l.busBadgeImported
+                                                  : l.busBadgeCustom),
+                                          style: AppTypography.badge(ctx, color: badgeColor)
+                                              .copyWith(fontSize: 10),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    [
+                                      if (r.school.isNotEmpty) r.school,
+                                      l.busStopsCountSub(r.outboundStops.length, r.inboundStops.length),
+                                    ].join(' · '),
+                                    style: AppTypography.bodySecondary(ctx),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
+                            if (!r.isBuiltin)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: l.commonEdit,
+                                    icon: const Icon(Icons.edit_outlined, size: 19),
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _openCustomRouteDialog(existing: r);
+                                    },
+                                  ),
+                                  IconButton(
+                                    tooltip: l.commonDelete,
+                                    icon: Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 19,
+                                      color: AppColors.danger(ctx),
+                                    ),
+                                    onPressed: () async {
+                                      Navigator.pop(ctx);
+                                      if (await confirm(context, l.busDeleteRouteConfirm(r.name))) {
+                                        await BusService.deleteUserRoute(r.id);
+                                        await _load();
+                                        await ReminderService.syncAlarms();
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
-                      subtitle: Text(
-                        [
-                          if (r.school.isNotEmpty) r.school,
-                          l.busStopsCountSub(r.outboundStops.length, r.inboundStops.length),
-                        ].join(' · '),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: r.isBuiltin
-                          ? null
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  tooltip: l.commonEdit,
-                                  icon: const Icon(Icons.edit_outlined, size: 20),
-                                  onPressed: () {
-                                    Navigator.pop(ctx);
-                                    _openCustomRouteDialog(existing: r);
-                                  },
-                                ),
-                                IconButton(
-                                  tooltip: l.commonDelete,
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                                  onPressed: () async {
-                                    Navigator.pop(ctx);
-                                    if (await confirm(context, l.busDeleteRouteConfirm(r.name))) {
-                                      await BusService.deleteUserRoute(r.id);
-                                      await _load();
-                                      await ReminderService.syncAlarms();
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _switchRoute(r);
-                      },
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _openCustomRouteDialog();
-                    },
-                    icon: const Icon(Icons.add_rounded),
-                    label: Text(l.busManualCreateBtn),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openCustomRouteDialog();
+                      },
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(l.busManualCreateBtn),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _importFromFile();
-                    },
-                    icon: const Icon(Icons.file_open_rounded),
-                    label: Text(l.busImportJsonBtn),
+                  const SizedBox(width: AppSpacing.sm + 2),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _importFromFile();
+                      },
+                      icon: const Icon(Icons.file_open_rounded, size: 18),
+                      label: Text(l.busImportJsonBtn),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1127,7 +1324,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
 
 /// 2.2 垂直时间轴线路图 + 平滑移动车辆位置动画卡片
 class _LiveRouteTimelineCard extends StatelessWidget {
-  static const double _rowHeight = 62.0;
+  static const double _rowHeight = 64.0;
 
   final _SlotBoardItem item;
   final List<BusStopSchedule> segmentStops;
@@ -1160,26 +1357,32 @@ class _LiveRouteTimelineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final isImminent = item.state == _SlotState.imminent;
     final isDeparted = item.state == _SlotState.departed || item.state == _SlotState.endedToday;
+    final teal = AppColors.teal(context);
+    final danger = AppColors.danger(context);
+    final warning = AppColors.warning(context);
+    final primary = AppColors.primary(context);
+    final tertiary = AppColors.textTertiary(context);
 
     final Color statusColor;
     final String statusBadgeText;
     switch (item.state) {
       case _SlotState.imminent:
-        statusColor = const Color(0xFFFF3D00);
+        statusColor = danger;
         statusBadgeText = l.busStatusImminent;
       case _SlotState.soon:
-        statusColor = const Color(0xFFFF8F00);
+        statusColor = warning;
         statusBadgeText = l.busStatusSoon;
       case _SlotState.upcoming:
-        statusColor = const Color(0xFF1976D2);
+        statusColor = primary;
         statusBadgeText = l.busStatusUpcoming;
       case _SlotState.departed:
-        statusColor = Colors.grey;
+        statusColor = tertiary;
         statusBadgeText = l.busStatusDeparted;
       case _SlotState.endedToday:
-        statusColor = Colors.blueGrey;
+        statusColor = tertiary;
         statusBadgeText = l.busStatusEnded;
     }
 
@@ -1228,81 +1431,78 @@ class _LiveRouteTimelineCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: pulseAnimation,
       builder: (context, child) {
-        final pulseVal = pulseAnimation.value;
+        final pulseVal = (isImminent && !reduceMotion) ? pulseAnimation.value : 0.4;
         return Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.surface(context),
+            borderRadius: AppRadius.bXl,
             border: Border.all(
               color: isImminent
-                  ? statusColor.withValues(alpha: 0.35 + 0.6 * pulseVal)
-                  : statusColor.withValues(alpha: 0.35),
-              width: isImminent ? (1.4 + 1.0 * pulseVal) : 1.4,
+                  ? statusColor.withValues(alpha: 0.38 + 0.45 * pulseVal)
+                  : AppColors.softBorder(context, statusColor, lightAlpha: 0.28, darkAlpha: 0.35),
+              width: isImminent ? 1.5 : 1.0,
             ),
-            boxShadow: isImminent
-                ? [
-                    BoxShadow(
-                      color: statusColor.withValues(alpha: 0.08 + 0.2 * pulseVal),
-                      blurRadius: 6 + 8 * pulseVal,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            boxShadow: isDeparted ? AppShadows.card(context) : AppShadows.hero(context),
           ),
           child: child,
         );
       },
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: AppSpacing.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 卡片头部：Slot + 倒计时/状态胶囊
+            // 卡片头部：Slot + 倒计时/状态胶囊（360dp 自适应不溢出）
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.directions_bus_rounded, size: 17, color: statusColor),
-                      const SizedBox(width: 5),
-                      Text(
-                        l.busTimelineTitle('Slot ${item.slotIndex + 1} · ${item.originTimeStr} → ${item.destTimeStr}'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13.5,
-                          color: statusColor,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm + 2,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(context, statusColor),
+                      borderRadius: AppRadius.bSm,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_bus_rounded, size: 16, color: statusColor),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            l.busTimelineTitle(
+                              'Slot ${item.slotIndex + 1} · ${item.originTimeStr} → ${item.destTimeStr}',
+                            ),
+                            style: AppTypography.badge(context, color: statusColor)
+                                .copyWith(fontSize: 12.5),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: AppSpacing.sm),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.softBg(context, statusColor),
+                    borderRadius: AppRadius.bPill,
                   ),
                   child: Text(
                     statusBadgeText,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
+                    style: AppTypography.badge(context, color: statusColor),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.md),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
@@ -1316,46 +1516,52 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                             : (item.enRouteSegment
                                 ? l.busBusHereLabel((segProgress * 100).round())
                                 : _formatCountdown(context, item.remainToOrigin))),
-                    style: TextStyle(
-                      fontSize: isDeparted || allEndedToday ? 13.5 : 17,
-                      fontWeight: FontWeight.w900,
-                      color: isDeparted || allEndedToday ? Colors.grey : statusColor,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                    style: (isDeparted || allEndedToday)
+                        ? AppTypography.subtitle(context, color: tertiary)
+                        : AppTypography.metricLarge(context, color: statusColor),
                   ),
                 ),
                 if (!isDeparted && !allEndedToday)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.circle,
-                        size: 9,
-                        color: item.enRouteSegment ? const Color(0xFF26A69A) : statusColor,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(
+                        context,
+                        item.enRouteSegment ? teal : statusColor,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        item.enRouteSegment ? l.busEnRoute : l.busWaitingDepart,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: item.enRouteSegment ? const Color(0xFF26A69A) : statusColor,
+                      borderRadius: AppRadius.bPill,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 8,
+                          color: item.enRouteSegment ? teal : statusColor,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 5),
+                        Text(
+                          item.enRouteSegment ? l.busEnRoute : l.busWaitingDepart,
+                          style: AppTypography.badge(
+                            context,
+                            color: item.enRouteSegment ? teal : statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             const Divider(height: 1),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             // 垂直时间轴 + 连续插值平滑移动的巴士图标
             SizedBox(
               height: segmentStops.length * _rowHeight,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // 1. 底层：各站点圆点、连接线（已过实心绿、未走虚线灰）与站点信息
+                  // 1. 底层：各站点圆点、连接线（已过实心青绿、未走虚线灰）与站点信息
                   Column(
                     children: [
                       for (var k = 0; k < segmentStops.length; k++)
@@ -1378,27 +1584,21 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                   // 2. 顶层：平滑移动的巴士图标（AnimatedPositioned 1 秒线性补间，连续滑动不跳格）
                   if (busCenterY != null)
                     AnimatedPositioned(
-                      duration: const Duration(milliseconds: 980),
+                      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 980),
                       curve: Curves.linear,
-                      top: (busCenterY - 16).clamp(0.0, segmentStops.length * _rowHeight - 32),
-                      left: 4,
+                      top: (busCenterY - 15).clamp(0.0, segmentStops.length * _rowHeight - 30),
+                      left: 5,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF26A69A),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF26A69A).withValues(alpha: 0.45),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: teal,
+                          borderRadius: AppRadius.bMd,
+                          border: Border.all(color: AppColors.surface(context), width: 2),
+                          boxShadow: AppShadows.subtle(context),
                         ),
                         child: const Icon(
                           Icons.directions_bus_rounded,
-                          size: 16,
+                          size: 15,
                           color: Colors.white,
                         ),
                       ),
@@ -1429,6 +1629,14 @@ class _LiveRouteTimelineCard extends StatelessWidget {
     final isLast = index == totalStops - 1;
     final tStr = item.slotIndex < stop.times.length ? stop.times[item.slotIndex] : stop.times.last;
 
+    final teal = AppColors.teal(context);
+    final accent = AppColors.accent(context);
+    final danger = AppColors.danger(context);
+    final warning = AppColors.warning(context);
+    final primary = AppColors.primary(context);
+    final tertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+
     // 计算距该站的剩余分钟数（跨午夜及已过站安全处理，绝不显示负数）
     final diffSecs = stopTime.difference(now).inSeconds;
     final minsUntil = (diffSecs / 60).ceil();
@@ -1443,47 +1651,47 @@ class _LiveRouteTimelineCard extends StatelessWidget {
         (isPassed || (activeSegIdx != null && activeSegIdx >= index));
 
     String rightStatusText = '';
-    Color rightStatusColor = Colors.grey;
+    Color rightStatusColor = tertiary;
     if (allEndedToday) {
       rightStatusText = l.busNoMoreTripsToday;
-      rightStatusColor = Colors.blueGrey;
+      rightStatusColor = tertiary;
     } else if (isCurrent) {
       rightStatusText = l.busStopCurrentTag;
-      rightStatusColor = const Color(0xFF26A69A);
+      rightStatusColor = teal;
     } else if (isPassed || diffSecs < 0) {
       rightStatusText = l.busStopPassedTag;
-      rightStatusColor = Colors.grey;
+      rightStatusColor = tertiary;
     } else if (diffSecs <= 60) {
       rightStatusText = l.busStopArrivingNowTag;
-      rightStatusColor = const Color(0xFFFF3D00);
+      rightStatusColor = danger;
     } else {
       rightStatusText = l.busStopInMinutesTag(minsUntil);
       rightStatusColor = minsUntil <= 5
-          ? const Color(0xFFFF3D00)
-          : (minsUntil <= 15 ? const Color(0xFFFF8F00) : const Color(0xFF1976D2));
+          ? danger
+          : (minsUntil <= 15 ? warning : primary);
     }
 
     return SizedBox(
       height: _rowHeight,
       child: Row(
         children: [
-          // 左侧时间轴列（宽 44dp）
+          // 左侧时间轴列（宽 42dp）
           SizedBox(
-            width: 44,
+            width: 42,
             child: Column(
               children: [
-                // 上半段连接线
                 Expanded(
                   child: isFirst
                       ? const SizedBox.shrink()
                       : CustomPaint(
                           size: const Size(3, double.infinity),
                           painter: _TimelineSegmentPainter(
-                            isSolidGreen: topLinePassed,
+                            isSolidPassed: topLinePassed,
+                            passedColor: teal,
+                            upcomingColor: borderColor,
                           ),
                         ),
                 ),
-                // 站点圆点：已过站=实心灰，当前站=实心绿+光晕，未到站=空心圆
                 Container(
                   width: isCurrent ? 22 : 14,
                   height: isCurrent ? 22 : 14,
@@ -1491,107 +1699,113 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                   decoration: isCurrent
                       ? BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF26A69A).withValues(alpha: 0.22),
+                          color: AppColors.softBg(context, teal, lightAlpha: 0.22, darkAlpha: 0.28),
                         )
                       : null,
                   child: Container(
-                    width: isCurrent ? 12 : 11,
-                    height: isCurrent ? 12 : 11,
+                    width: isCurrent ? 12 : 10,
+                    height: isCurrent ? 12 : 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isCurrent
-                          ? const Color(0xFF26A69A)
+                          ? teal
                           : (isPassed || allEndedToday
-                              ? Colors.grey
-                              : Theme.of(context).colorScheme.surface),
+                              ? tertiary
+                              : AppColors.surface(context)),
                       border: (!isCurrent && !isPassed && !allEndedToday)
-                          ? Border.all(color: statusColor, width: 2.4)
+                          ? Border.all(color: statusColor, width: 2.2)
                           : null,
                     ),
                   ),
                 ),
-                // 下半段连接线
                 Expanded(
                   child: isLast
                       ? const SizedBox.shrink()
                       : CustomPaint(
                           size: const Size(3, double.infinity),
                           painter: _TimelineSegmentPainter(
-                            isSolidGreen: bottomLinePassed,
+                            isSolidPassed: bottomLinePassed,
+                            passedColor: teal,
+                            upcomingColor: borderColor,
                           ),
                         ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 6),
-          // 右侧站点名 + 起终点标签 + 时间 + 倒计时/状态
+          const SizedBox(width: AppSpacing.xs + 2),
+          // 右侧站点名 + 起终点标签 + 时间与状态两行对齐（防止 360dp 挤压站名）
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              margin: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
               decoration: BoxDecoration(
                 color: isCurrent
-                    ? const Color(0xFF26A69A).withValues(alpha: 0.12)
-                    : (isFirst || isLast
-                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.22)
-                        : Colors.transparent),
-                borderRadius: BorderRadius.circular(10),
+                    ? AppColors.softBg(context, teal)
+                    : (isFirst || isLast ? AppColors.surfaceSubtle(context) : Colors.transparent),
+                borderRadius: AppRadius.bMd,
+                border: isCurrent
+                    ? Border.all(color: AppColors.softBorder(context, teal))
+                    : null,
               ),
               child: Row(
                 children: [
                   if (isFirst || isLast)
                     Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      margin: const EdgeInsets.only(right: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isFirst ? const Color(0xFF26A69A) : const Color(0xFFFF7A22),
-                        borderRadius: BorderRadius.circular(5),
+                        color: AppColors.softBg(context, isFirst ? teal : accent, lightAlpha: 0.16, darkAlpha: 0.24),
+                        borderRadius: AppRadius.bXs,
                       ),
                       child: Text(
                         isFirst ? l.busStopOriginTag : l.busStopDestTag,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: AppTypography.badge(
+                          context,
+                          color: isFirst ? teal : accent,
+                        ).copyWith(fontSize: 10),
                       ),
                     ),
                   Expanded(
                     child: Text(
                       L10nHelper.busStopDisplayName(context, stop.name),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isCurrent || isFirst || isLast ? FontWeight.bold : FontWeight.normal,
+                      style: AppTypography.subtitle(
+                        context,
                         color: isCurrent
-                            ? const Color(0xFF26A69A)
-                            : (isPassed ? Colors.grey : null),
+                            ? teal
+                            : (isPassed ? tertiary : AppColors.textPrimary(context)),
+                      ).copyWith(
+                        fontSize: 13.5,
+                        fontWeight: isCurrent || isFirst || isLast ? FontWeight.w700 : FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    tStr,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: isPassed ? Colors.grey : null,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 72,
-                    child: Text(
-                      rightStatusText,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: isCurrent || (!isPassed && minsUntil <= 15)
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: rightStatusColor,
+                  const SizedBox(width: AppSpacing.sm),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        tStr,
+                        style: AppTypography.metricMedium(
+                          context,
+                          color: isPassed ? tertiary : AppColors.textPrimary(context),
+                        ).copyWith(fontSize: 13.5),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(height: 1),
+                      Text(
+                        rightStatusText,
+                        style: AppTypography.badge(context, color: rightStatusColor)
+                            .copyWith(
+                              fontSize: 10.5,
+                              fontWeight: isCurrent || (!isPassed && minsUntil <= 15)
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1603,24 +1817,30 @@ class _LiveRouteTimelineCard extends StatelessWidget {
   }
 }
 
-/// 绘制垂直时间轴连接线：已走过为实心绿线，未走过为虚线灰线
+/// 绘制垂直时间轴连接线：已走过为实心主青绿线，未走过为虚线分隔线
 class _TimelineSegmentPainter extends CustomPainter {
-  final bool isSolidGreen;
+  final bool isSolidPassed;
+  final Color passedColor;
+  final Color upcomingColor;
 
-  const _TimelineSegmentPainter({required this.isSolidGreen});
+  const _TimelineSegmentPainter({
+    required this.isSolidPassed,
+    required this.passedColor,
+    required this.upcomingColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
-    if (isSolidGreen) {
+    if (isSolidPassed) {
       final paint = Paint()
-        ..color = const Color(0xFF26A69A)
-        ..strokeWidth = 2.8
+        ..color = passedColor
+        ..strokeWidth = 2.6
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(Offset(centerX, 0), Offset(centerX, size.height), paint);
     } else {
       final paint = Paint()
-        ..color = Colors.grey.withValues(alpha: 0.55)
+        ..color = upcomingColor
         ..strokeWidth = 2.0
         ..strokeCap = StrokeCap.round;
       const dashHeight = 4.0;
@@ -1636,7 +1856,9 @@ class _TimelineSegmentPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TimelineSegmentPainter oldDelegate) =>
-      oldDelegate.isSolidGreen != isSolidGreen;
+      oldDelegate.isSolidPassed != isSolidPassed ||
+      oldDelegate.passedColor != passedColor ||
+      oldDelegate.upcomingColor != upcomingColor;
 }
 
 /// 手动创建 / 编辑自定义校车路线弹窗
@@ -1712,7 +1934,10 @@ class _CustomRouteEditDialogState extends State<_CustomRouteEditDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return AlertDialog(
-      title: Text(widget.existing == null ? l.busCustomDialogCreateTitle : l.busCustomDialogEditTitle),
+      title: Text(
+        widget.existing == null ? l.busCustomDialogCreateTitle : l.busCustomDialogEditTitle,
+        style: AppTypography.sectionTitle(context),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1726,7 +1951,7 @@ class _CustomRouteEditDialogState extends State<_CustomRouteEditDialog> {
                 prefixIcon: const Icon(Icons.alt_route_rounded),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _school,
               decoration: InputDecoration(
@@ -1734,17 +1959,17 @@ class _CustomRouteEditDialogState extends State<_CustomRouteEditDialog> {
                 prefixIcon: const Icon(Icons.school_rounded),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(l.busCustomOutboundHint, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.md),
+            Text(l.busCustomOutboundHint, style: AppTypography.badge(context)),
+            const SizedBox(height: AppSpacing.xs + 2),
             TextField(
               controller: _outboundText,
               maxLines: 4,
               decoration: const InputDecoration(),
             ),
-            const SizedBox(height: 12),
-            Text(l.busCustomInboundHint, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.md),
+            Text(l.busCustomInboundHint, style: AppTypography.badge(context)),
+            const SizedBox(height: AppSpacing.xs + 2),
             TextField(
               controller: _inboundText,
               maxLines: 4,
@@ -1757,7 +1982,7 @@ class _CustomRouteEditDialogState extends State<_CustomRouteEditDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: _submit,
-          icon: const Icon(Icons.check_rounded),
+          icon: const Icon(Icons.check_rounded, size: 18),
           label: Text(l.busCustomValidateSaveBtn),
         ),
       ],

@@ -79,11 +79,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
+      if (!mounted || !_scroll.hasClients) return;
+      final maxExtent = _scroll.position.maxScrollExtent;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _scroll.jumpTo(maxExtent);
+      } else {
         _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
+          maxExtent,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -176,79 +180,95 @@ class _AiChatScreenState extends State<AiChatScreen> {
         maxChildSize: 0.92,
         minChildSize: 0.45,
         builder: (ctx, scrollCtrl) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, color: Color(0xFFAB47BC)),
-                  const SizedBox(width: 8),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(ctx, AppColors.moduleAi(ctx)),
+                      borderRadius: AppRadius.bMd,
+                    ),
+                    child: Icon(Icons.auto_awesome_rounded, color: AppColors.moduleAi(ctx), size: 18),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       plan.planName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: AppTypography.sectionTitle(ctx),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               Expanded(
                 child: ListView.builder(
                   controller: scrollCtrl,
                   itemCount: plan.days.length,
                   itemBuilder: (_, di) {
                     final d = plan.days[di];
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
+                    final primary = AppColors.primary(ctx);
+                    final workoutColor = AppColors.moduleWorkout(ctx);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: SurfaceCard(
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2B5B84).withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${d.day} · ${d.focus}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: Color(0xFF2B5B84),
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.sm,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.softBg(ctx, primary),
+                                      borderRadius: AppRadius.bXs,
+                                    ),
+                                    child: Text(
+                                      '${d.day} · ${d.focus}',
+                                      style: AppTypography.badge(ctx, color: primary).copyWith(fontSize: 12.5),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
-                                const Spacer(),
+                                const SizedBox(width: AppSpacing.sm),
                                 Text(
                                   l.aiPlanDayExerciseCount(d.exercises.length),
-                                  style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.outline),
+                                  style: AppTypography.caption(ctx),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             for (final ex in d.exercises)
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(vertical: 4),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.fitness_center_rounded, size: 14, color: Color(0xFFEF5350)),
-                                    const SizedBox(width: 6),
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(color: workoutColor, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
                                     Expanded(
                                       child: Text(
                                         L10nHelper.exerciseDisplayName(ctx, ex.name),
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                        style: AppTypography.subtitle(ctx).copyWith(fontWeight: FontWeight.w500),
                                       ),
                                     ),
+                                    const SizedBox(width: AppSpacing.sm),
                                     Text(
                                       '${ex.sets} × ${ex.reps}${ex.weightHint.isNotEmpty ? ' (${ex.weightHint})' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: AppTypography.badge(ctx),
                                     ),
                                   ],
                                 ),
@@ -260,7 +280,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
                 onPressed: isImported
                     ? null
@@ -320,10 +340,36 @@ class _AiChatScreenState extends State<AiChatScreen> {
     }
   }
 
+  Widget _appBarActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: IconButton(
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.surfaceSubtle(context),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+          minimumSize: const Size(36, 36),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+        ),
+        icon: Icon(icon, size: 19, color: AppColors.textPrimary(context)),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
+    final aiColor = AppColors.moduleAi(context);
+    final primary = AppColors.primary(context);
+    final surfaceSubtle = AppColors.surfaceSubtle(context);
+    final borderColor = AppColors.border(context);
+
     final quickPrompts = <(String, String)>[
       (l.aiQuickGeneratePlan, l.aiPromptGeneratePlan),
       (l.aiQuickTodaySummary, l.aiPromptTodaySummary),
@@ -332,35 +378,63 @@ class _AiChatScreenState extends State<AiChatScreen> {
     ];
 
     final mdStyle = MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-      code: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-      codeblockPadding: const EdgeInsets.all(10),
+      p: AppTypography.body(context, color: AppColors.textPrimary(context)),
+      strong: AppTypography.body(context, color: AppColors.textPrimary(context))
+          .copyWith(fontWeight: FontWeight.w700),
+      h1: AppTypography.pageTitle(context),
+      h2: AppTypography.sectionTitle(context),
+      h3: AppTypography.cardTitle(context),
+      listBullet: AppTypography.body(context, color: aiColor).copyWith(fontWeight: FontWeight.w700),
+      blockquoteDecoration: BoxDecoration(
+        color: AppColors.softBg(context, primary, lightAlpha: 0.08, darkAlpha: 0.14),
+        borderRadius: AppRadius.bSm,
+        border: Border(left: BorderSide(color: primary, width: 3)),
+      ),
+      code: TextStyle(
+        fontSize: 12,
+        fontFamily: 'monospace',
+        color: AppColors.textPrimary(context),
+        backgroundColor: surfaceSubtle,
+      ),
+      codeblockPadding: const EdgeInsets.all(AppSpacing.md),
       codeblockDecoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(10),
+        color: surfaceSubtle,
+        borderRadius: AppRadius.bSm,
+        border: Border.all(color: borderColor),
       ),
     );
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.lg,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFFAB47BC).withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.softBg(context, aiColor, lightAlpha: 0.12, darkAlpha: 0.20),
+                borderRadius: AppRadius.bSm,
+                border: Border.all(color: AppColors.softBorder(context, aiColor)),
               ),
-              child: const Icon(Icons.smart_toy_rounded, color: Color(0xFFAB47BC), size: 20),
+              child: Icon(Icons.smart_toy_rounded, color: aiColor, size: 18),
             ),
-            const SizedBox(width: 10),
-            Text(l.aiTitle),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                l.aiTitle,
+                style: AppTypography.pageTitle(context),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
           if (_messages.isNotEmpty)
-            IconButton(
+            _appBarActionButton(
               tooltip: l.aiClearChatTooltip,
-              icon: const Icon(Icons.delete_sweep_rounded),
+              icon: Icons.delete_sweep_rounded,
               onPressed: () async {
                 if (await confirm(context, l.aiClearChatConfirm)) {
                   await Repo.clearChat();
@@ -368,31 +442,46 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 }
               },
             ),
-          IconButton(
-            tooltip: l.aiSettingsTooltip,
-            icon: const Icon(Icons.settings_rounded),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: _appBarActionButton(
+              tooltip: l.aiSettingsTooltip,
+              icon: Icons.settings_rounded,
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              },
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              children: quickPrompts.map((p) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ActionChip(
-                    avatar: const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFFAB47BC)),
-                    label: Text(p.$1),
-                    onPressed: _sending ? null : () => _send(p.$2),
+          // 快捷指令横条
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xs + 2,
+              ),
+              itemCount: quickPrompts.length,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (_, idx) {
+                final p = quickPrompts[idx];
+                return ActionChip(
+                  avatar: Icon(Icons.auto_awesome_rounded, size: 15, color: aiColor),
+                  label: Text(
+                    p.$1,
+                    style: AppTypography.badge(context, color: AppColors.textPrimary(context))
+                        .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
+                  backgroundColor: AppColors.surface(context),
+                  side: BorderSide(color: AppColors.softBorder(context, aiColor)),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.bPill),
+                  onPressed: _sending ? null : () => _send(p.$2),
                 );
-              }).toList(),
+              },
             ),
           ),
           const Divider(height: 1),
@@ -408,15 +497,40 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   )
                 : ListView.builder(
                     controller: _scroll,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
                     itemCount: _messages.length + (_sending ? 1 : 0),
                     itemBuilder: (_, i) {
                       if (i == _messages.length) {
-                        return const Align(
+                        return Align(
                           alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.md,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface(context),
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(AppRadius.lg),
+                                topRight: const Radius.circular(AppRadius.lg),
+                                bottomRight: const Radius.circular(AppRadius.lg),
+                                bottomLeft: const Radius.circular(AppRadius.xs),
+                              ),
+                              border: Border.all(color: borderColor),
+                              boxShadow: AppShadows.subtle(context),
+                            ),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: aiColor,
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -424,18 +538,42 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       final isUser = m.role == 'user';
                       final parsed = isUser ? null : _parseReplyContent(m.content);
 
+                      final bubbleRadius = BorderRadius.only(
+                        topLeft: const Radius.circular(AppRadius.lg),
+                        topRight: const Radius.circular(AppRadius.lg),
+                        bottomLeft: Radius.circular(isUser ? AppRadius.lg : AppRadius.xs),
+                        bottomRight: Radius.circular(isUser ? AppRadius.xs : AppRadius.lg),
+                      );
+
                       return Align(
                         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.88),
-                          margin: const EdgeInsets.symmetric(vertical: 5),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.86),
+                          margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md + 2,
+                            vertical: AppSpacing.md,
+                          ),
                           decoration: BoxDecoration(
-                            color: isUser ? cs.primaryContainer : cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(14),
+                            color: isUser
+                                ? AppColors.softBg(context, primary, lightAlpha: 0.11, darkAlpha: 0.22)
+                                : AppColors.surface(context),
+                            borderRadius: bubbleRadius,
+                            border: Border.all(
+                              color: isUser
+                                  ? AppColors.softBorder(context, primary, lightAlpha: 0.24, darkAlpha: 0.34)
+                                  : borderColor.withValues(alpha: AppColors.isDark(context) ? 0.8 : 0.9),
+                            ),
+                            boxShadow: AppShadows.subtle(context),
                           ),
                           child: isUser
-                              ? SelectableText(m.content)
+                              ? SelectableText(
+                                  m.content,
+                                  style: AppTypography.body(
+                                    context,
+                                    color: AppColors.textPrimary(context),
+                                  ),
+                                )
                               : Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
@@ -445,33 +583,49 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                         selectable: true,
                                         styleSheet: mdStyle,
                                         builders: {
-                                          'pre': _HorizontalScrollPreBuilder(cs.surface),
+                                          'pre': _HorizontalScrollPreBuilder(surfaceSubtle, borderColor),
                                         },
                                       ),
                                     if (parsed.isGeneratingPlan) ...[
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            l.aiPlanGeneratingPlaceholder,
-                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                          ),
-                                        ],
+                                      const SizedBox(height: AppSpacing.sm),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.md,
+                                          vertical: AppSpacing.sm,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.softBg(context, aiColor),
+                                          borderRadius: AppRadius.bMd,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: aiColor,
+                                              ),
+                                            ),
+                                            const SizedBox(width: AppSpacing.sm),
+                                            Flexible(
+                                              child: Text(
+                                                l.aiPlanGeneratingPlaceholder,
+                                                style: AppTypography.badge(context, color: aiColor),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                     if (parsed.plan != null) ...[
-                                      if (parsed.displayText.isNotEmpty) const SizedBox(height: 10),
+                                      if (parsed.displayText.isNotEmpty)
+                                        const SizedBox(height: AppSpacing.md),
                                       _buildPlanSummaryCard(parsed.plan!),
                                     ],
                                     if (parsed.parseFailed) ...[
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: AppSpacing.sm),
                                       _buildParseFailedCollapse(i, parsed.rawFailedJson ?? m.content),
                                     ],
                                   ],
@@ -481,31 +635,66 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     },
                   ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: _send,
-                      decoration: InputDecoration(
-                        hintText: l.aiInputHint,
-                        prefixIcon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface(context),
+              border: Border(top: BorderSide(color: borderColor)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm + 2,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _input,
+                        minLines: 1,
+                        maxLines: 4,
+                        style: AppTypography.body(context, color: AppColors.textPrimary(context)),
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: _send,
+                        decoration: InputDecoration(
+                          hintText: l.aiInputHint,
+                          prefixIcon: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 18,
+                            color: AppColors.textTertiary(context),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: AppRadius.bLg,
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: AppRadius.bLg,
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: AppRadius.bLg,
+                            borderSide: BorderSide(color: aiColor, width: 1.6),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _sending ? null : () => _send(_input.text),
-                    icon: const Icon(Icons.send_rounded),
-                  ),
-                ],
+                    const SizedBox(width: AppSpacing.sm),
+                    IconButton.filled(
+                      onPressed: _sending ? null : () => _send(_input.text),
+                      style: IconButton.styleFrom(
+                        backgroundColor: aiColor,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(44, 44),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                      ),
+                      icon: const Icon(Icons.send_rounded, size: 20),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -518,92 +707,133 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget _buildPlanSummaryCard(TrainingPlan plan) {
     final l = context.l10n;
     final isImported = _importedPlanNames.contains(plan.planName);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded, size: 18, color: Color(0xFFFF7A22)),
-                const SizedBox(width: 6),
-                Text(
-                  l.aiPlanCardHeader,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF7A22),
-                  ),
+    final accent = AppColors.accent(context);
+    final primary = AppColors.primary(context);
+    final success = AppColors.success(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSubtle(context),
+        borderRadius: AppRadius.bLg,
+        border: Border.all(color: AppColors.softBorder(context, accent)),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md + 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 3,
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              plan.planName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            for (final d in plan.days)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, accent, lightAlpha: 0.14, darkAlpha: 0.22),
+                  borderRadius: AppRadius.bPill,
+                ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Icon(Icons.auto_awesome_rounded, size: 13, color: accent),
+                    const SizedBox(width: 4),
                     Text(
-                      d.day,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        d.focus,
-                        style: const TextStyle(fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      l.aiPlanDayExerciseCount(d.exercises.length),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                      l.aiPlanCardHeader,
+                      style: AppTypography.badge(context, color: accent),
                     ),
                   ],
                 ),
               ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showPlanDetailsSheet(plan),
-                    icon: const Icon(Icons.visibility_outlined, size: 16),
-                    label: Text(l.aiPlanViewDetailsBtn, style: const TextStyle(fontSize: 12)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: isImported ? null : () => _importPlan(plan),
-                    icon: Icon(
-                      isImported ? Icons.check_rounded : Icons.download_done_rounded,
-                      size: 16,
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            plan.planName,
+            style: AppTypography.cardTitle(context),
+          ),
+          const SizedBox(height: AppSpacing.sm + 2),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.sm),
+          for (final d in plan.days)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.softBg(context, primary),
+                      borderRadius: AppRadius.bXs,
                     ),
-                    label: Text(
-                      isImported ? l.aiPlanImportedDoneBtn : l.aiPlanImportBtn,
-                      style: const TextStyle(fontSize: 12),
+                    child: Text(
+                      d.day,
+                      style: AppTypography.badge(context, color: primary),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      d.focus,
+                      style: AppTypography.subtitle(context).copyWith(fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    l.aiPlanDayExerciseCount(d.exercises.length),
+                    style: AppTypography.caption(context),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showPlanDetailsSheet(plan),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: AppColors.surface(context),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
+                  ),
+                  icon: const Icon(Icons.visibility_outlined, size: 15),
+                  label: Text(
+                    l.aiPlanViewDetailsBtn,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: isImported ? null : () => _importPlan(plan),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isImported ? AppColors.softBg(context, success) : primary,
+                    foregroundColor: isImported ? success : Colors.white,
+                    disabledBackgroundColor: AppColors.softBg(context, success),
+                    disabledForegroundColor: success,
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
+                  ),
+                  icon: Icon(
+                    isImported ? Icons.check_rounded : Icons.download_done_rounded,
+                    size: 15,
+                  ),
+                  label: Text(
+                    isImported ? l.aiPlanImportedDoneBtn : l.aiPlanImportBtn,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -612,17 +842,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget _buildParseFailedCollapse(int msgIdx, String rawText) {
     final l = context.l10n;
     final expanded = _expandedRawMsgIndices.contains(msgIdx);
+    final warning = AppColors.warning(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.info_outline_rounded, size: 15, color: Colors.orange),
-            const SizedBox(width: 6),
+            Icon(Icons.info_outline_rounded, size: 15, color: warning),
+            const SizedBox(width: AppSpacing.xs + 2),
             Expanded(
               child: Text(
                 l.aiPlanParseFailedHint,
-                style: const TextStyle(fontSize: 12),
+                style: AppTypography.bodySecondary(context),
               ),
             ),
             TextButton(
@@ -645,16 +876,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
         if (expanded)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.surfaceSubtle(context),
+              borderRadius: AppRadius.bSm,
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectableText(
                 rawText,
-                style: const TextStyle(fontSize: 11.5, fontFamily: 'monospace'),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontFamily: 'monospace',
+                  color: AppColors.textPrimary(context),
+                ),
               ),
             ),
           ),
@@ -666,7 +902,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
 /// 1.4 自定义 Markdown 代码块渲染器：用横向 SingleChildScrollView 包裹，防止任何长代码撑破屏幕
 class _HorizontalScrollPreBuilder extends MarkdownElementBuilder {
   final Color bgColor;
-  _HorizontalScrollPreBuilder(this.bgColor);
+  final Color borderColor;
+  _HorizontalScrollPreBuilder(this.bgColor, this.borderColor);
 
   @override
   Widget? visitElementAfterWithContext(
@@ -678,17 +915,23 @@ class _HorizontalScrollPreBuilder extends MarkdownElementBuilder {
     final text = element.textContent.trimRight();
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.bSm,
+        border: Border.all(color: borderColor),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SelectableText(
           text,
-          style: const TextStyle(fontSize: 12, fontFamily: 'monospace', height: 1.4),
+          style: TextStyle(
+            fontSize: 12,
+            fontFamily: 'monospace',
+            height: 1.45,
+            color: AppColors.textPrimary(context),
+          ),
         ),
       ),
     );
