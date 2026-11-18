@@ -48,8 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
   BodyRecord? _latestWeight;
   Profile _profile = Profile();
 
-  // v1.2 新增：天气、校车、计步器状态
+  // v1.2/v1.3 新增：天气、校车路线、计步器状态
   WeatherInfo? _weather;
+  String _busRouteName = 'BUV · Hai Ba Trung Route';
   String _busStop = 'TIMES CITY';
   String _busDirection = '';
   String _busNextTime = '--:--';
@@ -125,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _todayCardios = cardios;
       _todaySets = sets;
       _latestWeight = weight;
+      _busRouteName = bus.routeName;
       _busStop = bus.stopName;
       _busDirection = bus.direction;
       _busNextTime = bus.nextTime;
@@ -339,28 +341,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   CalorieSummaryCard(totals: _totals, targets: _targets, onTap: () => widget.onNavigate(2)),
                   _stepCounterCard(),
                   SectionTitle(
-                    _week > 0 ? '今日课程 · 第 $_week 周' : '今日课程',
+                    _week > 0
+                        ? prefs.tr('今日课程 · 第 $_week 周', 'Today\'s Classes · Week $_week')
+                        : prefs.tr('今日课程', 'Today\'s Classes'),
                     icon: Icons.school_rounded,
                     iconColor: const Color(0xFF2B5B84),
                     trailing: TextButton.icon(
                       onPressed: () => widget.onNavigate(1),
                       icon: const Icon(Icons.calendar_view_week_rounded, size: 16),
-                      label: const Text('全部课表'),
+                      label: Text(prefs.tr('全部课表', 'All Schedule')),
                     ),
                   ),
                   _coursesCard(),
                   SectionTitle(
-                    '今日训练与有氧汇总',
+                    prefs.tr('今日训练与有氧汇总', 'Today\'s Workout & Cardio'),
                     icon: Icons.fitness_center_rounded,
                     iconColor: const Color(0xFFEF5350),
                     trailing: TextButton.icon(
                       onPressed: () => widget.onNavigate(3),
                       icon: const Icon(Icons.chevron_right, size: 18),
-                      label: const Text('去训练'),
+                      label: Text(prefs.tr('去训练', 'Workout')),
                     ),
                   ),
                   _workoutCard(),
-                  const SectionTitle('身体状态', icon: Icons.favorite_rounded, iconColor: Color(0xFFEC407A)),
+                  SectionTitle(
+                    prefs.tr('身体状态', 'Body Status'),
+                    icon: Icons.favorite_rounded,
+                    iconColor: const Color(0xFFEC407A),
+                  ),
                   _bodyCard(),
                   const SizedBox(height: 12),
                   _aiBannerCard(),
@@ -417,9 +425,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              '校车 · $_busStop',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            Expanded(
+                              child: Text(
+                                '${AppPrefsController.instance.tr('校车', 'Bus')} · $_busStop',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             Container(
@@ -428,7 +439,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text('点此换站/时刻表', style: TextStyle(fontSize: 10, color: Color(0xFFFF7A22), fontWeight: FontWeight.bold)),
+                              child: Text(
+                                _busRouteName,
+                                style: const TextStyle(fontSize: 10, color: Color(0xFFFF7A22), fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ],
                         ),
@@ -594,15 +608,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final prefs = AppPrefsController.instance;
     return Row(
       children: [
-        pill(Icons.camera_alt_rounded, '拍美食算热量', const Color(0xFFFF7A22), () => widget.onNavigate(2)),
+        pill(Icons.camera_alt_rounded, prefs.tr('拍美食算热量', 'Snap Meal'), const Color(0xFFFF7A22), () => widget.onNavigate(2)),
         const SizedBox(width: 8),
-        pill(Icons.fitness_center_rounded, '开始训练计时', const Color(0xFFEF5350), () => widget.onNavigate(3)),
+        pill(Icons.fitness_center_rounded, prefs.tr('开始训练计时', 'Start Workout'), const Color(0xFFEF5350), () => widget.onNavigate(3)),
         const SizedBox(width: 8),
-        pill(Icons.monitor_weight_rounded, '记今日体重', const Color(0xFF2B5B84), () => _open(const BodyScreen())),
+        pill(Icons.monitor_weight_rounded, prefs.tr('记今日体重', 'Log Weight'), const Color(0xFF2B5B84), () => _open(const BodyScreen())),
         const SizedBox(width: 8),
-        pill(Icons.smart_toy_rounded, 'AI 定制计划', const Color(0xFFAB47BC), () => widget.onNavigate(4)),
+        pill(Icons.smart_toy_rounded, prefs.tr('AI 定制计划', 'AI Coach'), const Color(0xFFAB47BC), () => widget.onNavigate(4)),
       ],
     );
   }

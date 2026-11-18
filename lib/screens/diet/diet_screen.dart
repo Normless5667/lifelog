@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
+import '../../services/app_prefs.dart';
 import '../../services/targets.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
@@ -303,13 +304,14 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   Widget _quickActionRow() {
+    final prefs = AppPrefsController.instance;
     return Row(
       children: [
         Expanded(
           child: FilledButton.icon(
             onPressed: () => _photoEstimate(ImageSource.camera),
             icon: const Icon(Icons.camera_alt_outlined),
-            label: const Text('拍照识热量'),
+            label: Text(prefs.tr('拍照识热量', 'Camera')),
           ),
         ),
         const SizedBox(width: 8),
@@ -317,7 +319,7 @@ class _DietScreenState extends State<DietScreen> {
           child: FilledButton.tonalIcon(
             onPressed: () => _photoEstimate(ImageSource.gallery),
             icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('相册选图'),
+            label: Text(prefs.tr('相册选图', 'Gallery')),
           ),
         ),
         const SizedBox(width: 8),
@@ -325,7 +327,7 @@ class _DietScreenState extends State<DietScreen> {
           child: OutlinedButton.icon(
             onPressed: _textEstimate,
             icon: const Icon(Icons.auto_awesome_outlined),
-            label: const Text('文字估算'),
+            label: Text(prefs.tr('文字估算', 'AI Text')),
           ),
         ),
       ],

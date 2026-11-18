@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
+import '../../services/app_prefs.dart';
 import '../../services/nutrition.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
@@ -142,6 +143,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final prefs = AppPrefsController.instance;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -155,7 +157,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350), size: 20),
             ),
             const SizedBox(width: 10),
-            const Text('训练与有氧'),
+            Text(prefs.tr('训练与有氧', 'Workout & Cardio')),
           ],
         ),
         actions: [
@@ -165,14 +167,14 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               _load();
             },
             icon: const Icon(Icons.grid_view_rounded),
-            label: const Text('动作库'),
+            label: Text(prefs.tr('动作库', 'Exercises')),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _tab == 0 ? () => _startNew() : () => _addOrEditCardio(),
         icon: Icon(_tab == 0 ? Icons.play_arrow_rounded : Icons.directions_run_rounded),
-        label: Text(_tab == 0 ? '开始力量训练' : '记录有氧运动'),
+        label: Text(_tab == 0 ? prefs.tr('开始力量训练', 'Start Strength') : prefs.tr('记录有氧运动', 'Log Cardio')),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -181,16 +183,16 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                   child: SegmentedButton<int>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 0,
-                        icon: Icon(Icons.fitness_center_rounded),
-                        label: Text('力量训练 (按组/计时)'),
+                        icon: const Icon(Icons.fitness_center_rounded),
+                        label: Text(prefs.tr('力量训练 (按组/计时)', 'Strength')),
                       ),
                       ButtonSegment(
                         value: 1,
-                        icon: Icon(Icons.directions_run_rounded),
-                        label: Text('有氧运动 (MET消耗)'),
+                        icon: const Icon(Icons.directions_run_rounded),
+                        label: Text(prefs.tr('有氧运动 (MET消耗)', 'Cardio (MET)')),
                       ),
                     ],
                     selected: {_tab},

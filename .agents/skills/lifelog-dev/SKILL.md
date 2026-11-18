@@ -102,6 +102,13 @@ C:\Users\33239\dev\flutter-nops.bat build apk --release
 
 ## 6. 进度日志（倒序，最新在上）
 
+- **2026-11-18 (阶段 7 - 生活助手 v1.3 `1.3.0+4` 多路线校车时刻表架构 + BUV 拼写修正)**：
+  - **校车表 `BUY CAMPUS` → `BUV CAMPUS` 拼写修正**：已修正 `assets/bus_schedule.json` 与 `assets/bus_routes.json` 中的终点站名称。
+  - **多路线可扩展校车架构 (v1.3)**：
+    - 保留 `assets/bus_schedule.json` 作为 BUV 默认路线数据源，新增 `assets/bus_routes.json`（`default_route_id: "buv-hai-ba-trung"`，含 `name_en`、`timezone: "Asia/Ho_Chi_Minh"`、站点可选 `lat`/`lng` 与 `source` 字段）。
+    - 用户自定义或导入的路线统一存储在 `<app_data>/routes/<route_id>.json`，启动时由 `BusService` 自动合并内置路线与用户路线。
+    - 校车时刻表页顶部新增「当前路线：xxx [切换/导入]」选择器卡片，支持：**切换路线**、**表单手动新建/编辑自定义路线**、**选择 `.json` 文件导入路线（含严格字段/时间格式/班次长度校验，报错精确到第几站第几个时间）**、**一键导出标准 JSON 模板**、**删除非内置路线**。
+    - 默认行为完全保持不变：首次安装直接加载 `BUV · Hai Ba Trung Route`，无需任何额外配置。
 - **2026-11-18 (阶段 6 - 生活助手 v1.2 `1.2.0+3` 全量升级与打包完成)**：
   - **P0 正式签名 + 桌面图标 + 改名「生活助手」+ 通知诊断页**：
     - 使用 `keytool` 生成正式签名文件 `android/app/lifelog-release.jks`（并备份于 `C:\Users\33239\dev\lifelog-release-backup.jks`），配置 `android/key.properties` 与 `android/app/build.gradle.kts` `signingConfigs`。

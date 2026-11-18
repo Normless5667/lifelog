@@ -195,6 +195,15 @@ class ReminderService {
     } catch (_) {}
   }
 
+  /// 调用系统文件选择器读取 JSON 文件内容
+  static Future<String?> pickJsonFile() async {
+    try {
+      return await _ch.invokeMethod<String>('pickJsonFile');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 重新计算未来课程提醒 + 校车到站前提醒（仅周一至周五）+ 每日 07:00 天气简报，注册到 Android AlarmManager
   static Future<int> syncAlarms() async {
     try {

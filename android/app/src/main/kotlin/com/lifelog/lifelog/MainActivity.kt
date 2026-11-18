@@ -32,6 +32,8 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     private val channelName = "com.lifelog/reminders"
     private val notifChannelId = "course_reminders_v2"
     private val restAlarmReqCode = 2001
+    private val pickJsonReqCode = 905
+    private var pendingJsonResult: MethodChannel.Result? = null
     private var sensorManager: SensorManager? = null
     private var stepSensorSupported: Boolean = false
     private var latestRawStepCounter: Int = -1
@@ -226,6 +228,14 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                         LifeAssistantWidgetProvider.saveAndRefresh(this, course, calorie, step)
                         result.success(true)
                     }
+                    "pickJsonFile" -> {
+                        pendingJsonResult = result
+                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "*/*"
+                        }
+                        startActivityForResult(intent, pickJsonReqCode)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -349,4 +359,24 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == pickJsonReqCode) {
+            val res = pendingJsonResult
+            pendingJsonResult = null
+            if (res == null) return
+            if (resultCode != RESULT_OK || data?.data == null) {
+                res.success(null)
+                return
+            }
+            try {
+                val uri = data.data!!
+                val text = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                res.success(text)
+            } catch (e: Exception) {
+                res.error("READ_ERR", e.message, null)
+            }
+        }
+    }
 }

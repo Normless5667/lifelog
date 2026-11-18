@@ -1,0 +1,55 @@
+{
+  "default_route_id": "buv-hai-ba-trung",
+  "routes": [
+    {
+      "id": "buv-hai-ba-trung",
+      "name": "BUV · Hai Ba Trung Route",
+      "name_en": "BUV · Hai Ba Trung Route",
+      "school": "British University Vietnam",
+      "source": "builtin",
+      "timezone": "Asia/Ho_Chi_Minh",
+      "valid_period": "2026-11-16 to 2026-11-20",
+      "weekdays_only": true,
+      "schedule_asset": "assets/bus_schedule.json",
+      "outbound": {
+        "title": "去程 (Hai Ba Trung → BUV CAMPUS)",
+        "stops": [
+          {"name": "LE DAI HANH", "times": ["07:40", "09:40", "10:40", "12:00", "13:30"]},
+          {"name": "TIMES CITY", "times": ["07:55", "09:55", "10:55", "12:15", "13:45"]},
+          {"name": "AEON MALL LONG BIEN", "times": ["08:05", "10:05", "11:05", "12:25", "13:55"]},
+          {"name": "RUNG CO - E2 BUILDING", "times": ["08:20", "10:20", "11:20", "12:35", "14:10"]},
+          {"name": "BUV CAMPUS", "times": ["08:25", "10:25", "11:25", "12:40", "14:15"]},
+          {"name": "SKY OASIS", "times": ["08:28", "10:28", "11:28", "12:43", "14:18"]},
+          {"name": "SOL FOREST", "times": ["08:28", "10:28", "11:28", "12:43", "14:18"]},
+          {"name": "SKY FOREST", "times": ["08:29", "10:29", "11:29", "12:44", "14:19"]},
+          {"name": "LANDMARK", "times": ["08:30", "10:30", "11:30", "12:45", "14:20"]},
+          {"name": "SWANLAKE", "times": ["08:30", "10:30", "11:30", "12:45", "14:20"]},
+          {"name": "WESTBAY - B BUILDING", "times": ["08:31", "10:31", "11:31", "12:46", "14:21"]},
+          {"name": "WESTBAY - C BUILDING", "times": ["08:31", "10:31", "11:31", "12:46", "14:21"]},
+          {"name": "AQUABAY - SKY 2 BUILDING", "times": ["08:34", "10:34", "11:34", "12:49", "14:24"]},
+          {"name": "AQUABAY - PARK 1 BUILDING", "times": ["08:34", "10:34", "11:34", "12:49", "14:24"]},
+          {"name": "BUV CAMPUS（到校）", "times": ["08:40", "10:40", "11:40", "13:00", "14:30"]}
+        ]
+      },
+      "inbound": {
+        "title": "回程 (BUV CAMPUS → Hai Ba Trung)",
+        "stops": [
+          {"name": "BUV CAMPUS（发车）", "times": ["11:30", "12:30", "13:30", "15:15", "17:35"]},
+          {"name": "SKY OASIS", "times": ["11:33", "12:33", "13:33", "15:18", "17:38"]},
+          {"name": "SOL FOREST", "times": ["11:33", "12:33", "13:33", "15:18", "17:38"]},
+          {"name": "SKY FOREST", "times": ["11:34", "12:34", "13:34", "15:19", "17:39"]},
+          {"name": "LANDMARK", "times": ["11:35", "12:35", "13:35", "15:20", "17:40"]},
+          {"name": "SWANLAKE", "times": ["11:35", "12:35", "13:35", "15:20", "17:40"]},
+          {"name": "WESTBAY - B BUILDING", "times": ["11:36", "12:36", "13:36", "15:21", "17:41"]},
+          {"name": "WESTBAY - C BUILDING", "times": ["11:36", "12:36", "13:36", "15:21", "17:41"]},
+          {"name": "AQUABAY - SKY 2 BUILDING", "times": ["11:42", "12:42", "13:42", "15:27", "17:47"]},
+          {"name": "AQUABAY - PARK 1 BUILDING", "times": ["11:42", "12:42", "13:42", "15:27", "17:47"]},
+          {"name": "RUNG CO - E2 BUILDING", "times": ["11:45", "12:45", "13:45", "15:30", "17:50"]},
+          {"name": "AEON MALL LONG BIEN", "times": ["12:00", "13:00", "14:00", "15:45", "18:05"]},
+          {"name": "TIMES CITY", "times": ["12:10", "13:10", "14:10", "15:55", "18:15"]},
+          {"name": "LE DAI HANH（终点）", "times": ["12:25", "13:25", "14:25", "16:10", "18:30"]}
+        ]
+      }
+    }
+  ]
+}
