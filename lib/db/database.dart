@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'lifelog.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   Database? _db;
 
@@ -112,6 +112,21 @@ class AppDatabase {
         created_at INTEGER NOT NULL
       )''');
     b.execute('CREATE INDEX idx_cardio_date ON cardio_records(date)');
+    b.execute('''
+      CREATE TABLE IF NOT EXISTS usage_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        name TEXT NOT NULL,
+        action TEXT,
+        duration_ms INTEGER,
+        value REAL,
+        extra TEXT,
+        app_version TEXT,
+        session_id TEXT
+      )''');
+    b.execute('CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts)');
+    b.execute('CREATE INDEX IF NOT EXISTS idx_usage_cat ON usage_events(category, name)');
 
     for (final entry in _seedExercises.entries) {
       for (final name in entry.value) {
@@ -147,6 +162,23 @@ class AppDatabase {
           created_at INTEGER NOT NULL
         )''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_cardio_date ON cardio_records(date)');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS usage_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ts INTEGER NOT NULL,
+          category TEXT NOT NULL,
+          name TEXT NOT NULL,
+          action TEXT,
+          duration_ms INTEGER,
+          value REAL,
+          extra TEXT,
+          app_version TEXT,
+          session_id TEXT
+        )''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_usage_cat ON usage_events(category, name)');
     }
   }
 

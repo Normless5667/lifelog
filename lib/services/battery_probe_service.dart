@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'usage_telemetry_service.dart';
 
 class DayBatteryMetrics {
   final String date;
@@ -144,13 +145,21 @@ class BatteryProbeService with WidgetsBindingObserver {
     final startMs = _activeTimerStartsMs.remove(tag);
     if (startMs != null) {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
-      _todayBucket().timerActiveSec += ((nowMs - startMs) ~/ 1000).clamp(0, 86400);
+      final durMs = (nowMs - startMs).clamp(0, 86400000);
+      _todayBucket().timerActiveSec += (durMs ~/ 1000).clamp(0, 86400);
+      UsageTelemetryService.instance.trackPerf(
+        'timer_tick',
+        durationMs: durMs,
+        value: (durMs / 1000.0),
+        extra: {'timer': tag},
+      );
       _maybeFlush();
     }
   }
 
   void recordGpsCall() {
     _todayBucket().gpsCalls++;
+    UsageTelemetryService.instance.trackPerf('gps_call', value: 1);
     _maybeFlush();
   }
 

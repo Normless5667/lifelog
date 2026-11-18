@@ -102,6 +102,28 @@ C:\Users\33239\dev\flutter-nops.bat build apk --release
 
 ## 6. 进度日志（倒序，最新在上）
 
+- **2026-11-18 (阶段 12 - 生活助手 v1.8 `1.8.0+8` 本地批量使用数据埋点 + Summary 汇总导出)**：
+  - **新增 `usage_events` 独立埋点表 (`_dbVersion = 4`)**：建立 `idx_usage_ts` 与 `idx_usage_cat` 双索引，不动现有业务表，自动清理超过 30 天的数据。
+  - **新增 `lib/services/usage_telemetry_service.dart` (`UsageTelemetryService`)**：
+    - 采集 4 类事件：`page`（页面进入/离开/停留时长 `duration_ms`）、`feature`（功能 `tap`/`success`/`fail`/`cancel` 转化率）、`perf`（`frame_jank` >16ms 掉帧聚合、每 5 分钟 `memory` RSS、`gps_call`、`timer_tick`）、`lifecycle`（`resumed`/`paused`/`detached` 前台时长）。
+    - **零耗电批量写入策略**：内存缓冲满 50 条或前台每 30 秒通过单次 SQLite Batch 事务刷入；App 退后台立即 flush 并停止所有采样定时器（后台零唤醒、零耗电）。
+    - **严格隐私红线**：100% 本地存储、绝不联网上报、不采集个人内容（不记食物名/体重值/聊天文本）、无第三方 SDK。
+    - **设置页「使用数据与性能分析」卡片**：支持随时开关、查看已记录条数、一键清空，以及按 **1天 / 7天 / 30天 / 全部** 导出带 `summary` 汇总段（`total_fg_minutes`、`daily_active_days`、`top_pages`、`feature_conversion` 转化率、`perf` 概况）的 **JSON** 或 **CSV**。
+- **2026-11-18 (阶段 11 - 生活助手 v1.7 P0 AI 助手页隐藏原始 JSON + 结构化训练计划卡片)**：
+  - **AI 训练计划标记与剥离 (`ai_chat_screen.dart`)**：Prompt 升级为使用 `<<<PLAN_JSON>>>...<<<END_PLAN>>>` 包裹计划 JSON（同时兼容历史 ```` ```json ```` 代码块）；UI 层剥离原始 JSON，渲染为「✨ 已生成训练计划」卡片（展示计划名、每日分化动作数、「查看详情」底部弹窗、「导入到训练 / 已导入 ✓」状态切换）。
+  - **防崩与防溢出兜底**：未收到 `<<<END_PLAN>>>` 前显示「正在生成计划…」占位；JSON 解析失败时默认折叠并提供「显示原始回复」开关；所有 Markdown 代码块包裹横向 `SingleChildScrollView` + 12 号等宽字体，杜绝撑破屏幕。（注：按指示跳过 v1.7 P1 前端视觉美化，留给后续 Opus 5.5 单独重写。）
+- **2026-11-18 (阶段 10 - 生活助手 v1.6 `1.6.0+7` 耗电根治 + 耗电诊断页 + 校车起终点垂直时间轴与平滑位置动画)**：
+  - **P0 耗电根治与「耗电与性能诊断」页 (`battery_probe_service.dart` & `battery_diagnostics_screen.dart`)**：
+    - 校车页与训练页彻底移除整页每秒 `setState`，改为 `ValueNotifier` 局部刷新 + 独立 `AnimationController`，并通过 `RouteAware` + `WidgetsBindingObserver` 在页面被遮挡或按 Home 键退后台时立即停止 Timer；
+    - 桌面小组件 `updatePeriodMillis` 设为 `0`（仅靠事件主动推，消除系统定时唤醒）；
+    - 原生 `TYPE_STEP_COUNTER` 在 `MainActivity.onStop()` 自动注销监听、前台 `SENSOR_DELAY_NORMAL` 30 秒硬件批处理 + Dart 侧 30 秒写库节流；
+    - `Geolocator.requestPermission()` 全局最多只询问一次；
+    - 设置页新增「耗电与性能诊断」页（滚动保留 7 天前台/后台时长、计时器活跃时长、GPS 次数、写库次数、小组件刷新次数）及「把小组件添加到桌面」一键固定引导弹窗。
+  - **P1 校车起终点选择 + 垂直时间轴 + 巴士平滑移动动画 (`bus_schedule_screen.dart`)**：
+    - 顶部改为「起点 + 终点」双下拉 + 一键交换按钮（`⇅`），自动过滤起终点之间的站点；
+    - 垂直时间轴清晰区分：已过站（实心灰点+实心绿线）、当前站（实心绿点+光晕）、未到站（空心圆+虚线灰线+「还有 N 分」倒计时）；
+    - 巴士图标在上一站发车时间 $T_1$ 与下一站到达时间 $T_2$ 之间按 `calcBusSegmentProgress` 线性插值，通过 `AnimatedPositioned` 平滑移动；
+    - 完整处理起点=终点报错、方向反了自动切换去程/回程、今日已无班次（不显示负数分钟）及跨午夜边界。
 - **2026-11-18 (阶段 9 - 生活助手 v1.5 `1.5.0+6` 全量 gen-l10n 国际化架构改造完成)**：
   - **P0 彻底废除 `prefs.tr()`，全量接入 Flutter 官方 `gen-l10n` (`AppLocalizations`)**：
     - 新增 `l10n.yaml` 并在 `pubspec.yaml` 开启 `flutter: generate: true`；

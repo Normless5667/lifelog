@@ -1701,7 +1701,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v1.5.0 · Co-developed with DaFeiYu';
+      'Version v1.8.0 · Co-developed with DaFeiYu';
+
+  @override
+  String get usageSectionTitle => 'Usage Telemetry & Analytics';
+
+  @override
+  String get usageSwitchTitle => 'Record App Usage & Performance';
+
+  @override
+  String usageCountSub(int count) {
+    return '$count events recorded (kept locally for 30 days, never uploaded)';
+  }
+
+  @override
+  String get usageExportBtn => 'Export Data';
+
+  @override
+  String get usageClearBtn => 'Clear';
+
+  @override
+  String get usageClearConfirm => 'Clear all recorded usage telemetry data?';
+
+  @override
+  String get usageClearedToast => 'Usage telemetry data cleared';
+
+  @override
+  String get usageExportDialogTitle => 'Export Usage & Performance Data';
+
+  @override
+  String get usageExportRangeLabel => 'Select Time Range:';
+
+  @override
+  String get usageRange1d => 'Last 1 Day';
+
+  @override
+  String get usageRange7d => 'Last 7 Days';
+
+  @override
+  String get usageRange30d => 'Last 30 Days';
+
+  @override
+  String get usageRangeAll => 'All Time';
+
+  @override
+  String get usageExportJsonBtn => 'Export JSON (Summary + Events)';
+
+  @override
+  String get usageExportCsvBtn => 'Export CSV (For Excel)';
 
   @override
   String get diagTitle => 'Notification & Vibration Diagnostics';
@@ -1810,7 +1857,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v1.6.0 (Build 7)';
+  String get aboutVersion => 'Version v1.8.0 (Build 8)';
 
   @override
   String get aboutBadge =>

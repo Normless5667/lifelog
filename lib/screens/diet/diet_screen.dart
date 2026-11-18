@@ -7,6 +7,7 @@ import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
 import '../../services/targets.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
@@ -222,6 +223,8 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   Future<void> _manualEdit({Meal? existing, int? defaultMealType}) async {
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
     final m = await showDialog<Meal>(
       context: context,
       builder: (_) => MealEditDialog(
@@ -230,9 +233,13 @@ class _DietScreenState extends State<DietScreen> {
         initialMealType: defaultMealType ?? _guessMealType(),
       ),
     );
+    final dur = DateTime.now().millisecondsSinceEpoch - t0;
     if (m != null) {
       await Repo.saveMeal(m);
+      UsageTelemetryService.instance.trackFeature('quick_log_diet', 'success', durationMs: dur);
       _load();
+    } else {
+      UsageTelemetryService.instance.trackFeature('quick_log_diet', 'cancel', durationMs: dur);
     }
   }
 

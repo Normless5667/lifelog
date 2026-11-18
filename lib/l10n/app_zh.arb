@@ -512,7 +512,23 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v1.5.0 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v1.8.0 · 由大肥鱼协助开发",
+
+  "usageSectionTitle": "使用数据与性能分析",
+  "usageSwitchTitle": "记录使用情况与性能探针",
+  "usageCountSub": "已记录 {count} 条（保留 30 天，仅存本机绝不联网上报）",
+  "usageExportBtn": "导出数据",
+  "usageClearBtn": "清空",
+  "usageClearConfirm": "确定清空全部已记录的使用数据吗？",
+  "usageClearedToast": "使用数据已清空",
+  "usageExportDialogTitle": "导出使用数据到电脑分析",
+  "usageExportRangeLabel": "选择导出时间范围：",
+  "usageRange1d": "最近 1 天",
+  "usageRange7d": "最近 7 天",
+  "usageRange30d": "最近 30 天",
+  "usageRangeAll": "全部数据",
+  "usageExportJsonBtn": "导出 JSON（含 Summary 汇总 + 明细）",
+  "usageExportCsvBtn": "导出 CSV（方便 Excel 打开）",
 
   "diagTitle": "通知与震动诊断",
   "diagRefreshTooltip": "重新检测",
@@ -546,7 +562,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v1.6.0 (Build 7)",
+  "aboutVersion": "版本 v1.8.0 (Build 8)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
 

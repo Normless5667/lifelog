@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/nutrition.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'profile_screen.dart';
@@ -42,14 +43,20 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Future<void> _addRecord([BodyRecord? existing]) async {
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    UsageTelemetryService.instance.trackFeature('log_weight', 'tap');
     final result = await showDialog<BodyRecord>(
       context: context,
       builder: (_) => _BodyRecordDialog(existing: existing),
     );
+    final dur = DateTime.now().millisecondsSinceEpoch - t0;
     if (result != null) {
       if (existing != null && existing.date != result.date) await Repo.deleteBodyRecord(existing.id!);
       await Repo.saveBodyRecord(result);
+      UsageTelemetryService.instance.trackFeature('log_weight', 'success', durationMs: dur);
       _load();
+    } else {
+      UsageTelemetryService.instance.trackFeature('log_weight', 'cancel', durationMs: dur);
     }
   }
 

@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../services/battery_probe_service.dart';
 import '../../services/nutrition.dart';
 import '../../services/reminder_service.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'exercise_library_screen.dart';
@@ -338,11 +339,21 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       }
     }
     if (allSets.isEmpty && widget.isNew) {
+      UsageTelemetryService.instance.trackFeature(
+        'start_workout',
+        'cancel',
+        durationMs: _elapsedNotifier.value * 1000,
+      );
       await Repo.deleteWorkout(w.id!);
       if (mounted) Navigator.pop(context);
       return;
     }
     final elapsedSecs = _elapsedNotifier.value;
+    UsageTelemetryService.instance.trackFeature(
+      'start_workout',
+      'success',
+      durationMs: elapsedSecs * 1000,
+    );
     w.endTime = w.startTime + (elapsedSecs * 1000);
     await Repo.updateWorkout(w);
     await Repo.replaceSets(w.id!, allSets);

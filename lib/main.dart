@@ -9,6 +9,7 @@ import 'screens/schedule/schedule_screen.dart';
 import 'screens/workout/workout_list_screen.dart';
 import 'services/app_prefs.dart';
 import 'services/battery_probe_service.dart';
+import 'services/usage_telemetry_service.dart';
 import 'utils/l10n_ext.dart';
 
 Future<void> main() async {
@@ -17,6 +18,7 @@ Future<void> main() async {
   await initializeDateFormatting('en_US');
   await AppPrefsController.instance.load();
   await BatteryProbeService.instance.init();
+  await UsageTelemetryService.instance.init();
   runApp(const LifeLogApp());
 }
 
@@ -115,7 +117,14 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  void _goTo(int i) => setState(() => _index = i);
+  static const _tabPageNames = ['home', 'schedule', 'diet', 'workout', 'ai'];
+
+  void _goTo(int i) {
+    if (i >= 0 && i < _tabPageNames.length) {
+      UsageTelemetryService.instance.enterPage(_tabPageNames[i], source: 'tab');
+    }
+    setState(() => _index = i);
+  }
 
   static Widget _navBadge(IconData icon, Color color, {bool selected = false}) {
     return Container(

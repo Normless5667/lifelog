@@ -3029,8 +3029,98 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v1.5.0 · Co-developed with DaFeiYu'**
+  /// **'Version v1.8.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
+
+  /// No description provided for @usageSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage Telemetry & Analytics'**
+  String get usageSectionTitle;
+
+  /// No description provided for @usageSwitchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record App Usage & Performance'**
+  String get usageSwitchTitle;
+
+  /// No description provided for @usageCountSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} events recorded (kept locally for 30 days, never uploaded)'**
+  String usageCountSub(int count);
+
+  /// No description provided for @usageExportBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Data'**
+  String get usageExportBtn;
+
+  /// No description provided for @usageClearBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get usageClearBtn;
+
+  /// No description provided for @usageClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all recorded usage telemetry data?'**
+  String get usageClearConfirm;
+
+  /// No description provided for @usageClearedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage telemetry data cleared'**
+  String get usageClearedToast;
+
+  /// No description provided for @usageExportDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Usage & Performance Data'**
+  String get usageExportDialogTitle;
+
+  /// No description provided for @usageExportRangeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Time Range:'**
+  String get usageExportRangeLabel;
+
+  /// No description provided for @usageRange1d.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 1 Day'**
+  String get usageRange1d;
+
+  /// No description provided for @usageRange7d.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 Days'**
+  String get usageRange7d;
+
+  /// No description provided for @usageRange30d.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 Days'**
+  String get usageRange30d;
+
+  /// No description provided for @usageRangeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All Time'**
+  String get usageRangeAll;
+
+  /// No description provided for @usageExportJsonBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Export JSON (Summary + Events)'**
+  String get usageExportJsonBtn;
+
+  /// No description provided for @usageExportCsvBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV (For Excel)'**
+  String get usageExportCsvBtn;
 
   /// No description provided for @diagTitle.
   ///
@@ -3225,7 +3315,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v1.6.0 (Build 7)'**
+  /// **'Version v1.8.0 (Build 8)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.

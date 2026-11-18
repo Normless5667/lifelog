@@ -6,6 +6,7 @@ import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
 import '../../services/context_builder.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../widgets/common.dart';
 import '../settings/settings_screen.dart';
 
@@ -153,6 +154,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _importPlan(TrainingPlan plan) async {
     await Repo.saveTrainingPlan(plan);
+    UsageTelemetryService.instance.trackFeature('ai_plan_import', 'success');
     if (!mounted) return;
     setState(() {
       _importedPlanNames.add(plan.planName);
@@ -292,6 +294,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     try {
       var sys = await ContextBuilder.buildSystemPrompt();
       if (L10nHelper.isWorkoutPlanRequest(content)) {
+        UsageTelemetryService.instance.trackFeature('ai_plan_import', 'tap');
         sys += L10nHelper.planSchemaPromptInstruction;
       }
       final recent = _messages.length > 16 ? _messages.sublist(_messages.length - 16) : _messages;

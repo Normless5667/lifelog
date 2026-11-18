@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/nutrition.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
@@ -101,6 +102,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   }
 
   Future<void> _startNew({List<TrainingPlanExercise>? planExercises, String? note}) async {
+    UsageTelemetryService.instance.trackFeature('start_workout', 'tap');
     final now = DateTime.now();
     final id = await Repo.createWorkout(Workout(
       date: fmtDate(now),

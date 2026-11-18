@@ -1648,7 +1648,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v1.5.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v1.8.0 · 由大肥鱼协助开发';
+
+  @override
+  String get usageSectionTitle => '使用数据与性能分析';
+
+  @override
+  String get usageSwitchTitle => '记录使用情况与性能探针';
+
+  @override
+  String usageCountSub(int count) {
+    return '已记录 $count 条（保留 30 天，仅存本机绝不联网上报）';
+  }
+
+  @override
+  String get usageExportBtn => '导出数据';
+
+  @override
+  String get usageClearBtn => '清空';
+
+  @override
+  String get usageClearConfirm => '确定清空全部已记录的使用数据吗？';
+
+  @override
+  String get usageClearedToast => '使用数据已清空';
+
+  @override
+  String get usageExportDialogTitle => '导出使用数据到电脑分析';
+
+  @override
+  String get usageExportRangeLabel => '选择导出时间范围：';
+
+  @override
+  String get usageRange1d => '最近 1 天';
+
+  @override
+  String get usageRange7d => '最近 7 天';
+
+  @override
+  String get usageRange30d => '最近 30 天';
+
+  @override
+  String get usageRangeAll => '全部数据';
+
+  @override
+  String get usageExportJsonBtn => '导出 JSON（含 Summary 汇总 + 明细）';
+
+  @override
+  String get usageExportCsvBtn => '导出 CSV（方便 Excel 打开）';
 
   @override
   String get diagTitle => '通知与震动诊断';
@@ -1753,7 +1800,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v1.6.0 (Build 7)';
+  String get aboutVersion => '版本 v1.8.0 (Build 8)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';

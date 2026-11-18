@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'usage_telemetry_service.dart';
 import 'widget_service.dart';
 
 /// 手机硬件级计步器服务（基于 Android Sensor.TYPE_STEP_COUNTER）。
@@ -70,6 +71,7 @@ class StepService {
             _lastWrittenSteps = currentSteps;
             _lastWrittenDate = t;
             await Repo.setKv('steps_val_$t', '$currentSteps');
+            UsageTelemetryService.instance.trackFeature('step_sync', 'success');
           }
           if (syncWidget && currentSteps != savedToday) {
             WidgetService.sync(fromStepUpdate: true);

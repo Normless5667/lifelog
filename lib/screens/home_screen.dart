@@ -7,6 +7,7 @@ import '../services/bus_service.dart';
 import '../services/reminder_service.dart';
 import '../services/step_service.dart';
 import '../services/targets.dart';
+import '../services/usage_telemetry_service.dart';
 import '../services/weather_service.dart';
 import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
@@ -155,7 +156,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _open(Widget page) async {
+    final prevPage = UsageTelemetryService.instance.currentPage;
+    if (page is BusScheduleScreen) {
+      UsageTelemetryService.instance.trackFeature('bus_board', 'tap');
+      UsageTelemetryService.instance.enterPage('bus_board', source: 'push');
+    } else if (page is BodyScreen) {
+      UsageTelemetryService.instance.trackFeature('log_weight', 'tap');
+      UsageTelemetryService.instance.enterPage('body', source: 'push');
+    } else if (page is SettingsScreen) {
+      UsageTelemetryService.instance.enterPage('settings', source: 'push');
+    }
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    UsageTelemetryService.instance.enterPage(prevPage, source: 'tab');
     _load();
   }
 
@@ -171,6 +183,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final desc = _quickFoodCtrl.text.trim();
     if (desc.isEmpty || _busyQuickAi) return;
     FocusScope.of(context).unfocus();
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    UsageTelemetryService.instance.trackFeature('ai_log', 'tap');
     setState(() => _busyQuickAi = true);
     try {
       final res = await AiService.estimateFoodText(desc);
@@ -188,11 +202,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           aiNote: res.note,
         ),
       );
+      final dur = DateTime.now().millisecondsSinceEpoch - t0;
       if (saved == true) {
+        UsageTelemetryService.instance.trackFeature('ai_log', 'success', durationMs: dur);
         _quickFoodCtrl.clear();
         _load();
+      } else {
+        UsageTelemetryService.instance.trackFeature('ai_log', 'cancel', durationMs: dur);
       }
     } catch (e) {
+      final dur = DateTime.now().millisecondsSinceEpoch - t0;
+      UsageTelemetryService.instance.trackFeature('ai_log', 'fail', durationMs: dur, errorMsg: '$e');
       if (!mounted) return;
       setState(() => _busyQuickAi = false);
       showAiError(context, e, onOpenSettings: () => _open(const SettingsScreen()));
@@ -463,7 +483,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       onPressed: () async {
                         _weatherSpinCtrl.forward(from: 0);
+                        final t0 = DateTime.now().millisecondsSinceEpoch;
+                        UsageTelemetryService.instance.trackFeature('weather_refresh', 'tap');
                         final fresh = await WeatherService.getWeather(forceRefresh: true);
+                        final dur = DateTime.now().millisecondsSinceEpoch - t0;
+                        UsageTelemetryService.instance.trackFeature(
+                          'weather_refresh',
+                          fresh != null ? 'success' : 'fail',
+                          durationMs: dur,
+                        );
                         if (mounted && fresh != null) setState(() => _weather = fresh);
                       },
                     ),

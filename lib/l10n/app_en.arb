@@ -923,7 +923,26 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v1.5.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v1.8.0 · Co-developed with DaFeiYu",
+
+  "usageSectionTitle": "Usage Telemetry & Analytics",
+  "usageSwitchTitle": "Record App Usage & Performance",
+  "usageCountSub": "{count} events recorded (kept locally for 30 days, never uploaded)",
+  "@usageCountSub": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "usageExportBtn": "Export Data",
+  "usageClearBtn": "Clear",
+  "usageClearConfirm": "Clear all recorded usage telemetry data?",
+  "usageClearedToast": "Usage telemetry data cleared",
+  "usageExportDialogTitle": "Export Usage & Performance Data",
+  "usageExportRangeLabel": "Select Time Range:",
+  "usageRange1d": "Last 1 Day",
+  "usageRange7d": "Last 7 Days",
+  "usageRange30d": "Last 30 Days",
+  "usageRangeAll": "All Time",
+  "usageExportJsonBtn": "Export JSON (Summary + Events)",
+  "usageExportCsvBtn": "Export CSV (For Excel)",
 
   "diagTitle": "Notification & Vibration Diagnostics",
   "diagRefreshTooltip": "Re-check",
@@ -969,7 +988,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v1.6.0 (Build 7)",
+  "aboutVersion": "Version v1.8.0 (Build 8)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
 

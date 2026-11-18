@@ -9,6 +9,7 @@ import '../../db/repo.dart';
 import '../../services/ai_service.dart';
 import '../../services/app_prefs.dart';
 import '../../services/settings_service.dart';
+import '../../services/usage_telemetry_service.dart';
 import '../../services/weather_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
@@ -46,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _manualWeatherCity;
   final _customCityCtrl = TextEditingController();
   bool _searchingCity = false;
+  bool _usageEnabled = true;
+  int _usageEventCount = 0;
 
   static const _chatModelPresets = <String>[
     'deepseek-chat',
@@ -84,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final same = await SettingsService.visionSameAsChat();
     final vis = await SettingsService.visionConfig(raw: true);
     final manualCity = await WeatherService.getManualCity();
+    final usageCount = await UsageTelemetryService.instance.getEventCount();
     if (!mounted) return;
     setState(() {
       _chatUrl.text = chat.baseUrl;
@@ -95,6 +99,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _visionModel.text = vis.model;
       _manualWeatherCity = manualCity?.city;
       _customCityCtrl.text = manualCity?.city ?? '';
+      _usageEnabled = UsageTelemetryService.instance.isEnabled;
+      _usageEventCount = usageCount;
       _loading = false;
     });
   }
@@ -182,6 +188,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ShareParams(
         files: [XFile(file.path)],
         subject: 'life_assistant_export.csv',
+      ),
+    );
+  }
+
+  Future<void> _openUsageExportDialog() async {
+    final l = context.l10n;
+    int? selectedDays = 7;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.analytics_rounded, color: Color(0xFF2B5B84)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l.usageExportDialogTitle)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l.usageExportRangeLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: Text(l.usageRange1d),
+                    selected: selectedDays == 1,
+                    onSelected: (_) => setD(() => selectedDays = 1),
+                  ),
+                  ChoiceChip(
+                    label: Text(l.usageRange7d),
+                    selected: selectedDays == 7,
+                    onSelected: (_) => setD(() => selectedDays = 7),
+                  ),
+                  ChoiceChip(
+                    label: Text(l.usageRange30d),
+                    selected: selectedDays == 30,
+                    onSelected: (_) => setD(() => selectedDays = 30),
+                  ),
+                  ChoiceChip(
+                    label: Text(l.usageRangeAll),
+                    selected: selectedDays == null,
+                    onSelected: (_) => setD(() => selectedDays = null),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await UsageTelemetryService.instance.exportAndShare(
+                    format: 'json',
+                    days: selectedDays,
+                  );
+                },
+                icon: const Icon(Icons.data_object_rounded),
+                label: Text(l.usageExportJsonBtn),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await UsageTelemetryService.instance.exportAndShare(
+                    format: 'csv',
+                    days: selectedDays,
+                  );
+                },
+                icon: const Icon(Icons.table_chart_rounded),
+                label: Text(l.usageExportCsvBtn),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
+          ],
+        ),
       ),
     );
   }
@@ -526,6 +612,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: _save,
                       icon: const Icon(Icons.save_rounded),
                       label: Text(l.settingsSaveAiBtn),
+                    ),
+                    const Divider(height: 28),
+                    SectionTitle(
+                      l.usageSectionTitle,
+                      icon: Icons.bar_chart_rounded,
+                      iconColor: const Color(0xFF2B5B84),
+                    ),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(l.usageSwitchTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              subtitle: Text(l.usageCountSub(_usageEventCount), style: const TextStyle(fontSize: 12)),
+                              value: _usageEnabled,
+                              onChanged: (v) async {
+                                await UsageTelemetryService.instance.setEnabled(v);
+                                final cnt = await UsageTelemetryService.instance.getEventCount();
+                                if (!mounted) return;
+                                setState(() {
+                                  _usageEnabled = v;
+                                  _usageEventCount = cnt;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton.tonalIcon(
+                                    onPressed: _openUsageExportDialog,
+                                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                                    label: Text(l.usageExportBtn),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    if (await confirm(context, l.usageClearConfirm)) {
+                                      await UsageTelemetryService.instance.clearAll();
+                                      final cnt = await UsageTelemetryService.instance.getEventCount();
+                                      if (!context.mounted) return;
+                                      setState(() => _usageEventCount = cnt);
+                                      toast(context, l.usageClearedToast);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                  label: Text(l.usageClearBtn),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const Divider(height: 28),
                     SectionTitle(l.settingsSystemDataSection, icon: Icons.security_rounded, iconColor: const Color(0xFF42A5F5)),
