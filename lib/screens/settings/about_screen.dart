@@ -34,7 +34,7 @@ class AboutScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  Text('版本 v1.3.0 (Build 4)', style: TextStyle(color: cs.outline, fontSize: 13)),
+                  Text('版本 v1.4.0 (Build 5)', style: TextStyle(color: cs.outline, fontSize: 13)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

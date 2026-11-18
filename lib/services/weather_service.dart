@@ -47,6 +47,15 @@ class WeatherInfo {
     return '🌤️';
   }
 
+  String get shortTip {
+    if (isRainy) return '记得带伞 ☔';
+    if (temperature >= 32) return '注意防晒补水 💧';
+    return '适宜出行与运动 💪';
+  }
+
+  String get compactSubtitle =>
+      '${fmtNum(minTemp)}~${fmtNum(maxTemp)}°C · 降水 ${fmtNum(precipProb)}% · $shortTip';
+
   String get summaryLine {
     final t = fmtNum(temperature);
     final range = '${fmtNum(minTemp)}~${fmtNum(maxTemp)}°C';

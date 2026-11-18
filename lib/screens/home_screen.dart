@@ -278,24 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Icon(Icons.wb_sunny_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(width: 8),
-            Text('${now.month}月${now.day}日 ${weekdayNames[now.weekday - 1]}'),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF7A22).withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.local_fire_department_rounded, size: 15, color: Color(0xFFFF7A22)),
-                  const SizedBox(width: 2),
-                  Text(
-                    prefs.tr('连续 $_streak 天', '$_streak d'),
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF7A22)),
-                  ),
-                ],
+            Flexible(
+              child: Text(
+                '${now.month}/${now.day} ${weekdayNames[now.weekday - 1]}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -330,9 +317,10 @@ class _HomeScreenState extends State<HomeScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                 children: [
-                  _weatherAndBusRow(),
+                  _streakAndWeatherSection(),
+                  _busCard(),
                   const SizedBox(height: 8),
                   _quickHeroBanner(),
                   const SizedBox(height: 8),
@@ -378,91 +366,164 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 顶部天气卡片 + 校车下一班倒计时卡片
-  Widget _weatherAndBusRow() {
+  /// 标题下方：打卡连续天数激励胶囊 + 两行精简天气卡片（彻底避免标题栏挤压与换行溢出）
+  Widget _streakAndWeatherSection() {
     final w = _weather;
+    final prefs = AppPrefsController.instance;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFFF7A22).withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded, size: 16, color: Color(0xFFFF7A22)),
+                    const SizedBox(width: 4),
+                    Text(
+                      prefs.tr('🔥 连续打卡 $_streak 天', '🔥 $_streak-Day Streak'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFF7A22),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _streak > 0
+                      ? prefs.tr('习惯正在养成，今天也继续保持！', 'Keep up the great momentum!')
+                      : prefs.tr('记录饮食或训练即可点亮今日打卡', 'Log a meal or workout to start your streak'),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
         if (w != null)
           Card(
-            child: ListTile(
-              leading: Text(w.emoji, style: const TextStyle(fontSize: 30)),
-              title: Text(
-                '${w.city} · ${fmtNum(w.temperature)}°C ${w.conditionText}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              subtitle: Text(w.summaryLine, style: const TextStyle(fontSize: 12)),
-              trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                onPressed: () async {
-                  final fresh = await WeatherService.getWeather(forceRefresh: true);
-                  if (mounted && fresh != null) setState(() => _weather = fresh);
-                },
-              ),
-            ),
-          ),
-        Card(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => _open(const BusScheduleScreen()),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2B5B84).withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84)),
-                  ),
+                  Text(w.emoji, style: const TextStyle(fontSize: 30)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${AppPrefsController.instance.tr('校车', 'Bus')} · $_busStop',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _busRouteName,
-                                style: const TextStyle(fontSize: 10, color: Color(0xFFFF7A22), fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          '${fmtNum(w.temperature)}°C ${w.conditionText} · ${w.city}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 3),
                         Text(
+                          w.compactSubtitle,
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    onPressed: () async {
+                      final fresh = await WeatherService.getWeather(forceRefresh: true);
+                      if (mounted && fresh != null) setState(() => _weather = fresh);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 校车下一班倒计时卡片（两行清晰展示完整站名 + 路线名 + 倒计时，绝不截断站名）
+  Widget _busCard() {
+    final prefs = AppPrefsController.instance;
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => _open(const BusScheduleScreen()),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2B5B84).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${prefs.tr('校车', 'Bus')} · $_busStop',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _busRouteName,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFFFF7A22),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Text(
                           _busMinsUntil >= 0
-                              ? '$_busDirection · 下一班 $_busNextTime，还有 $_busMinsUntil 分钟'
+                              ? '$_busDirection · 下一班 $_busNextTime（还有 $_busMinsUntil 分钟）'
                               : _busDirection,
                           style: const TextStyle(fontSize: 12),
                         ),
                       ],
                     ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -600,7 +661,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(icon, color: Colors.white, size: 26),
                 ),
                 const SizedBox(height: 8),
-                Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
