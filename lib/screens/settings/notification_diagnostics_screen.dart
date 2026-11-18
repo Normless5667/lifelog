@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/reminder_service.dart';
 import '../../widgets/common.dart';
 
-/// 通知诊断页（P0）：显示当前通知权限状态、渠道重要性、震动/声音开关、是否被 ColorOS 等系统降级，
+/// 通知诊断页：显示当前通知权限状态、渠道重要性、震动/声音开关、是否被系统降级，
 /// 并提供一键跳转应用通知设置与渠道设置的按钮。
 class NotificationDiagnosticsScreen extends StatefulWidget {
   const NotificationDiagnosticsScreen({super.key});
@@ -20,7 +20,7 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
   bool _sound = true;
   bool _exactAlarm = true;
   String _channelId = 'course_reminders_v2';
-  String _channelName = '生活助手·强提醒通知';
+  String _channelName = 'course_reminders_v2';
   String _device = 'Android';
 
   @override
@@ -46,19 +46,20 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
     });
   }
 
-  String _importanceLabel(int imp) {
+  String _importanceLabel(BuildContext context, int imp) {
+    final l = context.l10n;
     switch (imp) {
       case 0:
-        return '0 - 已关闭 (NONE)';
+        return l.diagImp0;
       case 1:
-        return '1 - 极低 (MIN，无声无横幅)';
+        return l.diagImp1;
       case 2:
-        return '2 - 低 (LOW，被降级为静默/其他通知)';
+        return l.diagImp2;
       case 3:
-        return '3 - 默认 (DEFAULT，可能无横幅弹窗)';
+        return l.diagImp3;
       case 4:
       case 5:
-        return '$imp - 高/最高 (HIGH/MAX，正常弹出横幅+震动)';
+        return l.diagImpHigh(imp);
       default:
         return '$imp';
     }
@@ -66,19 +67,20 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final allGood = _enabled && _importance >= 4 && _vibrate && _exactAlarm;
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.health_and_safety_rounded, color: Color(0xFF2B5B84)),
-            SizedBox(width: 8),
-            Text('通知与震动诊断'),
+            const Icon(Icons.health_and_safety_rounded, color: Color(0xFF2B5B84)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(l.diagTitle, overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: '重新检测',
+            tooltip: l.diagRefreshTooltip,
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _refresh,
           ),
@@ -108,12 +110,12 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                allGood ? '当前通知与强震动状态正常' : '检测到通知或震动可能被系统限制',
+                                allGood ? l.diagStatusGood : l.diagStatusWarn,
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '设备：$_device\n渠道：$_channelName ($_channelId)',
+                                l.diagDeviceChannelSub(_device, _channelName, _channelId),
                                 style: const TextStyle(fontSize: 12),
                               ),
                             ],
@@ -123,52 +125,52 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                     ),
                   ),
                 ),
-                const SectionTitle('各项权限与系统分级状态', icon: Icons.fact_check_rounded),
+                SectionTitle(l.diagSectionPermissions, icon: Icons.fact_check_rounded),
                 Card(
                   child: Column(
                     children: [
                       _diagRow(
                         ok: _enabled,
-                        title: '应用通知总开关 (areNotificationsEnabled)',
-                        subtitle: _enabled ? '已开启' : '被关闭！将无法收到任何上课或校车提醒',
+                        title: l.diagAppNotifTitle,
+                        subtitle: _enabled ? l.diagAppNotifOn : l.diagAppNotifOff,
                       ),
                       const Divider(height: 1),
                       _diagRow(
                         ok: _importance >= 4,
-                        title: '通知渠道重要性 (Channel Importance)',
-                        subtitle: _importanceLabel(_importance),
+                        title: l.diagImportanceTitle,
+                        subtitle: _importanceLabel(context, _importance),
                       ),
                       const Divider(height: 1),
                       _diagRow(
                         ok: _vibrate,
-                        title: '渠道震动许可 (shouldVibrate)',
-                        subtitle: _vibrate ? '已允许震动（+ 硬件闹钟震动双保险）' : '渠道震动被系统关闭，请点下方按钮开启',
+                        title: l.diagVibrateTitle,
+                        subtitle: _vibrate ? l.diagVibrateOn : l.diagVibrateOff,
                       ),
                       const Divider(height: 1),
                       _diagRow(
                         ok: _sound,
-                        title: '通知提示音 (Sound URI)',
-                        subtitle: _sound ? '已配置提示音' : '静音状态',
+                        title: l.diagSoundTitle,
+                        subtitle: _sound ? l.diagSoundOn : l.diagSoundOff,
                       ),
                       const Divider(height: 1),
                       _diagRow(
                         ok: _exactAlarm,
-                        title: '精确闹钟权限 (canScheduleExactAlarms)',
-                        subtitle: _exactAlarm ? '已授权准时触发' : '未授权精确闹钟，提醒可能延迟',
+                        title: l.diagExactAlarmTitle,
+                        subtitle: _exactAlarm ? l.diagExactAlarmOn : l.diagExactAlarmOff,
                       ),
                     ],
                   ),
                 ),
-                const SectionTitle('OPPO / ColorOS 专属修复操作', icon: Icons.build_circle_rounded),
+                SectionTitle(l.diagSectionColorOs, icon: Icons.build_circle_rounded),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          '如果在 OPPO / Find X8 等机型上通知不弹横幅或不震动，请点击下面两个按钮，把「生活助手」设为允许通知，并将「生活助手·强提醒通知」设为【重要通知】且打开【横幅】与【震动】：',
-                          style: TextStyle(fontSize: 12, height: 1.5),
+                        Text(
+                          l.diagColorOsGuide,
+                          style: const TextStyle(fontSize: 12, height: 1.5),
                         ),
                         const SizedBox(height: 12),
                         FilledButton.icon(
@@ -178,7 +180,7 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                             _refresh();
                           },
                           icon: const Icon(Icons.notifications_active_rounded),
-                          label: const Text('1. 一键打开「生活助手」应用通知设置'),
+                          label: Text(l.diagBtn1AppNotif),
                         ),
                         const SizedBox(height: 8),
                         OutlinedButton.icon(
@@ -188,18 +190,18 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                             _refresh();
                           },
                           icon: const Icon(Icons.tune_rounded),
-                          label: const Text('2. 一键打开「强提醒通知渠道」详细设置'),
+                          label: Text(l.diagBtn2Channel),
                         ),
                         const SizedBox(height: 8),
                         FilledButton.tonalIcon(
                           onPressed: () async {
                             await ReminderService.testNotification();
                             if (context.mounted) {
-                              toast(context, '已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）');
+                              toast(context, l.diagTestSentToast);
                             }
                           },
                           icon: const Icon(Icons.vibration_rounded),
-                          label: const Text('3. 立即发送一条全屏横幅+强震动测试通知'),
+                          label: Text(l.diagBtn3Test),
                         ),
                       ],
                     ),

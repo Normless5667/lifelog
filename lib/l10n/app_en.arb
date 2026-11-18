@@ -1,13 +1,975 @@
 {
   "@@locale": "en",
+
   "appTitle": "Life Assistant",
   "tabToday": "Today",
   "tabSchedule": "Schedule",
   "tabDiet": "Diet",
   "tabWorkout": "Workout",
-  "tabAi": "AI",
-  "settings": "Settings",
-  "bodyData": "Body Data",
-  "busSchedule": "Bus Schedule",
-  "notifDiag": "Notification Check"
+  "tabAi": "AI Coach",
+
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+  "commonEdit": "Edit",
+  "commonAdd": "Add",
+  "commonConfirm": "Confirm",
+  "commonGotIt": "Got it",
+  "commonSkip": "Skip",
+  "commonRefresh": "Refresh",
+  "commonToday": "Today",
+  "commonYesterday": "Yesterday",
+  "commonTomorrow": "Tomorrow",
+  "commonErrorTitle": "Something went wrong",
+  "commonGoSettings": "Open Settings",
+  "commonSavedToast": "Saved successfully",
+  "commonDeleteRecordConfirm": "Delete this record?",
+  "commonAtLeastOneField": "Please fill in at least one field",
+  "commonInvalidNumber": "Please enter a valid number",
+  "commonRangeError": "Range {min}-{max}",
+  "@commonRangeError": {
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "weekdayMon": "Mon",
+  "weekdayTue": "Tue",
+  "weekdayWed": "Wed",
+  "weekdayThu": "Thu",
+  "weekdayFri": "Fri",
+  "weekdaySat": "Sat",
+  "weekdaySun": "Sun",
+
+  "mealBreakfast": "Breakfast",
+  "mealLunch": "Lunch",
+  "mealDinner": "Dinner",
+  "mealSnack": "Snack",
+
+  "homeQuickRecord": "Quick Log",
+  "homeQuickDiet": "Log a Meal / Scan Food",
+  "homeQuickWorkout": "Start Workout / Log Cardio",
+  "homeQuickWeight": "Log Today's Weight",
+  "homeQuickBus": "Bus Board & Switch Stop",
+  "homeHeroSnapMeal": "Scan Food",
+  "homeHeroStartWorkout": "Start Workout",
+  "homeHeroLogWeight": "Log Weight",
+  "homeHeroAiCoach": "AI Plan",
+  "homeQuickLogHint": "Type what you ate (e.g. beef noodle soup with an egg)…",
+  "homeAiQuickLog": "AI Quick Log",
+  "homeStreakDays": "{count, plural, =0{0-day streak} =1{1-day streak} other{{count}-day streak}}",
+  "@homeStreakDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "homeStreakKeepGoing": "Keep up the great momentum!",
+  "homeStreakStartHint": "Log a meal or workout to start your streak",
+  "homeProfilePromptTitle": "Complete Your Fitness Profile",
+  "homeProfilePromptSub": "Take 30s to set height, goal & equipment for dynamic TDEE",
+  "homeTodayClassesWeek": "Today's Classes · Week {week}",
+  "@homeTodayClassesWeek": {
+    "placeholders": {
+      "week": { "type": "int" }
+    }
+  },
+  "homeTodayClasses": "Today's Classes",
+  "homeAllSchedule": "Full Schedule",
+  "homeNoClassesToday": "No classes today — rest up or hit a workout!",
+  "homeTodayWorkoutTitle": "Today's Workout & Cardio",
+  "homeGoWorkout": "Workout",
+  "homeNoWorkoutToday": "No strength or cardio logged today",
+  "homeNoWorkoutSub": "Workout burn automatically increases your daily calorie budget",
+  "homeStartWorkoutBtn": "Start",
+  "homeStrengthSummary": "Strength {count}x ({sets} sets)",
+  "@homeStrengthSummary": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "sets": { "type": "int" }
+    }
+  },
+  "homeCardioSummary": "Cardio {mins} min",
+  "@homeCardioSummary": {
+    "placeholders": {
+      "mins": { "type": "String" }
+    }
+  },
+  "homeWorkoutBurnSummary": "Total activity burn +{kcal} kcal",
+  "@homeWorkoutBurnSummary": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "homeBodyStatus": "Body Status",
+  "homeWeightLabel": "Weight {weight} kg",
+  "@homeWeightLabel": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+  "homeWeightNotLogged": "Weight not logged yet",
+  "homeBodyTargetSub": "Goal: {goal} · Target {kcal} kcal/d · P {protein}g",
+  "@homeBodyTargetSub": {
+    "placeholders": {
+      "goal": { "type": "String" },
+      "kcal": { "type": "String" },
+      "protein": { "type": "String" }
+    }
+  },
+  "homeLogBodyBtn": "Log",
+  "homeAiCoachBannerTitle": "Ask Your AI Coach",
+  "homeAiCoachBannerSub": "Meal advice, workout splits & weekly review based on your logs",
+
+  "stepTitle": "Today's Steps: {steps} / {goal}",
+  "@stepTitle": {
+    "placeholders": {
+      "steps": { "type": "int" },
+      "goal": { "type": "int" }
+    }
+  },
+  "stepUnsupported": "No hardware step sensor on this device (log walking/running in Workout)",
+  "stepPermissionNeeded": "Grant Physical Activity permission to read the hardware pedometer",
+  "stepBurnedSummary": "Step burn +{kcal} kcal (added to today's calorie budget)",
+  "@stepBurnedSummary": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "stepAuthorize": "Grant Access",
+
+  "weatherClear": "Clear",
+  "weatherCloudy": "Cloudy",
+  "weatherFoggy": "Foggy",
+  "weatherRainy": "Rainy",
+  "weatherSnowy": "Snowy",
+  "weatherShowers": "Showers",
+  "weatherThunderstorm": "Thunderstorm",
+  "weatherTipRain": "Bring an umbrella",
+  "weatherTipHot": "Stay hydrated",
+  "weatherTipGreat": "Great for outdoor activity",
+  "weatherCompactSub": "{min}~{max}°C · Precip {precip}% · {tip}",
+  "@weatherCompactSub": {
+    "placeholders": {
+      "min": { "type": "String" },
+      "max": { "type": "String" },
+      "precip": { "type": "String" },
+      "tip": { "type": "String" }
+    }
+  },
+  "weatherSheetTitle": "Weather Location & City (Proxy-Safe)",
+  "weatherAutoLocate": "Auto GPS Location (6h cache)",
+  "weatherSearchCity": "More Cities in Settings",
+
+  "dietRemaining": "Remaining",
+  "dietExceeded": "Over by",
+  "dietConsumedTarget": "Consumed {consumed} / Target {target} kcal",
+  "@dietConsumedTarget": {
+    "placeholders": {
+      "consumed": { "type": "String" },
+      "target": { "type": "String" }
+    }
+  },
+  "dietEstimatedHint": "(Default estimate — tap weight icon to set profile)",
+  "dietProtein": "Protein",
+  "dietCarbs": "Carbs",
+  "dietFat": "Fat",
+  "dietBmr": "BMR",
+  "dietTrainingBurn": "Workout Burn",
+  "dietTodayIntake": "Consumed",
+  "dietSurplus": "Remaining",
+  "dietScanFood": "Scan Food",
+  "dietPickGallery": "Gallery",
+  "dietAiTextEstimate": "AI Text",
+  "dietManualAdd": "Log Meal",
+  "dietEmptyMealHint": "No {meal} logged yet — tap to add or scan food above",
+  "@dietEmptyMealHint": {
+    "placeholders": {
+      "meal": { "type": "String" }
+    }
+  },
+  "dietDeleteMealConfirm": "Delete \"{name}\"?",
+  "@dietDeleteMealConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "dietAiAnalyzing": "AI is analyzing food & calories…",
+  "dietCameraError": "Unable to open camera/gallery: {error}",
+  "@dietCameraError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "dietPhotoHintTitle": "Analyze Food Photo with AI",
+  "dietPhotoHintLabel": "Optional notes",
+  "dietPhotoHintPlaceholder": "e.g. half bowl of rice, skinless chicken leg, less oil",
+  "dietStartAnalyze": "Analyze",
+  "dietTextEstimateTitle": "Estimate Calories from Text",
+  "dietTextEstimateHint": "Describe what you ate, e.g.:\nA bowl of beef noodle soup with a braised egg",
+  "dietEstimateBtn": "Estimate",
+
+  "foodConfirmTitle": "AI Estimate (Editable)",
+  "foodConfirmName": "Food",
+  "foodConfirmAmount": "Portion",
+  "foodConfirmKcal": "Calories kcal",
+  "foodConfirmProtein": "Protein g",
+  "foodConfirmCarbs": "Carbs g",
+  "foodConfirmFat": "Fat g",
+  "foodConfirmSaveBtn": "Add to Today's Diet",
+
+  "mealEditAddTitle": "Log a Meal",
+  "mealEditUpdateTitle": "Edit Meal",
+  "mealEditTypeLabel": "Meal",
+  "mealEditNameLabel": "Food Name *",
+  "mealEditNameRequired": "Please enter a food name",
+  "mealEditAmountLabel": "Portion (e.g. 1 bowl / 200g)",
+  "mealEditKcalLabel": "Calories",
+
+  "busHomeTitle": "Bus · {stop}",
+  "@busHomeTitle": {
+    "placeholders": {
+      "stop": { "type": "String" }
+    }
+  },
+  "busHomeNextCountdown": "{dir} · Next {time} (in {mins} min)",
+  "@busHomeNextCountdown": {
+    "placeholders": {
+      "dir": { "type": "String" },
+      "time": { "type": "String" },
+      "mins": { "type": "int" }
+    }
+  },
+  "busHomeEndedToday": "Service ended today (First bus tomorrow {time})",
+  "@busHomeEndedToday": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busHomeWeekend": "Weekend (Runs Mon–Fri only)",
+  "busBoardTitle": "Live Bus Board",
+  "busStopReminderSettings": "Stop & Reminder Settings",
+  "busRouteActions": "Route Actions",
+  "busMenuSwitchImport": "Switch / Import Route",
+  "busMenuShareJson": "Share Route JSON",
+  "busMenuDownloadTemplate": "Download JSON Template",
+  "busSwitchImportBtn": "Switch",
+  "busMyFavStopLabel": "My Stop: ",
+  "busReminderBadgeOn": "Remind {mins}m prior",
+  "@busReminderBadgeOn": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "busReminderBadgeOff": "Reminder off",
+  "busVibrationSwitchTitle": "Arrival Vibration Reminder (Mon–Fri)",
+  "busRemindBeforeLabel": "Remind Before",
+  "busRemindMinsOption": "{mins} min before",
+  "@busRemindMinsOption": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "busOutboundSegment": "Outbound → BUV",
+  "busInboundSegment": "Inbound ← Home",
+  "busWeekendBanner": "Weekend today (runs Mon–Fri only) — showing weekday schedule preview",
+  "busEndedTodayBanner": "All trips ended for today · First bus tomorrow {time} ({stop})",
+  "@busEndedTodayBanner": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "stop": { "type": "String" }
+    }
+  },
+  "busStatusImminent": "Arriving ≤5m",
+  "busStatusSoon": "Approaching",
+  "busStatusUpcoming": "Scheduled",
+  "busStatusDeparted": "Departed",
+  "busStatusEnded": "Ended Today",
+  "busNextBadge": "NEXT",
+  "busDepartedAtStop": "Passed {stop} at {time}",
+  "@busDepartedAtStop": {
+    "placeholders": {
+      "stop": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "busCountdownHoursMinsSecs": "In {hours}h {mins}m {secs}s",
+  "@busCountdownHoursMinsSecs": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "mins": { "type": "String" },
+      "secs": { "type": "String" }
+    }
+  },
+  "busCountdownMinsSecs": "In {mins}m {secs}s",
+  "@busCountdownMinsSecs": {
+    "placeholders": {
+      "mins": { "type": "String" },
+      "secs": { "type": "String" }
+    }
+  },
+  "busEnRoute": "En Route",
+  "busWaitingDepart": "Waiting",
+  "busArrivingSoon": "Arriving",
+  "busProgressStart": "Start {time}",
+  "@busProgressStart": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busProgressPrev": "Prev {time}",
+  "@busProgressPrev": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busProgressNow": "Now {time}",
+  "@busProgressNow": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busProgressTarget": "Stop {time}",
+  "@busProgressTarget": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busYourFavStopTag": "← Your Stop",
+  "busFooterTipTitle": "Tip: Tap any stop inside a card to set it as your favorite stop",
+  "busFooterTipSub": "Sorted by upcoming departure. ≤5 min alerts with red-orange breathing glow; departed buses sink to the bottom.",
+  "busFavStopToast": "Favorite stop updated to {stop}",
+  "@busFavStopToast": {
+    "placeholders": {
+      "stop": { "type": "String" }
+    }
+  },
+  "busSwitchedRouteToast": "Switched route to: {name}",
+  "@busSwitchedRouteToast": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "busImportedRouteToast": "Imported & activated route: {name}",
+  "@busImportedRouteToast": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "busValidationFailedTitle": "Route Validation Failed",
+  "busSheetTitle": "Switch or Manage Bus Routes",
+  "busDownloadTemplateBtn": "Template",
+  "busBadgeBuiltin": "Built-in",
+  "busBadgeImported": "Imported",
+  "busBadgeCustom": "Custom",
+  "busStopsCountSub": "Outbound {outCount} stops · Inbound {inCount} stops",
+  "@busStopsCountSub": {
+    "placeholders": {
+      "outCount": { "type": "int" },
+      "inCount": { "type": "int" }
+    }
+  },
+  "busDeleteRouteConfirm": "Delete route \"{name}\"?",
+  "@busDeleteRouteConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "busManualCreateBtn": "Create Route",
+  "busImportJsonBtn": "Import JSON",
+  "busCustomDialogCreateTitle": "Create Custom Bus Route",
+  "busCustomDialogEditTitle": "Edit Bus Route",
+  "busCustomRouteNameLabel": "Route Name *",
+  "busCustomSchoolLabel": "School / Organization (Optional)",
+  "busCustomOutboundHint": "Outbound stops & times (one per line: Stop Name: 07:30, 09:30)",
+  "busCustomInboundHint": "Inbound stops & times (one per line: Stop Name: 12:00, 17:30)",
+  "busCustomValidateSaveBtn": "Validate & Save",
+
+  "scheduleWeekTitle": "Week {week}",
+  "@scheduleWeekTitle": {
+    "placeholders": {
+      "week": { "type": "int" }
+    }
+  },
+  "scheduleCurrentWeek": "Current Week",
+  "scheduleBackToCurrent": "Tap for Current Week",
+  "scheduleImportTitle": "Import Schedule",
+  "scheduleImportSub": "Import from screenshot, camera photo, or pasted course text",
+  "scheduleImportPresetTitle": "Load Default BUV Schedule",
+  "scheduleImportPresetSub": "Database Principles / Machine Learning / UX Design (Mon–Fri)",
+  "scheduleImportGalleryTitle": "Pick Schedule Screenshot (AI)",
+  "scheduleImportGallerySub": "Extract all courses automatically from a timetable screenshot",
+  "scheduleImportCameraTitle": "Scan Schedule with Camera",
+  "scheduleImportCameraSub": "Take a photo of your screen or printed schedule",
+  "scheduleImportTextTitle": "Paste Course Text / JSON",
+  "scheduleImportTextSub": "Paste course list text and let AI parse it",
+  "schedulePasteDialogTitle": "Paste Schedule Text",
+  "schedulePasteDialogHint": "Paste course text from your school portal, e.g.:\nDatabase Principles Mon 1-3 Weeks 1-16 E.3-8",
+  "scheduleAiParseBtn": "AI Parse",
+  "scheduleAiParsing": "AI is extracting all courses…",
+  "scheduleConfirmImportTitle": "Found {count} courses (select to import)",
+  "@scheduleConfirmImportTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scheduleReplaceAllSwitch": "Clear existing courses before importing",
+  "scheduleWeekEvery": "Every week",
+  "scheduleWeekOdd": "Odd weeks",
+  "scheduleWeekEven": "Even weeks",
+  "scheduleCourseImportSub": "{weekday} Sec {start}-{end} · Wk {startWeek}-{endWeek} ({weekType})",
+  "@scheduleCourseImportSub": {
+    "placeholders": {
+      "weekday": { "type": "String" },
+      "start": { "type": "int" },
+      "end": { "type": "int" },
+      "startWeek": { "type": "int" },
+      "endWeek": { "type": "int" },
+      "weekType": { "type": "String" }
+    }
+  },
+  "scheduleConfirmImportBtn": "Confirm Import",
+  "scheduleImportedToast": "Imported {count} courses",
+  "@scheduleImportedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scheduleSettingsTitle": "Schedule & Class Reminders",
+  "scheduleColorOsWarnTitle": "Notification Permission May Be Restricted",
+  "scheduleColorOsWarnSub": "Open system notification settings and enable High Importance, Banner & Vibration for class reminders.",
+  "scheduleOpenChannelSettingsBtn": "Enable High Priority & Vibration",
+  "scheduleEnableReminderSwitch": "Pre-Class Vibration & Banner Alert",
+  "scheduleEnableReminderSub": "Hardware alarm vibration + heads-up notification before class",
+  "scheduleDiagnoseBtn": "Diagnostics",
+  "scheduleSysNotifBtn": "System Settings",
+  "scheduleTestVibBtn": "Test Vibration",
+  "scheduleTestVibToast": "Triggered strong vibration test alert!",
+  "scheduleUseSysClockSwitch": "Also Set System Clock Alarm (Optional)",
+  "scheduleUseSysClockSub": "Creates an alarm in the phone's built-in Clock app for 100% reliability",
+  "scheduleWriteNextAlarmBtn": "Add Next Class to System Clock",
+  "scheduleWriteNextAlarmToast": "System alarm set for next class: {info}",
+  "@scheduleWriteNextAlarmToast": {
+    "placeholders": {
+      "info": { "type": "String" }
+    }
+  },
+  "scheduleNoUpcomingClassToast": "No upcoming classes in the next 7 days",
+  "scheduleFirstWeekMonLabel": "Monday of Week 1",
+  "schedulePickSemesterStartHelp": "Pick any day in Week 1 of the semester",
+  "scheduleSectionsPerDayLabel": "Periods per Day",
+  "scheduleSectionsCount": "{count} periods",
+  "@scheduleSectionsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scheduleAddCourseTooltip": "Add Course",
+  "scheduleRainBanner": "Rain expected today ({precip}% precip) — remember to bring an umbrella!",
+  "@scheduleRainBanner": {
+    "placeholders": {
+      "precip": { "type": "String" }
+    }
+  },
+  "scheduleEmptyTapHint": "Tap any cell to add, or ",
+  "scheduleEmptyImportBtn": "Import from Screenshot / Text",
+  "scheduleMonthHeader": "M{month}",
+  "@scheduleMonthHeader": {
+    "placeholders": {
+      "month": { "type": "int" }
+    }
+  },
+  "scheduleCourseDetailSection": "{weekday} {timeRange} (Period {start}-{end})",
+  "@scheduleCourseDetailSection": {
+    "placeholders": {
+      "weekday": { "type": "String" },
+      "timeRange": { "type": "String" },
+      "start": { "type": "int" },
+      "end": { "type": "int" }
+    }
+  },
+  "scheduleCourseDetailWeeks": "Weeks {startWeek}-{endWeek} · {weekType}",
+  "@scheduleCourseDetailWeeks": {
+    "placeholders": {
+      "startWeek": { "type": "int" },
+      "endWeek": { "type": "int" },
+      "weekType": { "type": "String" }
+    }
+  },
+  "scheduleDeleteCourseConfirm": "Delete course \"{name}\"?",
+  "@scheduleDeleteCourseConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "courseEditAddTitle": "Add Course",
+  "courseEditUpdateTitle": "Edit Course",
+  "courseEditNameLabel": "Course Name *",
+  "courseEditNameRequired": "Please enter course name",
+  "courseEditLocationLabel": "Classroom",
+  "courseEditTeacherLabel": "Instructor",
+  "courseEditWeekdayTitle": "Day of Week",
+  "courseEditSectionTitle": "Periods & Time",
+  "courseEditStartSection": "Start Period",
+  "courseEditEndSection": "End Period",
+  "courseEditSectionItem": "Period {num} ({time})",
+  "@courseEditSectionItem": {
+    "placeholders": {
+      "num": { "type": "int" },
+      "time": { "type": "String" }
+    }
+  },
+  "courseEditSectionOrderError": "End period cannot be earlier than start period",
+  "courseEditWeeksTitle": "Week Range & Frequency",
+  "courseEditWeeksSummary": "Weeks {start} - {end} · {timeRange}",
+  "@courseEditWeeksSummary": {
+    "placeholders": {
+      "start": { "type": "int" },
+      "end": { "type": "int" },
+      "timeRange": { "type": "String" }
+    }
+  },
+  "courseEditColorTitle": "Course Color",
+  "courseEditSaveBtn": "Save Course",
+
+  "workoutTitle": "Workout & Cardio",
+  "workoutExerciseLibBtn": "Exercises",
+  "workoutStartStrengthBtn": "Start Strength",
+  "workoutLogCardioBtn": "Log Cardio",
+  "workoutTabStrength": "Strength (Sets & Timer)",
+  "workoutTabCardio": "Cardio (MET Burn)",
+  "workoutActivePlanTitle": "Active Plan: {name}",
+  "@workoutActivePlanTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "workoutTapSplitHint": "Tap a split to start",
+  "workoutPlanSplitChip": "{day} · {focus} ({count} exercises)",
+  "@workoutPlanSplitChip": {
+    "placeholders": {
+      "day": { "type": "String" },
+      "focus": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "workoutVolumeChartTitle": "Recent Strength Volume (kg)",
+  "workoutHistoryTitle": "Strength Sessions",
+  "workoutEmptyStrengthHint": "No strength workouts logged yet\nTap below to start a timed session, or ask AI Coach for a custom split",
+  "workoutEmptyStrengthBtn": "Start First Workout",
+  "workoutEmptySessionTitle": "Empty Session",
+  "workoutSessionDuration": "{mins} min",
+  "@workoutSessionDuration": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "workoutSessionSets": "{sets} working sets",
+  "@workoutSessionSets": {
+    "placeholders": {
+      "sets": { "type": "int" }
+    }
+  },
+  "workoutSessionVolume": "Vol {volume} kg",
+  "@workoutSessionVolume": {
+    "placeholders": {
+      "volume": { "type": "String" }
+    }
+  },
+  "workoutSessionBurn": "~{kcal} kcal",
+  "@workoutSessionBurn": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutDeleteSessionConfirm": "Delete this workout session?",
+  "workoutEmptyCardioHint": "No cardio sessions logged yet\nLog walking, running, cycling, swimming or jump rope with automatic MET calorie burn",
+  "workoutEmptyCardioBtn": "Add Cardio Session",
+  "workoutCardioItemTitle": "{type} · {mins} min",
+  "@workoutCardioItemTitle": {
+    "placeholders": {
+      "type": { "type": "String" },
+      "mins": { "type": "String" }
+    }
+  },
+  "workoutDeleteCardioConfirm": "Delete this cardio record?",
+  "workoutCardioSavedToast": "Cardio logged: ~{kcal} kcal burned (added to today's calorie budget)",
+  "@workoutCardioSavedToast": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+
+  "cardioDialogAddTitle": "Log Cardio",
+  "cardioDialogEditTitle": "Edit Cardio",
+  "cardioTypeLabel": "Cardio Type",
+  "cardioDurationLabel": "Duration *",
+  "cardioMinutesSuffix": "min",
+  "cardioDistanceLabel": "Distance (Opt)",
+  "cardioEstBurnLabel": "Estimated Burn ({weight}kg × MET {met})",
+  "@cardioEstBurnLabel": {
+    "placeholders": {
+      "weight": { "type": "String" },
+      "met": { "type": "String" }
+    }
+  },
+  "cardioDurationRequired": "Please enter a duration greater than 0",
+  "cardioTypeWalk": "Walking",
+  "cardioTypeBriskWalk": "Brisk Walk",
+  "cardioTypeJog": "Jogging",
+  "cardioTypeRun": "Running",
+  "cardioTypeCycle": "Cycling",
+  "cardioTypeSwim": "Swimming",
+  "cardioTypeJumpRope": "Jump Rope",
+  "cardioTypeOther": "Other",
+
+  "sessionHeaderStats": "{sets} sets · {volume} kg",
+  "@sessionHeaderStats": {
+    "placeholders": {
+      "sets": { "type": "int" },
+      "volume": { "type": "String" }
+    }
+  },
+  "sessionFinishBtn": "Finish",
+  "sessionAddExerciseBtn": "Add Exercise",
+  "sessionEmptyHint": "Workout timer is running!\nTap below to add exercises, and tap ✓ on each set to start the rest timer",
+  "sessionSelectExerciseBtn": "Select Exercise",
+  "sessionRestActive": "Rest Timer: {clock}{paused}",
+  "@sessionRestActive": {
+    "placeholders": {
+      "clock": { "type": "String" },
+      "paused": { "type": "String" }
+    }
+  },
+  "sessionRestPausedTag": " (Paused)",
+  "sessionRestResume": "Resume",
+  "sessionRestPause": "Pause",
+  "sessionRestSkip": "Skip",
+  "sessionRestDurationLabel": "Rest Timer:",
+  "sessionRestStartNow": "Start Rest Timer",
+  "sessionRestFinishedToast": "Rest finished! Time for your next set",
+  "sessionPlanTargetHint": "Target: {sets} sets × {reps}{weightHint}",
+  "@sessionPlanTargetHint": {
+    "placeholders": {
+      "sets": { "type": "int" },
+      "reps": { "type": "String" },
+      "weightHint": { "type": "String" }
+    }
+  },
+  "sessionLastCardioHint": "Last: {records}",
+  "@sessionLastCardioHint": {
+    "placeholders": {
+      "records": { "type": "String" }
+    }
+  },
+  "sessionLastStrengthHint": "Last: {records}",
+  "@sessionLastStrengthHint": {
+    "placeholders": {
+      "records": { "type": "String" }
+    }
+  },
+  "sessionWarmupTag": "W",
+  "sessionCardioDuration": "Duration",
+  "sessionCardioMins": "min",
+  "sessionStrengthWeight": "Weight",
+  "sessionCardioSteps": "Steps",
+  "sessionCardioStepsUnit": "steps",
+  "sessionStrengthReps": "Reps",
+  "sessionStrengthRepsUnit": "reps",
+  "sessionCompleteSetTooltip": "Complete set & start rest timer",
+  "sessionAddCardioRow": "Add another interval",
+  "sessionAddStrengthRow": "Add Set (tap ✓ to start rest timer)",
+  "sessionFinishedToast": "Workout complete! {mins} min · {sets} sets · Vol {volume} kg · ~{kcal} kcal",
+  "@sessionFinishedToast": {
+    "placeholders": {
+      "mins": { "type": "int" },
+      "sets": { "type": "int" },
+      "volume": { "type": "String" },
+      "kcal": { "type": "String" }
+    }
+  },
+
+  "exerciseSelectTitle": "Select Exercise",
+  "exerciseLibTitle": "Exercise Library",
+  "exerciseAddCustomBtn": "Custom Exercise",
+  "exerciseCustomDialogTitle": "Add Custom Exercise",
+  "exerciseCategoryLabel": "Muscle Group",
+  "exerciseNameLabel": "Exercise Name",
+  "exerciseCustomSubtitle": "{category} · Custom",
+  "@exerciseCustomSubtitle": {
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+  "exercisePresetSubtitle": "{category} Training",
+  "@exercisePresetSubtitle": {
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+  "exerciseDeleteConfirm": "Delete custom exercise \"{name}\"?",
+  "@exerciseDeleteConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "catChest": "Chest",
+  "catBack": "Back",
+  "catLegs": "Legs",
+  "catShoulders": "Shoulders",
+  "catArms": "Arms",
+  "catCore": "Core",
+  "catCardio": "Cardio",
+  "catOther": "Other",
+
+  "bodyTitle": "Body Metrics",
+  "bodyProfileBtn": "Profile",
+  "bodyLogWeightBtn": "Log Weight",
+  "bodyNoProfileTitle": "Fitness Profile Incomplete",
+  "bodyNoProfileSub": "Tap Profile at the top right for accurate BMR & TDEE calculation",
+  "bodyWeightTrendTitle": "Weight Trend",
+  "bodyEmptyChartHint": "Log your first weight entry to see the trend chart",
+  "bodyEmptyChartBtn": "Log Weight Now",
+  "bodyHistoryTitle": "History",
+  "bodyEmptyHistoryHint": "No body metrics logged yet\nMorning fasting weight is the most consistent",
+  "bodyEmptyHistoryBtn": "Log Today's Weight",
+  "bodyFatTag": "Body Fat {fat}%",
+  "@bodyFatTag": {
+    "placeholders": {
+      "fat": { "type": "String" }
+    }
+  },
+  "bodyWaistTag": "Waist {waist} cm",
+  "@bodyWaistTag": {
+    "placeholders": {
+      "waist": { "type": "String" }
+    }
+  },
+  "bodyStatWeight": "Weight kg",
+  "bodyStatBmr": "BMR",
+  "bodyStatTdee": "TDEE",
+  "bodyStatTargetKcal": "Target kcal",
+  "bodyStatGoal": "Current Goal",
+  "bodyChartTargetLine": "Goal {weight}kg",
+  "@bodyChartTargetLine": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+  "bodyDialogTitle": "Log Body Metrics",
+  "bodyWeightLabel": "Weight",
+  "bodyFatLabel": "Body Fat (Optional)",
+  "bodyWaistLabel": "Waist (Optional)",
+  "bmiUnderweight": "Underweight",
+  "bmiNormal": "Normal",
+  "bmiOverweight": "Overweight",
+  "bmiObese": "Obese",
+
+  "profileTitle": "Body & Training Profile",
+  "profileGenderSection": "Gender",
+  "profileMale": "Male",
+  "profileFemale": "Female",
+  "profileAgeHeightSection": "Age & Height",
+  "profileAgeLabel": "Age",
+  "profileAgeUnit": "yrs",
+  "profileHeightLabel": "Height",
+  "profileActivityGoalSection": "Activity Level & Goal",
+  "profileActivityLabel": "Daily Non-Exercise Activity Level",
+  "profileTargetWeightLabel": "Target Weight (Opt, shown on weight chart)",
+  "profileTrainingConditionSection": "Training Setup (Used by AI Coach)",
+  "profileExperienceLabel": "Training Experience",
+  "profileWeeklyDaysLabel": "Days / Week",
+  "profileWeeklyDaysItem": "{days} days/wk",
+  "@profileWeeklyDaysItem": {
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "profileSessionMinsLabel": "Session Length",
+  "profileSessionMinsItem": "{mins} min",
+  "@profileSessionMinsItem": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "profileEquipmentLabel": "Available Equipment",
+  "profileInjuriesLabel": "Injuries or Limitations (Optional)",
+  "profileInjuriesHint": "e.g. knee discomfort, lower back issue, none",
+  "profileSaveBtn": "Save Profile",
+
+  "onboardingTitle": "Personalize Your Health & Training",
+  "onboardingIntro": "Take 30 seconds to fill in your basics. We'll calculate your dynamic calorie budget and include your setup when chatting with AI Coach.",
+  "onboardingStep1": "1. Basic Body Metrics",
+  "onboardingCurrentWeight": "Current Weight",
+  "onboardingTargetWeight": "Target Weight (Opt)",
+  "onboardingStep2": "2. Goal & Daily Activity",
+  "onboardingStep3": "3. Experience & Equipment",
+  "onboardingFinishBtn": "Complete & Initialize Plan",
+  "onboardingSavedToast": "Profile saved! TDEE and AI Coach context initialized.",
+
+  "goalLose": "Fat Loss",
+  "goalMaintain": "Maintain",
+  "goalGain": "Muscle Gain",
+  "goalFitness": "Fitness & Conditioning",
+
+  "actSedentary": "Sedentary (Desk job, little exercise)",
+  "actLight": "Lightly Active (1–3 days/wk)",
+  "actModerate": "Moderately Active (3–5 days/wk)",
+  "actHigh": "Very Active (6–7 days/wk)",
+  "actExtreme": "Extra Active (Physical job / 2x daily)",
+
+  "expNone": "Complete Beginner",
+  "expBeginner": "Under 6 Months",
+  "expIntermediate": "1–3 Years",
+  "expAdvanced": "3+ Years",
+
+  "equipBodyweight": "Bodyweight Only",
+  "equipDumbbell": "Dumbbells",
+  "equipBarbell": "Barbell & Rack",
+  "equipGym": "Full Commercial Gym",
+
+  "aiTitle": "AI Health Coach",
+  "aiClearChatTooltip": "Clear Chat",
+  "aiClearChatConfirm": "Clear all chat history?",
+  "aiSettingsTooltip": "AI Settings",
+  "aiQuickGeneratePlan": "Generate Workout Plan (Importable)",
+  "aiQuickTodaySummary": "Today's Review",
+  "aiQuickWeekSummary": "Weekly Review",
+  "aiQuickNextMeal": "What to Eat Next",
+  "aiPromptGeneratePlan": "Please design a weekly workout split based on my profile (goal, experience, weekly days, session duration, equipment, injuries) and free slots in my class schedule, and include the importable JSON workout plan block at the end.",
+  "aiPromptTodaySummary": "Please review my meals and workouts logged today, and suggest what I should eat for my next meal.",
+  "aiPromptWeekSummary": "Please summarize my calorie intake, macros, and training over the last 7 days, highlighting strengths and areas to improve.",
+  "aiPromptNextMeal": "Based on my remaining calories and macro targets today, recommend 2-3 practical meal options.",
+  "aiEmptyHint": "AI Coach automatically reads your profile, meals, workouts & class schedule\nTap \"Generate Workout Plan\" above to create a custom split and import it in one tap",
+  "aiEmptyActionBtn": "Generate My Custom Plan",
+  "aiImportPlanBtn": "Import to Workout Plan ({name})",
+  "@aiImportPlanBtn": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "aiPlanImportedToast": "Imported \"{name}\"! Open the Workout tab and tap any split to start training",
+  "@aiPlanImportedToast": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "aiInputHint": "Ask about nutrition, workouts, or say \"Build me a workout plan\"…",
+
+  "settingsTitle": "Settings",
+  "settingsAppearanceSection": "Appearance, Font & Language",
+  "settingsThemeMode": "Theme Mode",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsFontSize": "Font Size",
+  "settingsFontSmall": "Small",
+  "settingsFontMedium": "Standard",
+  "settingsFontLarge": "Large",
+  "settingsLanguage": "Language",
+  "settingsLangSystem": "System",
+  "settingsLangZh": "简体中文",
+  "settingsLangEn": "English",
+  "settingsWeatherSection": "Weather City & Location",
+  "settingsWeatherModeAuto": "Current: Auto GPS Location (6h cache, IP fallback)",
+  "settingsWeatherModeManual": "Current: Locked City · {city}",
+  "@settingsWeatherModeManual": {
+    "placeholders": {
+      "city": { "type": "String" }
+    }
+  },
+  "settingsWeatherProxyHint": "If using a VPN/proxy without GPS, pick your city below to lock accurate local weather:",
+  "settingsWeatherAutoChip": "Auto GPS",
+  "settingsWeatherAutoToast": "Switched to Auto GPS location and refreshed weather",
+  "settingsWeatherLockedToast": "Locked weather city to: {city}",
+  "@settingsWeatherLockedToast": {
+    "placeholders": {
+      "city": { "type": "String" }
+    }
+  },
+  "settingsWeatherCustomLabel": "Search Custom City",
+  "settingsWeatherCustomHint": "e.g. Ho Chi Minh City / Hanoi / London",
+  "settingsWeatherSetBtn": "Set City",
+  "settingsChatAiSection": "Chat AI Model (DeepSeek / OpenAI)",
+  "settingsChatAiHint": "Pick a provider preset below or enter a Base URL. Your API Key is stored encrypted on device.",
+  "settingsPresetDeepseek": "DeepSeek (Default)",
+  "settingsPresetOpenai": "OpenAI",
+  "settingsPresetQwen": "Qwen (DashScope)",
+  "settingsBaseUrlLabel": "Base URL (e.g. deepseek or full URL)",
+  "settingsApiKeyLabel": "API Key",
+  "settingsModelNameLabel": "Model Name",
+  "settingsTestingBtn": "Testing…",
+  "settingsTestConnectionBtn": "Test Connection",
+  "settingsTestSuccessToast": "Connected: {reply}",
+  "@settingsTestSuccessToast": {
+    "placeholders": {
+      "reply": { "type": "String" }
+    }
+  },
+  "settingsVisionSection": "Food Scanner Vision Model",
+  "settingsVisionSameSwitch": "Share configuration with Chat AI model",
+  "settingsVisionSameSub": "Turn off to select a dedicated vision model (e.g. Qwen-VL / GPT-4o mini) if your chat model doesn't support images",
+  "settingsVisionBaseUrlLabel": "Vision Base URL",
+  "settingsVisionApiKeyLabel": "Vision API Key",
+  "settingsVisionModelLabel": "Vision Model Name",
+  "settingsTestVisionBtn": "Test Vision API",
+  "settingsSaveAiBtn": "Save AI Configuration",
+  "settingsSystemDataSection": "Notifications & Data Backup",
+  "settingsDiagTileTitle": "Notification & Vibration Diagnostics",
+  "settingsDiagTileSub": "Fix silent notifications, enable high-priority banners & alarms",
+  "settingsExportJsonTitle": "Export Full Backup (JSON)",
+  "settingsExportJsonSub": "Includes schedule, meals, workouts, cardio & body metrics",
+  "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
+  "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
+  "settingsAboutTileTitle": "About Life Assistant",
+  "settingsAboutTileSub": "Version v1.5.0 · Co-developed with DaFeiYu",
+
+  "diagTitle": "Notification & Vibration Diagnostics",
+  "diagRefreshTooltip": "Re-check",
+  "diagStatusGood": "Notifications & Strong Vibration Ready",
+  "diagStatusWarn": "Notifications or Vibration May Be Restricted",
+  "diagDeviceChannelSub": "Device: {device}\nChannel: {channelName} ({channelId})",
+  "@diagDeviceChannelSub": {
+    "placeholders": {
+      "device": { "type": "String" },
+      "channelName": { "type": "String" },
+      "channelId": { "type": "String" }
+    }
+  },
+  "diagSectionPermissions": "Permission & Channel Status",
+  "diagAppNotifTitle": "App Notifications (areNotificationsEnabled)",
+  "diagAppNotifOn": "Enabled",
+  "diagAppNotifOff": "Disabled — you won't receive class or bus reminders",
+  "diagImportanceTitle": "Channel Importance",
+  "diagImp0": "0 - Disabled (NONE)",
+  "diagImp1": "1 - Min (Silent, no banner)",
+  "diagImp2": "2 - Low (Downgraded to silent notification)",
+  "diagImp3": "3 - Default (May not pop up banner)",
+  "diagImpHigh": "{imp} - High/Max (Banner + Vibration enabled)",
+  "@diagImpHigh": {
+    "placeholders": {
+      "imp": { "type": "int" }
+    }
+  },
+  "diagVibrateTitle": "Channel Vibration (shouldVibrate)",
+  "diagVibrateOn": "Allowed (+ hardware alarm vibration backup)",
+  "diagVibrateOff": "Channel vibration disabled — tap below to enable",
+  "diagSoundTitle": "Notification Sound",
+  "diagSoundOn": "Sound configured",
+  "diagSoundOff": "Muted",
+  "diagExactAlarmTitle": "Exact Alarm Permission (canScheduleExactAlarms)",
+  "diagExactAlarmOn": "Authorized for exact timing",
+  "diagExactAlarmOff": "Not authorized — reminders may be delayed",
+  "diagSectionColorOs": "ColorOS / Android Quick Fix",
+  "diagColorOsGuide": "If notifications don't pop up or vibrate on OPPO / ColorOS devices, tap the buttons below to allow notifications and set the channel to High Importance with Banner & Vibration enabled:",
+  "diagBtn1AppNotif": "1. Open App Notification Settings",
+  "diagBtn2Channel": "2. Open Reminder Channel Settings",
+  "diagBtn3Test": "3. Send Full-Screen Banner + Vibration Test",
+  "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
+
+  "aboutTitle": "About · Life Assistant",
+  "aboutVersion": "Version v1.5.0 (Build 6)",
+  "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
+  "aboutDesc": "All-in-one personal assistant featuring class schedules, live airport-style shuttle bus board (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach."
 }

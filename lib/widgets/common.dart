@@ -3,18 +3,22 @@ import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
 import '../services/targets.dart';
 import '../utils/date_utils.dart';
+import '../utils/l10n_ext.dart';
+
+export '../utils/l10n_ext.dart' show L10nBuildContext, L10nHelper, categoryVisual, courseIcon, foodEmoji;
 
 /// 显示错误；如果是需要配置 AI 的错误，提供跳转按钮。
 void showAiError(BuildContext context, Object e, {VoidCallback? onOpenSettings}) {
+  final l = context.l10n;
   final needsConfig = e is AiException && e.needsConfig;
   showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.redAccent),
-          SizedBox(width: 8),
-          Text('出错了'),
+          const Icon(Icons.error_outline, color: Colors.redAccent),
+          const SizedBox(width: 8),
+          Text(l.commonErrorTitle),
         ],
       ),
       content: SingleChildScrollView(child: Text(e.toString())),
@@ -26,9 +30,9 @@ void showAiError(BuildContext context, Object e, {VoidCallback? onOpenSettings})
               onOpenSettings();
             },
             icon: const Icon(Icons.settings),
-            label: const Text('去设置'),
+            label: Text(l.commonGoSettings),
           ),
-        FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('知道了')),
+        FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonGotIt)),
       ],
     ),
   );
@@ -40,68 +44,19 @@ void toast(BuildContext context, String msg) {
     ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
 }
 
-Future<bool> confirm(BuildContext context, String message, {String ok = '删除'}) async {
+Future<bool> confirm(BuildContext context, String message, {String? ok}) async {
+  final l = context.l10n;
   final r = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(ok)),
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(ok ?? l.commonDelete)),
       ],
     ),
   );
   return r ?? false;
-}
-
-/// 根据食物名返回生动的 Emoji 图标
-String foodEmoji(String name) {
-  final n = name.toLowerCase();
-  if (n.contains('鸡') || n.contains('chicken')) return '🍗';
-  if (n.contains('牛') || n.contains('beef') || n.contains('steak')) return '🥩';
-  if (n.contains('鱼') || n.contains('虾') || n.contains('海鲜')) return '🐟';
-  if (n.contains('蛋') || n.contains('egg')) return '🍳';
-  if (n.contains('奶') || n.contains('milk') || n.contains('豆浆')) return '🥛';
-  if (n.contains('面') || n.contains('粉') || n.contains('noodle')) return '🍜';
-  if (n.contains('饭') || n.contains('米') || n.contains('rice')) return '🍚';
-  if (n.contains('面包') || n.contains('吐司') || n.contains('三明治')) return '🥪';
-  if (n.contains('菜') || n.contains('沙拉') || n.contains('西兰花')) return '🥗';
-  if (n.contains('果') || n.contains('香蕉') || n.contains('苹果')) return '🍎';
-  if (n.contains('咖啡') || n.contains('美式') || n.contains('拿铁')) return '☕';
-  return '🍱';
-}
-
-/// 根据课程名返回专属图标
-IconData courseIcon(String name) {
-  final n = name.toLowerCase();
-  if (n.contains('database') || n.contains('数据')) return Icons.storage_rounded;
-  if (n.contains('machine') || n.contains('ai') || n.contains('算法')) return Icons.psychology_rounded;
-  if (n.contains('ux') || n.contains('design') || n.contains('设计')) return Icons.palette_rounded;
-  if (n.contains('english') || n.contains('英语')) return Icons.translate_rounded;
-  if (n.contains('math') || n.contains('数学')) return Icons.functions_rounded;
-  return Icons.menu_book_rounded;
-}
-
-/// 根据训练部位返回专属颜色与图标
-({IconData icon, Color color, String emoji}) categoryVisual(String cat) {
-  switch (cat) {
-    case '胸':
-      return (icon: Icons.shield_rounded, color: const Color(0xFFEF5350), emoji: '🔥');
-    case '背':
-      return (icon: Icons.view_stream_rounded, color: const Color(0xFF42A5F5), emoji: '🪽');
-    case '腿':
-      return (icon: Icons.directions_run_rounded, color: const Color(0xFFAB47BC), emoji: '🦵');
-    case '肩':
-      return (icon: Icons.accessibility_new_rounded, color: const Color(0xFFFFA726), emoji: '💪');
-    case '手臂':
-      return (icon: Icons.fitness_center_rounded, color: const Color(0xFF26A69A), emoji: '🦾');
-    case '核心':
-      return (icon: Icons.grid_view_rounded, color: const Color(0xFF66BB6A), emoji: '⚡');
-    case '有氧':
-      return (icon: Icons.favorite_rounded, color: const Color(0xFFEC407A), emoji: '🏃');
-    default:
-      return (icon: Icons.sports_gymnastics_rounded, color: const Color(0xFF5C6BC0), emoji: '🏋️');
-  }
 }
 
 /// 热量进度环 + 三大营养素视觉卡片（带彩色渐变背景与微图标）
@@ -114,6 +69,7 @@ class CalorieSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final remaining = targets.calories - totals.calories;
     final progress = targets.calories <= 0 ? 0.0 : (totals.calories / targets.calories).clamp(0.0, 1.0);
@@ -173,7 +129,7 @@ class CalorieSummaryCard extends StatelessWidget {
                                     ),
                               ),
                               Text(
-                                over ? '超出 kcal' : '剩余额度',
+                                over ? l.dietExceeded : l.dietRemaining,
                                 style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.outline),
                               ),
                             ],
@@ -193,19 +149,39 @@ class CalorieSummaryCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '摄入 ${fmtNum(totals.calories)} / 目标 ${fmtNum(targets.calories)} kcal',
+                                l.dietConsumedTarget(fmtNum(totals.calories), fmtNum(targets.calories)),
                                 style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
                         if (targets.estimated)
-                          Text('（默认估算，点右上角填体重）',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline, fontSize: 11)),
+                          Text(
+                            l.dietEstimatedHint,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline, fontSize: 11),
+                          ),
                         const SizedBox(height: 8),
-                        MacroBar(emoji: '🥩', label: '蛋白质', value: totals.protein, target: targets.protein, color: const Color(0xFFEF5350)),
-                        MacroBar(emoji: '🍚', label: '碳水', value: totals.carbs, target: targets.carbs, color: const Color(0xFFFFA726)),
-                        MacroBar(emoji: '🥑', label: '脂肪', value: totals.fat, target: targets.fat, color: const Color(0xFF42A5F5)),
+                        MacroBar(
+                          icon: Icons.egg_alt_rounded,
+                          label: l.dietProtein,
+                          value: totals.protein,
+                          target: targets.protein,
+                          color: const Color(0xFFEF5350),
+                        ),
+                        MacroBar(
+                          icon: Icons.rice_bowl_rounded,
+                          label: l.dietCarbs,
+                          value: totals.carbs,
+                          target: targets.carbs,
+                          color: const Color(0xFFFFA726),
+                        ),
+                        MacroBar(
+                          icon: Icons.water_drop_rounded,
+                          label: l.dietFat,
+                          value: totals.fat,
+                          target: targets.fat,
+                          color: const Color(0xFF42A5F5),
+                        ),
                       ],
                     ),
                   ),
@@ -219,25 +195,25 @@ class CalorieSummaryCard extends StatelessWidget {
                   _EnergyPill(
                     icon: Icons.bedtime_rounded,
                     color: const Color(0xFF42A5F5),
-                    label: '基础代谢',
+                    label: l.dietBmr,
                     value: '${fmtNum(targets.bmr)} kcal',
                   ),
                   _EnergyPill(
                     icon: Icons.fitness_center_rounded,
                     color: const Color(0xFFEF5350),
-                    label: '训练消耗',
+                    label: l.dietTrainingBurn,
                     value: '+${fmtNum(targets.workoutBurn)} kcal',
                   ),
                   _EnergyPill(
                     icon: Icons.restaurant_rounded,
                     color: const Color(0xFFFFA726),
-                    label: '今日摄入',
+                    label: l.dietTodayIntake,
                     value: '${fmtNum(totals.calories)} kcal',
                   ),
                   _EnergyPill(
                     icon: Icons.flag_rounded,
                     color: over ? cs.error : const Color(0xFF26A69A),
-                    label: over ? '已超出' : '剩余额度',
+                    label: over ? l.dietExceeded : l.dietSurplus,
                     value: '${fmtNum(remaining.abs())} kcal',
                   ),
                 ],
@@ -300,7 +276,7 @@ class _EnergyPill extends StatelessWidget {
 }
 
 class MacroBar extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String label;
   final double value;
   final double target;
@@ -308,7 +284,7 @@ class MacroBar extends StatelessWidget {
 
   const MacroBar({
     super.key,
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.value,
     required this.target,
@@ -326,7 +302,14 @@ class MacroBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$emoji $label', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 14, color: color),
+                  const SizedBox(width: 4),
+                  Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                ],
+              ),
               Text('${fmtNum(value)} / ${fmtNum(target)}g', style: Theme.of(context).textTheme.bodySmall),
             ],
           ),

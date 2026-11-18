@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/reminder_service.dart';
-import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 
 const courseColors = <int>[
@@ -67,7 +66,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_end < _start) {
-      toast(context, '结束节次不能早于开始节次');
+      toast(context, context.l10n.courseEditSectionOrderError);
       return;
     }
     await Repo.saveCourse(Course(
@@ -88,12 +87,18 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final maxSection = widget.sectionsPerDay < _end ? _end : widget.sectionsPerDay;
     final sectionItems = [
       for (var i = 1; i <= maxSection; i++)
         DropdownMenuItem(
           value: i,
-          child: Text('第 $i 节 (${ReminderService.sectionStartTime(i).hour.toString().padLeft(2, '0')}:${ReminderService.sectionStartTime(i).minute.toString().padLeft(2, '0')})'),
+          child: Text(
+            l.courseEditSectionItem(
+              i,
+              '${ReminderService.sectionStartTime(i).hour.toString().padLeft(2, '0')}:${ReminderService.sectionStartTime(i).minute.toString().padLeft(2, '0')}',
+            ),
+          ),
         ),
     ];
     return Scaffold(
@@ -109,14 +114,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               child: Icon(Icons.school_rounded, color: Color(_color), size: 20),
             ),
             const SizedBox(width: 10),
-            Text(widget.course == null ? '添加课程' : '编辑课程'),
+            Text(widget.course == null ? l.courseEditAddTitle : l.courseEditUpdateTitle),
           ],
         ),
         actions: [
           TextButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check_rounded),
-            label: const Text('保存'),
+            label: Text(l.commonSave),
           )
         ],
       ),
@@ -127,11 +132,11 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
           children: [
             TextFormField(
               controller: _name,
-              decoration: const InputDecoration(
-                labelText: '课程名称 *',
-                prefixIcon: Icon(Icons.menu_book_rounded, color: Color(0xFF26A69A)),
+              decoration: InputDecoration(
+                labelText: l.courseEditNameLabel,
+                prefixIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF26A69A)),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? '请输入课程名称' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? l.courseEditNameRequired : null,
               autofocus: widget.course == null,
             ),
             const SizedBox(height: 16),
@@ -139,9 +144,9 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _location,
-                  decoration: const InputDecoration(
-                    labelText: '教室',
-                    prefixIcon: Icon(Icons.location_on_rounded, color: Color(0xFFEF5350)),
+                  decoration: InputDecoration(
+                    labelText: l.courseEditLocationLabel,
+                    prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFFEF5350)),
                   ),
                 ),
               ),
@@ -149,34 +154,34 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _teacher,
-                  decoration: const InputDecoration(
-                    labelText: '老师',
-                    prefixIcon: Icon(Icons.person_rounded, color: Color(0xFF42A5F5)),
+                  decoration: InputDecoration(
+                    labelText: l.courseEditTeacherLabel,
+                    prefixIcon: const Icon(Icons.person_rounded, color: Color(0xFF42A5F5)),
                   ),
                 ),
               ),
             ]),
-            const SectionTitle('上课星期', icon: Icons.calendar_today_rounded, iconColor: Color(0xFF42A5F5)),
+            SectionTitle(l.courseEditWeekdayTitle, icon: Icons.calendar_today_rounded, iconColor: const Color(0xFF42A5F5)),
             Wrap(
               spacing: 6,
               children: [
                 for (var i = 1; i <= 7; i++)
                   ChoiceChip(
                     avatar: Icon(Icons.event_rounded, size: 16, color: _weekday == i ? Color(_color) : null),
-                    label: Text(weekdayNames[i - 1]),
+                    label: Text(L10nHelper.weekdayLabel(context, i)),
                     selected: _weekday == i,
                     onSelected: (_) => setState(() => _weekday = i),
                   ),
               ],
             ),
-            const SectionTitle('上课节次与时间', icon: Icons.access_time_rounded, iconColor: Color(0xFFFFA726)),
+            SectionTitle(l.courseEditSectionTitle, icon: Icons.access_time_rounded, iconColor: const Color(0xFFFFA726)),
             Row(children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
                   initialValue: _start,
-                  decoration: const InputDecoration(
-                    labelText: '开始节次',
-                    prefixIcon: Icon(Icons.play_circle_outline_rounded, color: Color(0xFF26A69A)),
+                  decoration: InputDecoration(
+                    labelText: l.courseEditStartSection,
+                    prefixIcon: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFF26A69A)),
                   ),
                   items: sectionItems,
                   onChanged: (v) => setState(() {
@@ -190,17 +195,23 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                 child: DropdownButtonFormField<int>(
                   key: ValueKey('end-$_start-$_end'),
                   initialValue: _end,
-                  decoration: const InputDecoration(
-                    labelText: '结束节次',
-                    prefixIcon: Icon(Icons.stop_circle_outlined, color: Color(0xFFEF5350)),
+                  decoration: InputDecoration(
+                    labelText: l.courseEditEndSection,
+                    prefixIcon: const Icon(Icons.stop_circle_outlined, color: Color(0xFFEF5350)),
                   ),
                   items: sectionItems,
                   onChanged: (v) => setState(() => _end = v ?? _end),
                 ),
               ),
             ]),
-            const SectionTitle('周数范围与单双周', icon: Icons.date_range_rounded, iconColor: Color(0xFFAB47BC)),
-            Text('第 ${_weeks.start.round()} - ${_weeks.end.round()} 周 · ${ReminderService.formatRange(_start, _end)}'),
+            SectionTitle(l.courseEditWeeksTitle, icon: Icons.date_range_rounded, iconColor: const Color(0xFFAB47BC)),
+            Text(
+              l.courseEditWeeksSummary(
+                _weeks.start.round(),
+                _weeks.end.round(),
+                ReminderService.formatRange(_start, _end),
+              ),
+            ),
             RangeSlider(
               values: _weeks,
               min: 1,
@@ -210,15 +221,15 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               onChanged: (v) => setState(() => _weeks = v),
             ),
             SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 0, icon: Icon(Icons.repeat_rounded), label: Text('每周')),
-                ButtonSegment(value: 1, icon: Icon(Icons.looks_one_rounded), label: Text('单周')),
-                ButtonSegment(value: 2, icon: Icon(Icons.looks_two_rounded), label: Text('双周')),
+              segments: [
+                ButtonSegment(value: 0, icon: const Icon(Icons.repeat_rounded), label: Text(l.scheduleWeekEvery)),
+                ButtonSegment(value: 1, icon: const Icon(Icons.looks_one_rounded), label: Text(l.scheduleWeekOdd)),
+                ButtonSegment(value: 2, icon: const Icon(Icons.looks_two_rounded), label: Text(l.scheduleWeekEven)),
               ],
               selected: {_weekType},
               onSelectionChanged: (s) => setState(() => _weekType = s.first),
             ),
-            const SectionTitle('课程专属颜色', icon: Icons.palette_rounded, iconColor: Color(0xFFEC407A)),
+            SectionTitle(l.courseEditColorTitle, icon: Icons.palette_rounded, iconColor: const Color(0xFFEC407A)),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -238,7 +249,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save_rounded),
-              label: const Text('保存课程'),
+              label: Text(l.courseEditSaveBtn),
             ),
           ],
         ),

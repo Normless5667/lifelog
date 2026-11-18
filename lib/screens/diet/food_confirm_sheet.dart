@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
+import '../../widgets/common.dart';
 
 /// AI 识别出食物后，用户在此核对、修改数值，再保存到数据库
 class FoodConfirmSheet extends StatefulWidget {
@@ -90,6 +91,7 @@ class _FoodConfirmSheetState extends State<FoodConfirmSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     return Padding(
       padding: EdgeInsets.only(
@@ -102,14 +104,17 @@ class _FoodConfirmSheetState extends State<FoodConfirmSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('AI 估算结果（可修改）', style: Theme.of(context).textTheme.titleLarge),
+            Text(l.foodConfirmTitle, style: Theme.of(context).textTheme.titleLarge),
             if (widget.aiNote.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(widget.aiNote, style: Theme.of(context).textTheme.bodySmall),
             ],
             const SizedBox(height: 12),
             SegmentedButton<int>(
-              segments: [for (var i = 0; i < 4; i++) ButtonSegment(value: i, label: Text(mealTypeNames[i]))],
+              segments: [
+                for (var i = 0; i < 4; i++)
+                  ButtonSegment(value: i, label: Text(L10nHelper.mealTypeLabel(context, i))),
+              ],
               selected: {_mealType},
               onSelectionChanged: (s) => setState(() => _mealType = s.first),
             ),
@@ -129,25 +134,25 @@ class _FoodConfirmSheetState extends State<FoodConfirmSheet> {
                           ),
                           Expanded(
                             flex: 3,
-                            child: TextField(controller: r.name, decoration: const InputDecoration(labelText: '食物')),
+                            child: TextField(controller: r.name, decoration: InputDecoration(labelText: l.foodConfirmName)),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             flex: 2,
-                            child: TextField(controller: r.amount, decoration: const InputDecoration(labelText: '份量')),
+                            child: TextField(controller: r.amount, decoration: InputDecoration(labelText: l.foodConfirmAmount)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: TextField(controller: r.kcal, keyboardType: numKb, decoration: const InputDecoration(labelText: '热量 kcal'))),
+                          Expanded(child: TextField(controller: r.kcal, keyboardType: numKb, decoration: InputDecoration(labelText: l.foodConfirmKcal))),
                           const SizedBox(width: 6),
-                          Expanded(child: TextField(controller: r.p, keyboardType: numKb, decoration: const InputDecoration(labelText: '蛋白 g'))),
+                          Expanded(child: TextField(controller: r.p, keyboardType: numKb, decoration: InputDecoration(labelText: l.foodConfirmProtein))),
                           const SizedBox(width: 6),
-                          Expanded(child: TextField(controller: r.c, keyboardType: numKb, decoration: const InputDecoration(labelText: '碳水 g'))),
+                          Expanded(child: TextField(controller: r.c, keyboardType: numKb, decoration: InputDecoration(labelText: l.foodConfirmCarbs))),
                           const SizedBox(width: 6),
-                          Expanded(child: TextField(controller: r.f, keyboardType: numKb, decoration: const InputDecoration(labelText: '脂肪 g'))),
+                          Expanded(child: TextField(controller: r.f, keyboardType: numKb, decoration: InputDecoration(labelText: l.foodConfirmFat))),
                         ],
                       ),
                     ],
@@ -158,7 +163,7 @@ class _FoodConfirmSheetState extends State<FoodConfirmSheet> {
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.check),
-              label: const Text('添加到今日饮食'),
+              label: Text(l.foodConfirmSaveBtn),
             ),
           ],
         ),

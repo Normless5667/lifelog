@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
-import '../../services/app_prefs.dart';
 import '../../services/nutrition.dart';
+import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'exercise_library_screen.dart';
@@ -12,7 +12,7 @@ import 'workout_session_screen.dart';
 /// 训练板块：
 /// 1) 当前使用的 AI 训练计划卡片（支持选某一天直接一键开练）
 /// 2) 力量训练会话历史 + 容量柱状图
-/// 3) 独立有氧运动记录（走路/快走/慢跑/中速跑/骑行/游泳/跳绳/其他，自动按 MET 算消耗 kcal）
+/// 3) 独立有氧运动记录（按 MET 自动算消耗 kcal）
 class WorkoutListScreen extends StatefulWidget {
   const WorkoutListScreen({super.key});
 
@@ -25,8 +25,8 @@ class _WorkoutSummary {
   final List<String> exerciseNames;
   final String primaryCategory;
   final int workSets;
-  final double volume; // kg * reps (力量训练)
-  final double estCalories; // 估算力量消耗 kcal
+  final double volume;
+  final double estCalories;
 
   _WorkoutSummary(
     this.workout,
@@ -69,9 +69,9 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       var vol = 0.0;
       for (final s in sets) {
         final ex = exMap[s.exerciseId];
-        final n = ex?.name ?? '未知动作';
+        final n = ex?.name ?? '';
         primaryCat ??= ex?.category;
-        if (!names.contains(n)) names.add(n);
+        if (n.isNotEmpty && !names.contains(n)) names.add(n);
         if (!s.isWarmup) {
           workSets++;
           vol += s.weight * s.reps;
@@ -87,8 +87,9 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         weightKg: weightKg,
         minutes: mins.clamp(0, 180),
       );
-      out.add(_WorkoutSummary(w, names, primaryCat ?? '其他', workSets, vol, kcal));
+      out.add(_WorkoutSummary(w, names, primaryCat ?? L10nHelper.cardioOtherCategory, workSets, vol, kcal));
     }
+    WidgetService.sync(force: true);
     if (!mounted) return;
     setState(() {
       _userWeightKg = weightKg;
@@ -136,14 +137,14 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     if (res != null) {
       await Repo.saveCardioRecord(res);
       if (!mounted) return;
-      toast(context, '已记录有氧：消耗约 ${fmtNum(res.calories)} kcal（已自动计入今日饮食额度）');
+      toast(context, context.l10n.workoutCardioSavedToast(fmtNum(res.calories)));
       _load();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -157,7 +158,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350), size: 20),
             ),
             const SizedBox(width: 10),
-            Text(prefs.tr('训练与有氧', 'Workout & Cardio')),
+            Text(l.workoutTitle),
           ],
         ),
         actions: [
@@ -167,14 +168,14 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               _load();
             },
             icon: const Icon(Icons.grid_view_rounded),
-            label: Text(prefs.tr('动作库', 'Exercises')),
+            label: Text(l.workoutExerciseLibBtn),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _tab == 0 ? () => _startNew() : () => _addOrEditCardio(),
         icon: Icon(_tab == 0 ? Icons.play_arrow_rounded : Icons.directions_run_rounded),
-        label: Text(_tab == 0 ? prefs.tr('开始力量训练', 'Start Strength') : prefs.tr('记录有氧运动', 'Log Cardio')),
+        label: Text(_tab == 0 ? l.workoutStartStrengthBtn : l.workoutLogCardioBtn),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -187,12 +188,12 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                       ButtonSegment(
                         value: 0,
                         icon: const Icon(Icons.fitness_center_rounded),
-                        label: Text(prefs.tr('力量训练 (按组/计时)', 'Strength')),
+                        label: Text(l.workoutTabStrength),
                       ),
                       ButtonSegment(
                         value: 1,
                         icon: const Icon(Icons.directions_run_rounded),
-                        label: Text(prefs.tr('有氧运动 (MET消耗)', 'Cardio (MET)')),
+                        label: Text(l.workoutTabCardio),
                       ),
                     ],
                     selected: {_tab},
@@ -208,17 +209,18 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   }
 
   Widget _buildStrengthTab() {
+    final l = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
       children: [
         if (_plan != null) _activePlanCard(_plan!),
         if (_items.isNotEmpty) _volumeBarCard(),
-        const SectionTitle('力量训练会话记录', icon: Icons.history_rounded, iconColor: Color(0xFFEF5350)),
+        SectionTitle(l.workoutHistoryTitle, icon: Icons.history_rounded, iconColor: const Color(0xFFEF5350)),
         if (_items.isEmpty)
           EmptyHint(
             icon: Icons.fitness_center_rounded,
-            text: '还没有力量训练记录\n点下方按钮开始计时训练，或去 AI 页生成专属训练计划',
-            actionLabel: '开始第一次训练',
+            text: l.workoutEmptyStrengthHint,
+            actionLabel: l.workoutEmptyStrengthBtn,
             onAction: () => _startNew(),
           )
         else
@@ -228,6 +230,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   }
 
   Widget _activePlanCard(TrainingPlan plan) {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
     return Card(
       color: cs.primaryContainer.withValues(alpha: 0.4),
@@ -242,11 +245,11 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '当前计划：${plan.planName}',
+                    l.workoutActivePlanTitle(plan.planName),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
-                const Text('点分化直接开练', style: TextStyle(fontSize: 11, color: Colors.teal)),
+                Text(l.workoutTapSplitHint, style: const TextStyle(fontSize: 11, color: Colors.teal)),
               ],
             ),
             const SizedBox(height: 10),
@@ -256,7 +259,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               children: plan.days.map((d) {
                 return ActionChip(
                   avatar: const Icon(Icons.play_circle_fill_rounded, size: 18, color: Colors.teal),
-                  label: Text('${d.day} · ${d.focus} (${d.exercises.length}动作)'),
+                  label: Text(l.workoutPlanSplitChip(d.day, d.focus, d.exercises.length)),
                   onPressed: () => _startNew(
                     planExercises: d.exercises,
                     note: '${plan.planName} - ${d.day}(${d.focus})',
@@ -271,12 +274,13 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   }
 
   Widget _buildCardioTab() {
+    final l = context.l10n;
     if (_cardios.isEmpty) {
       return Center(
         child: EmptyHint(
           icon: Icons.directions_run_rounded,
-          text: '还没有独立有氧记录\n支持走路、跑步、骑行、游泳、跳绳等，按 MET 公式自动算千卡消耗',
-          actionLabel: '添加有氧运动',
+          text: l.workoutEmptyCardioHint,
+          actionLabel: l.workoutEmptyCardioBtn,
           onAction: () => _addOrEditCardio(),
         ),
       );
@@ -286,6 +290,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       itemCount: _cardios.length,
       itemBuilder: (_, i) {
         final c = _cardios[i];
+        final typeLabel = L10nHelper.cardioTypeLabel(context, c.type);
         return Card(
           child: ListTile(
             leading: Container(
@@ -298,10 +303,10 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               child: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A)),
             ),
             title: Text(
-              '${c.type} · ${fmtNum(c.durationMinutes)} 分钟${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
+              '${l.workoutCardioItemTitle(typeLabel, fmtNum(c.durationMinutes))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('${friendlyDate(c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}'),
+            subtitle: Text('${L10nHelper.friendlyDateL10n(context, c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -319,7 +324,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded),
                   onPressed: () async {
-                    if (await confirm(context, '删除这条有氧记录？')) {
+                    if (await confirm(context, l.workoutDeleteCardioConfirm)) {
                       await Repo.deleteCardioRecord(c.id!);
                       _load();
                     }
@@ -336,6 +341,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
 
   /// 最近 7 次训练容量柱状可视化卡片
   Widget _volumeBarCard() {
+    final l = context.l10n;
     final recent = _items.take(7).toList().reversed.toList();
     final maxVol = recent.fold<double>(1, (m, e) => e.volume > m ? e.volume : m);
     return Card(
@@ -348,7 +354,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               children: [
                 const Icon(Icons.bar_chart_rounded, color: Color(0xFFEF5350), size: 20),
                 const SizedBox(width: 6),
-                Text('近期力量训练总容量 (kg)', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                Text(l.workoutVolumeChartTitle, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 14),
@@ -390,9 +396,11 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   }
 
   Widget _workoutItemCard(_WorkoutSummary it) {
+    final l = context.l10n;
     final w = it.workout;
     final durMin = w.endTime == null ? null : ((w.endTime! - w.startTime) ~/ 60000);
     final vis = categoryVisual(it.primaryCategory);
+    final displayNames = it.exerciseNames.map((n) => L10nHelper.exerciseDisplayName(context, n)).toList();
     return Card(
       child: ListTile(
         leading: Container(
@@ -405,7 +413,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
           child: Icon(vis.icon, color: vis.color, size: 24),
         ),
         title: Text(
-          it.exerciseNames.isEmpty ? '空训练' : it.exerciseNames.join(' · '),
+          displayNames.isEmpty ? l.workoutEmptySessionTitle : displayNames.join(' · '),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -413,11 +421,11 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text([
-            friendlyDate(w.date),
-            if (durMin != null && durMin > 0) '时长 $durMin 分钟',
-            '正式组 ${it.workSets} 组',
-            if (it.volume > 0) '总容量 ${fmtNum(it.volume)} kg',
-            if (it.estCalories > 0) '消耗 ~${fmtNum(it.estCalories)} kcal',
+            L10nHelper.friendlyDateL10n(context, w.date),
+            if (durMin != null && durMin > 0) l.workoutSessionDuration(durMin),
+            l.workoutSessionSets(it.workSets),
+            if (it.volume > 0) l.workoutSessionVolume(fmtNum(it.volume)),
+            if (it.estCalories > 0) l.workoutSessionBurn(fmtNum(it.estCalories)),
           ].join(' · ')),
         ),
         trailing: Row(
@@ -426,7 +434,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
               onPressed: () async {
-                if (await confirm(context, '删除这次训练记录？')) {
+                if (await confirm(context, l.workoutDeleteSessionConfirm)) {
                   await Repo.deleteWorkout(w.id!);
                   _load();
                 }
@@ -464,8 +472,8 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
     super.initState();
     final e = widget.existing;
     _date = e?.date ?? today();
-    _type = e?.type ?? '慢跑';
-    if (!Nutrition.cardioMets.containsKey(_type)) _type = '慢跑';
+    _type = e?.type ?? L10nHelper.cardioDefaultType;
+    if (!Nutrition.cardioMets.containsKey(_type)) _type = L10nHelper.cardioDefaultType;
     _mins = TextEditingController(text: e != null ? fmtNum(e.durationMinutes) : '30');
     _dist = TextEditingController(text: e?.distanceKm != null ? fmtNum(e!.distanceKm!, digits: 2) : '');
     _kcal = TextEditingController(text: e != null ? fmtNum(e.calories) : '');
@@ -490,6 +498,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     final met = Nutrition.cardioMets[_type] ?? 5.0;
     return AlertDialog(
@@ -504,7 +513,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             child: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A), size: 22),
           ),
           const SizedBox(width: 10),
-          Text(widget.existing == null ? '记录有氧运动' : '编辑有氧运动'),
+          Text(widget.existing == null ? l.cardioDialogAddTitle : l.cardioDialogEditTitle),
         ],
       ),
       content: SingleChildScrollView(
@@ -515,7 +524,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.event_rounded, color: Colors.teal),
-              title: Text(friendlyDate(_date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(L10nHelper.friendlyDateL10n(context, _date), style: const TextStyle(fontWeight: FontWeight.bold)),
               trailing: const Icon(Icons.edit_calendar_rounded, size: 18),
               onTap: () async {
                 final d = await showDatePicker(
@@ -529,12 +538,15 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             ),
             DropdownButtonFormField<String>(
               initialValue: _type,
-              decoration: const InputDecoration(
-                labelText: '有氧类型',
-                prefixIcon: Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A)),
+              decoration: InputDecoration(
+                labelText: l.cardioTypeLabel,
+                prefixIcon: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A)),
               ),
               items: Nutrition.cardioMets.entries
-                  .map((e) => DropdownMenuItem(value: e.key, child: Text('${e.key} (MET ${e.value})')))
+                  .map((e) => DropdownMenuItem(
+                        value: e.key,
+                        child: Text('${L10nHelper.cardioTypeLabel(context, e.key)} (MET ${e.value})'),
+                      ))
                   .toList(),
               onChanged: (v) {
                 setState(() {
@@ -551,10 +563,10 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                     controller: _mins,
                     keyboardType: numKb,
                     onChanged: (_) => setState(_recalc),
-                    decoration: const InputDecoration(
-                      labelText: '时长 *',
-                      suffixText: '分钟',
-                      prefixIcon: Icon(Icons.timer_rounded, color: Color(0xFFFFA726)),
+                    decoration: InputDecoration(
+                      labelText: l.cardioDurationLabel,
+                      suffixText: l.cardioMinutesSuffix,
+                      prefixIcon: const Icon(Icons.timer_rounded, color: Color(0xFFFFA726)),
                     ),
                   ),
                 ),
@@ -563,10 +575,10 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                   child: TextField(
                     controller: _dist,
                     keyboardType: numKb,
-                    decoration: const InputDecoration(
-                      labelText: '距离(可选)',
+                    decoration: InputDecoration(
+                      labelText: l.cardioDistanceLabel,
                       suffixText: 'km',
-                      prefixIcon: Icon(Icons.place_rounded, color: Color(0xFF42A5F5)),
+                      prefixIcon: const Icon(Icons.place_rounded, color: Color(0xFF42A5F5)),
                     ),
                   ),
                 ),
@@ -578,7 +590,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
               keyboardType: numKb,
               onChanged: (_) => _manualKcal = true,
               decoration: InputDecoration(
-                labelText: '估算消耗 (按体重 ${fmtNum(widget.weightKg, digits: 1)}kg × MET $met)',
+                labelText: l.cardioEstBurnLabel(fmtNum(widget.weightKg, digits: 1), '$met'),
                 suffixText: 'kcal',
                 prefixIcon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFEF5350)),
               ),
@@ -587,12 +599,12 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
             final mins = double.tryParse(_mins.text) ?? 0;
             if (mins <= 0) {
-              toast(context, '请输入大于 0 的有氧时长');
+              toast(context, l.cardioDurationRequired);
               return;
             }
             Navigator.pop(
@@ -609,7 +621,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             );
           },
           icon: const Icon(Icons.check_rounded),
-          label: const Text('保存'),
+          label: Text(l.commonSave),
         ),
       ],
     );

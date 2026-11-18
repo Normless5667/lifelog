@@ -6,7 +6,7 @@ import '../../models/models.dart';
 import '../../services/nutrition.dart';
 import '../../widgets/common.dart';
 
-/// 基础资料 + 运动问卷编辑（全语义图标化）
+/// 基础资料 + 运动问卷编辑
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -77,19 +77,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ));
     await Repo.setOnboardingDone();
     if (!mounted) return;
-    toast(context, '已保存');
+    toast(context, context.l10n.commonSavedToast);
     Navigator.pop(context);
   }
 
   String? _validateNum(String? v, double min, double max) {
+    final l = context.l10n;
     final n = double.tryParse(v ?? '');
-    if (n == null) return '请输入数字';
-    if (n < min || n > max) return '范围 ${min.toInt()}-${max.toInt()}';
+    if (n == null) return l.commonInvalidNumber;
+    if (n < min || n > max) return l.commonRangeError(min.toInt(), max.toInt());
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -103,14 +105,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Icon(Icons.badge_rounded, color: Color(0xFF42A5F5), size: 20),
             ),
             const SizedBox(width: 10),
-            const Text('身体资料与训练档案'),
+            Expanded(child: Text(l.profileTitle, overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
           TextButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check_rounded),
-            label: const Text('保存'),
+            label: Text(l.commonSave),
           ),
         ],
       ),
@@ -121,25 +123,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const SectionTitle('性别', icon: Icons.wc_rounded, iconColor: Color(0xFF42A5F5)),
+                  SectionTitle(l.profileGenderSection, icon: Icons.wc_rounded, iconColor: const Color(0xFF42A5F5)),
                   SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'male', label: Text('男生'), icon: Icon(Icons.male_rounded)),
-                      ButtonSegment(value: 'female', label: Text('女生'), icon: Icon(Icons.female_rounded)),
+                    segments: [
+                      ButtonSegment(value: 'male', label: Text(l.profileMale), icon: const Icon(Icons.male_rounded)),
+                      ButtonSegment(value: 'female', label: Text(l.profileFemale), icon: const Icon(Icons.female_rounded)),
                     ],
                     selected: {_gender},
                     onSelectionChanged: (s) => setState(() => _gender = s.first),
                   ),
-                  const SectionTitle('年龄与身高', icon: Icons.straighten_rounded, iconColor: Color(0xFF26A69A)),
+                  SectionTitle(l.profileAgeHeightSection, icon: Icons.straighten_rounded, iconColor: const Color(0xFF26A69A)),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _age,
-                          decoration: const InputDecoration(
-                            labelText: '年龄',
-                            suffixText: '岁',
-                            prefixIcon: Icon(Icons.cake_rounded, color: Color(0xFFFFA726)),
+                          decoration: InputDecoration(
+                            labelText: l.profileAgeLabel,
+                            suffixText: l.profileAgeUnit,
+                            prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFFFFA726)),
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -150,10 +152,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _height,
-                          decoration: const InputDecoration(
-                            labelText: '身高',
+                          decoration: InputDecoration(
+                            labelText: l.profileHeightLabel,
                             suffixText: 'cm',
-                            prefixIcon: Icon(Icons.height_rounded, color: Color(0xFF26A69A)),
+                            prefixIcon: const Icon(Icons.height_rounded, color: Color(0xFF26A69A)),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) => _validateNum(v, 100, 250),
@@ -161,15 +163,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  const SectionTitle('活动水平与目标', icon: Icons.flag_rounded, iconColor: Color(0xFFEF5350)),
+                  SectionTitle(l.profileActivityGoalSection, icon: Icons.flag_rounded, iconColor: const Color(0xFFEF5350)),
                   DropdownButtonFormField<double>(
                     initialValue: _activity,
-                    decoration: const InputDecoration(
-                      labelText: '日常静息/工作活动水平',
-                      prefixIcon: Icon(Icons.directions_run_rounded, color: Color(0xFFAB47BC)),
+                    decoration: InputDecoration(
+                      labelText: l.profileActivityLabel,
+                      prefixIcon: const Icon(Icons.directions_run_rounded, color: Color(0xFFAB47BC)),
                     ),
-                    items: Nutrition.activityLevels.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    items: Nutrition.activityLevels.keys
+                        .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.activityLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _activity = v ?? _activity),
                   ),
@@ -177,34 +179,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: Nutrition.goals.entries.map((e) {
+                    children: Nutrition.goals.keys.map((k) {
                       return ChoiceChip(
-                        label: Text(e.value),
-                        selected: _goal == e.key,
-                        onSelected: (_) => setState(() => _goal = e.key),
+                        label: Text(L10nHelper.goalLabel(context, k)),
+                        selected: _goal == k,
+                        onSelected: (_) => setState(() => _goal = k),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _target,
-                    decoration: const InputDecoration(
-                      labelText: '目标体重（可选，将在体重趋势图画出目标线）',
+                    decoration: InputDecoration(
+                      labelText: l.profileTargetWeightLabel,
                       suffixText: 'kg',
-                      prefixIcon: Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
+                      prefixIcon: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) => (v == null || v.isEmpty) ? null : _validateNum(v, 30, 250),
                   ),
-                  const SectionTitle('运动条件（供 AI 定制计划）', icon: Icons.fitness_center_rounded, iconColor: Color(0xFFAB47BC)),
+                  SectionTitle(l.profileTrainingConditionSection, icon: Icons.fitness_center_rounded, iconColor: const Color(0xFFAB47BC)),
                   DropdownButtonFormField<String>(
                     initialValue: _experience,
-                    decoration: const InputDecoration(
-                      labelText: '运动经验',
-                      prefixIcon: Icon(Icons.military_tech_rounded, color: Color(0xFFFFA726)),
+                    decoration: InputDecoration(
+                      labelText: l.profileExperienceLabel,
+                      prefixIcon: const Icon(Icons.military_tech_rounded, color: Color(0xFFFFA726)),
                     ),
-                    items: Nutrition.experiences.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    items: Nutrition.experiences.keys
+                        .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.experienceLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _experience = v ?? _experience),
                   ),
@@ -214,11 +216,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: _weeklyDays,
-                          decoration: const InputDecoration(
-                            labelText: '每周可练',
-                            prefixIcon: Icon(Icons.calendar_today_rounded, color: Color(0xFF42A5F5)),
+                          decoration: InputDecoration(
+                            labelText: l.profileWeeklyDaysLabel,
+                            prefixIcon: const Icon(Icons.calendar_today_rounded, color: Color(0xFF42A5F5)),
                           ),
-                          items: [for (var d = 1; d <= 7; d++) DropdownMenuItem(value: d, child: Text('$d 天/周'))],
+                          items: [
+                            for (var d = 1; d <= 7; d++)
+                              DropdownMenuItem(value: d, child: Text(l.profileWeeklyDaysItem(d))),
+                          ],
                           onChanged: (v) => setState(() => _weeklyDays = v ?? _weeklyDays),
                         ),
                       ),
@@ -226,17 +231,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: _sessionMinutes,
-                          decoration: const InputDecoration(
-                            labelText: '单次时长',
-                            prefixIcon: Icon(Icons.timer_rounded, color: Color(0xFF26A69A)),
+                          decoration: InputDecoration(
+                            labelText: l.profileSessionMinsLabel,
+                            prefixIcon: const Icon(Icons.timer_rounded, color: Color(0xFF26A69A)),
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 30, child: Text('30 分钟')),
-                            DropdownMenuItem(value: 45, child: Text('45 分钟')),
-                            DropdownMenuItem(value: 60, child: Text('60 分钟')),
-                            DropdownMenuItem(value: 75, child: Text('75 分钟')),
-                            DropdownMenuItem(value: 90, child: Text('90 分钟')),
-                            DropdownMenuItem(value: 120, child: Text('120 分钟')),
+                          items: [
+                            for (final m in [30, 45, 60, 75, 90, 120])
+                              DropdownMenuItem(value: m, child: Text(l.profileSessionMinsItem(m))),
                           ],
                           onChanged: (v) => setState(() => _sessionMinutes = v ?? _sessionMinutes),
                         ),
@@ -246,29 +247,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _equipment,
-                    decoration: const InputDecoration(
-                      labelText: '可用器械',
-                      prefixIcon: Icon(Icons.handyman_rounded, color: Color(0xFFEF5350)),
+                    decoration: InputDecoration(
+                      labelText: l.profileEquipmentLabel,
+                      prefixIcon: const Icon(Icons.handyman_rounded, color: Color(0xFFEF5350)),
                     ),
-                    items: Nutrition.equipments.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    items: Nutrition.equipments.keys
+                        .map((k) => DropdownMenuItem(value: k, child: Text(L10nHelper.equipmentLabel(context, k))))
                         .toList(),
                     onChanged: (v) => setState(() => _equipment = v ?? _equipment),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _injuries,
-                    decoration: const InputDecoration(
-                      labelText: '伤病或动作限制（可选）',
-                      hintText: '如：膝盖不适、腰突、无',
-                      prefixIcon: Icon(Icons.healing_rounded, color: Color(0xFFEC407A)),
+                    decoration: InputDecoration(
+                      labelText: l.profileInjuriesLabel,
+                      hintText: l.profileInjuriesHint,
+                      prefixIcon: const Icon(Icons.healing_rounded, color: Color(0xFFEC407A)),
                     ),
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: _save,
                     icon: const Icon(Icons.check_rounded),
-                    label: const Text('保存资料'),
+                    label: Text(l.profileSaveBtn),
                   ),
                 ],
               ),

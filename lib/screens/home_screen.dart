@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import '../db/repo.dart';
 import '../models/models.dart';
 import '../services/ai_service.dart';
-import '../services/app_prefs.dart';
 import '../services/bus_service.dart';
-import '../services/nutrition.dart';
 import '../services/reminder_service.dart';
 import '../services/step_service.dart';
 import '../services/targets.dart';
@@ -19,9 +17,9 @@ import 'diet/food_confirm_sheet.dart';
 import 'schedule/bus_schedule_screen.dart';
 import 'settings/settings_screen.dart';
 
-/// 今日仪表盘 v1.2（生活助手）：
-/// - Open-Meteo 实时天气卡片（30分钟缓存）
-/// - Hai Ba Trung 校车下一班倒计时卡片（点按选常用站点）
+/// 今日仪表盘（生活助手）：
+/// - Open-Meteo 实时天气卡片（GPS 优先 + 6 小时定位缓存 + 手动城市切换）
+/// - 校车下一班倒计时卡片（点按进入机场航班屏动态看板）
 /// - 硬件级自动计步器进度环（TYPE_STEP_COUNTER）
 /// - 连续打卡天数 (Streak) + 一句话 AI 速记饮食 + 右下角快捷记录 FAB
 /// - 自动同步更新安卓桌面小组件 (AppWidget)
@@ -49,13 +47,13 @@ class _HomeScreenState extends State<HomeScreen> {
   BodyRecord? _latestWeight;
   Profile _profile = Profile();
 
-  // v1.2/v1.3 新增：天气、校车路线、计步器状态
   WeatherInfo? _weather;
   String _busRouteName = 'BUV · Hai Ba Trung Route';
   String _busStop = 'TIMES CITY';
   String _busDirection = '';
   String _busNextTime = '--:--';
   int _busMinsUntil = -1;
+  bool _busIsWeekend = false;
   bool _stepSupported = true;
   bool _stepGranted = true;
   int _todaySteps = 0;
@@ -104,16 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final weather = await WeatherService.getWeather();
 
     final totals = DayTotals.of(meals);
-    final remKcal = (targets.calories - totals.calories).round();
-    final courseLine = WidgetService.formatCoursesLine(todayCourses);
-    final calorieLine = remKcal >= 0
-        ? '🔥 剩余热量：$remKcal kcal（已吃 ${totals.calories.round()}）'
-        : '🔥 超出热量：${remKcal.abs()} kcal（已吃 ${totals.calories.round()}）';
-    WidgetService.pushLines(
-      courseLine: courseLine,
-      calorieLine: calorieLine,
-      stepLine: '👟 今日步数：${stepState.todaySteps} / ${stepState.goal} 步',
-    );
+    WidgetService.sync(force: true);
     ReminderService.syncAlarms();
 
     if (!mounted) return;
@@ -134,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _busDirection = bus.direction;
       _busNextTime = bus.nextTime;
       _busMinsUntil = bus.minutesUntil;
+      _busIsWeekend = bus.isWeekend;
       _stepSupported = stepState.supported;
       _stepGranted = stepState.granted;
       _todaySteps = stepState.todaySteps;
@@ -203,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openQuickRecordMenu() {
+    final l = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -210,15 +201,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
-              title: Text('⚡ 快速记录', style: TextStyle(fontWeight: FontWeight.bold)),
+            ListTile(
+              leading: const Icon(Icons.bolt_rounded, color: Color(0xFFFF7A22)),
+              title: Text(l.homeQuickRecord, style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             ListTile(
               leading: const CircleAvatar(
                 backgroundColor: Color(0x22FF7A22),
                 child: Icon(Icons.restaurant_rounded, color: Color(0xFFFF7A22)),
               ),
-              title: const Text('快速记饮食 / 拍照识热量'),
+              title: Text(l.homeQuickDiet),
               onTap: () {
                 Navigator.pop(ctx);
                 widget.onNavigate(2);
@@ -229,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: Color(0x22EF5350),
                 child: Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350)),
               ),
-              title: const Text('快速开始训练 / 记有氧'),
+              title: Text(l.homeQuickWorkout),
               onTap: () {
                 Navigator.pop(ctx);
                 widget.onNavigate(3);
@@ -240,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: Color(0x2242A5F5),
                 child: Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
               ),
-              title: const Text('快速记今日体重'),
+              title: Text(l.homeQuickWeight),
               onTap: () {
                 Navigator.pop(ctx);
                 _open(const BodyScreen());
@@ -251,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: Color(0x222B5B84),
                 child: Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84)),
               ),
-              title: const Text('查看校车时刻表与换站'),
+              title: Text(l.homeQuickBus),
               onTap: () {
                 Navigator.pop(ctx);
                 _open(const BusScheduleScreen());
@@ -267,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -283,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                '${now.month}/${now.day} ${weekdayNames[now.weekday - 1]}',
+                '${now.month}/${now.day} ${L10nHelper.weekdayLabel(context, now.weekday)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -292,17 +284,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: prefs.tr('校车时刻表', 'Bus Schedule'),
+            tooltip: l.busBoardTitle,
             icon: const Icon(Icons.directions_bus_rounded),
             onPressed: () => _open(const BusScheduleScreen()),
           ),
           IconButton(
-            tooltip: prefs.tr('身体数据', 'Body Data'),
+            tooltip: l.bodyTitle,
             icon: const Icon(Icons.monitor_weight_rounded),
             onPressed: () => _open(const BodyScreen()),
           ),
           IconButton(
-            tooltip: prefs.tr('设置', 'Settings'),
+            tooltip: l.settingsTitle,
             icon: const Icon(Icons.settings_rounded),
             onPressed: () => _open(const SettingsScreen()),
           ),
@@ -310,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openQuickRecordMenu,
-        tooltip: '快捷记录',
+        tooltip: l.homeQuickRecord,
         backgroundColor: const Color(0xFFFF7A22),
         foregroundColor: Colors.white,
         child: const Icon(Icons.add_rounded, size: 28),
@@ -332,31 +324,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   CalorieSummaryCard(totals: _totals, targets: _targets, onTap: () => widget.onNavigate(2)),
                   _stepCounterCard(),
                   SectionTitle(
-                    _week > 0
-                        ? prefs.tr('今日课程 · 第 $_week 周', 'Today\'s Classes · Week $_week')
-                        : prefs.tr('今日课程', 'Today\'s Classes'),
+                    _week > 0 ? l.homeTodayClassesWeek(_week) : l.homeTodayClasses,
                     icon: Icons.school_rounded,
                     iconColor: const Color(0xFF2B5B84),
                     trailing: TextButton.icon(
                       onPressed: () => widget.onNavigate(1),
                       icon: const Icon(Icons.calendar_view_week_rounded, size: 16),
-                      label: Text(prefs.tr('全部课表', 'All Schedule')),
+                      label: Text(l.homeAllSchedule),
                     ),
                   ),
                   _coursesCard(),
                   SectionTitle(
-                    prefs.tr('今日训练与有氧汇总', 'Today\'s Workout & Cardio'),
+                    l.homeTodayWorkoutTitle,
                     icon: Icons.fitness_center_rounded,
                     iconColor: const Color(0xFFEF5350),
                     trailing: TextButton.icon(
                       onPressed: () => widget.onNavigate(3),
                       icon: const Icon(Icons.chevron_right, size: 18),
-                      label: Text(prefs.tr('去训练', 'Workout')),
+                      label: Text(l.homeGoWorkout),
                     ),
                   ),
                   _workoutCard(),
                   SectionTitle(
-                    prefs.tr('身体状态', 'Body Status'),
+                    l.homeBodyStatus,
                     icon: Icons.favorite_rounded,
                     iconColor: const Color(0xFFEC407A),
                   ),
@@ -369,10 +359,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 标题下方：打卡连续天数激励胶囊 + 两行精简天气卡片（彻底避免标题栏挤压与换行溢出）
+  /// 标题下方：打卡连续天数激励胶囊 + 两行精简天气卡片
   Widget _streakAndWeatherSection() {
     final w = _weather;
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -393,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(Icons.local_fire_department_rounded, size: 16, color: Color(0xFFFF7A22)),
                     const SizedBox(width: 4),
                     Text(
-                      prefs.tr('🔥 连续打卡 $_streak 天', '🔥 $_streak-Day Streak'),
+                      l.homeStreakDays(_streak),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -406,9 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _streak > 0
-                      ? prefs.tr('习惯正在养成，今天也继续保持！', 'Keep up the great momentum!')
-                      : prefs.tr('记录饮食或训练即可点亮今日打卡', 'Log a meal or workout to start your streak'),
+                  _streak > 0 ? l.homeStreakKeepGoing : l.homeStreakStartHint,
                   style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -433,14 +421,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${fmtNum(w.temperature)}°C ${w.conditionText} · ${w.city}',
+                            '${fmtNum(w.temperature)}°C ${L10nHelper.weatherConditionLabel(context, w.weatherCode)} · ${w.city}',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            w.compactSubtitle,
+                            L10nHelper.weatherCompactSubLabel(context, w),
                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -450,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      tooltip: '刷新天气 / 切换城市',
+                      tooltip: l.commonRefresh,
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       onPressed: () async {
                         final fresh = await WeatherService.getWeather(forceRefresh: true);
@@ -469,6 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openWeatherCityQuickSheet() async {
     final manual = await WeatherService.getManualCity();
     if (!mounted) return;
+    final l = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -479,14 +468,14 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.location_on_rounded, color: Color(0xFF26A69A)),
-                  SizedBox(width: 8),
+                  const Icon(Icons.location_on_rounded, color: Color(0xFF26A69A)),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '天气定位与城市切换（防代理/VPN 跑偏）',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      l.weatherSheetTitle,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ),
                 ],
@@ -498,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   ChoiceChip(
                     avatar: const Icon(Icons.my_location_rounded, size: 16),
-                    label: const Text('自动 GPS 定位 (6h缓存)'),
+                    label: Text(l.weatherAutoLocate),
                     selected: manual == null,
                     onSelected: (_) async {
                       Navigator.pop(ctx);
@@ -510,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ...WeatherService.presetCities.map((p) {
                     final sel = manual?.city == p.city;
                     return ChoiceChip(
-                      label: Text(p.label),
+                      label: Text(L10nHelper.weatherPresetLabel(context, p)),
                       selected: sel,
                       onSelected: (_) async {
                         Navigator.pop(ctx);
@@ -531,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _open(const SettingsScreen());
                   },
                   icon: const Icon(Icons.settings_rounded, size: 16),
-                  label: const Text('去设置页搜索更多城市'),
+                  label: Text(l.weatherSearchCity),
                 ),
               ),
             ],
@@ -541,9 +530,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 校车下一班倒计时卡片（两行清晰展示完整站名 + 路线名 + 倒计时，绝不截断站名）
+  /// 校车下一班倒计时卡片（两行清晰展示完整站名 + 路线名 + 倒计时）
   Widget _busCard() {
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
+    final summaryText = L10nHelper.busDirectionSummary(
+      context,
+      rawDirection: _busDirection,
+      nextTime: _busNextTime,
+      minutesUntil: _busMinsUntil,
+      isWeekend: _busIsWeekend,
+    );
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -567,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${prefs.tr('校车', 'Bus')} · $_busStop',
+                      l.busHomeTitle(_busStop),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 4),
@@ -591,12 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                        Text(
-                          _busMinsUntil >= 0
-                              ? '$_busDirection · 下一班 $_busNextTime（还有 $_busMinsUntil 分钟）'
-                              : _busDirection,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        Text(summaryText, style: const TextStyle(fontSize: 12)),
                       ],
                     ),
                   ],
@@ -612,6 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 手机传感器自动计步卡片（含目标进度环与热量折算）
   Widget _stepCounterCard() {
+    final l = context.l10n;
     final ratio = (_todaySteps / (_stepGoal <= 0 ? 8000 : _stepGoal)).clamp(0.0, 1.0);
     return Card(
       child: Padding(
@@ -641,16 +633,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '今日自动步数：$_todaySteps / $_stepGoal 步',
+                    l.stepTitle(_todaySteps, _stepGoal),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     !_stepSupported
-                        ? '当前设备无硬件计步传感器（可在训练页手动记走路/跑步）'
+                        ? l.stepUnsupported
                         : (!_stepGranted
-                            ? '需要授予「身体活动」权限才能读取手机计步传感器'
-                            : '步数折算消耗 +${fmtNum(_stepBurnKcal)} kcal（已自动计入今日饮食额度）'),
+                            ? l.stepPermissionNeeded
+                            : l.stepBurnedSummary(fmtNum(_stepBurnKcal))),
                     style: const TextStyle(fontSize: 12),
                   ),
                 ],
@@ -662,7 +654,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   await StepService.requestPermission();
                   _load();
                 },
-                child: const Text('授权计步'),
+                child: Text(l.stepAuthorize),
               ),
           ],
         ),
@@ -671,6 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _quickMealInputCard() {
+    final l = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -683,12 +676,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _quickFoodCtrl,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _submitQuickFood(),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   filled: false,
-                  hintText: '一句话速记今天吃了什么（如：一碗牛肉面加个蛋）',
+                  hintText: l.homeQuickLogHint,
                 ),
               ),
             ),
@@ -700,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 : FilledButton.tonalIcon(
                     onPressed: _submitQuickFood,
                     icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: const Text('AI速记'),
+                    label: Text(l.homeAiQuickLog),
                   ),
           ],
         ),
@@ -758,21 +751,22 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return Row(
       children: [
-        pill(Icons.camera_alt_rounded, prefs.tr('拍美食算热量', 'Snap Meal'), const Color(0xFFFF7A22), () => widget.onNavigate(2)),
+        pill(Icons.camera_alt_rounded, l.homeHeroSnapMeal, const Color(0xFFFF7A22), () => widget.onNavigate(2)),
         const SizedBox(width: 8),
-        pill(Icons.fitness_center_rounded, prefs.tr('开始训练计时', 'Start Workout'), const Color(0xFFEF5350), () => widget.onNavigate(3)),
+        pill(Icons.fitness_center_rounded, l.homeHeroStartWorkout, const Color(0xFFEF5350), () => widget.onNavigate(3)),
         const SizedBox(width: 8),
-        pill(Icons.monitor_weight_rounded, prefs.tr('记今日体重', 'Log Weight'), const Color(0xFF2B5B84), () => _open(const BodyScreen())),
+        pill(Icons.monitor_weight_rounded, l.homeHeroLogWeight, const Color(0xFF2B5B84), () => _open(const BodyScreen())),
         const SizedBox(width: 8),
-        pill(Icons.smart_toy_rounded, prefs.tr('AI 定制计划', 'AI Coach'), const Color(0xFFAB47BC), () => widget.onNavigate(4)),
+        pill(Icons.smart_toy_rounded, l.homeHeroAiCoach, const Color(0xFFAB47BC), () => widget.onNavigate(4)),
       ],
     );
   }
 
   Widget _profilePrompt() {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
     return Card(
       color: cs.primaryContainer,
@@ -783,8 +777,8 @@ class _HomeScreenState extends State<HomeScreen> {
           foregroundColor: cs.onPrimary,
           child: const Icon(Icons.person_add_alt_1_rounded),
         ),
-        title: const Text('完善个人运动与身体问卷', style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: const Text('30秒填好身高、目标与器械条件，自动计算动态 TDEE'),
+        title: Text(l.homeProfilePromptTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(l.homeProfilePromptSub),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _open(OnboardingSheet(initialProfile: _profile, initialWeight: _latestWeight?.weight)),
       ),
@@ -792,14 +786,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _coursesCard() {
+    final l = context.l10n;
     if (_todayCourses.isEmpty) {
-      return const Card(
+      return Card(
         child: ListTile(
-          leading: CircleAvatar(
+          leading: const CircleAvatar(
             backgroundColor: Color(0x2226A69A),
             child: Icon(Icons.celebration_rounded, color: Color(0xFF26A69A)),
           ),
-          title: Text('今天没有课，好好休息或去锻炼吧！'),
+          title: Text(l.homeNoClassesToday),
         ),
       );
     }
@@ -899,6 +894,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _workoutCard() {
+    final l = context.l10n;
     if (_todayWorkouts.isEmpty && _todayCardios.isEmpty) {
       return Card(
         child: ListTile(
@@ -906,16 +902,12 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: Color(0x22EF5350),
             child: Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350)),
           ),
-          title: const Text('今天还没有训练或有氧记录'),
-          subtitle: const Text('训练消耗会自动叠加到今日可摄入热量额度'),
-          trailing: FilledButton.tonal(onPressed: () => widget.onNavigate(3), child: const Text('开练')),
+          title: Text(l.homeNoWorkoutToday),
+          subtitle: Text(l.homeNoWorkoutSub),
+          trailing: FilledButton.tonal(onPressed: () => widget.onNavigate(3), child: Text(l.homeStartWorkoutBtn)),
         ),
       );
     }
-    final strengthMins = _todayWorkouts.fold<int>(0, (sum, w) {
-      if (w.endTime == null) return sum;
-      return sum + ((w.endTime! - w.startTime) ~/ 60000);
-    });
     final cardioMins = _todayCardios.fold<double>(0, (s, c) => s + c.durationMinutes);
     return Card(
       child: ListTile(
@@ -925,14 +917,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: Text(
           [
-            if (_todayWorkouts.isNotEmpty) '力量 ${_todayWorkouts.length} 次（$_todaySets 组）',
-            if (_todayCardios.isNotEmpty) '有氧 ${fmtNum(cardioMins)} 分钟',
+            if (_todayWorkouts.isNotEmpty) l.homeStrengthSummary(_todayWorkouts.length, _todaySets),
+            if (_todayCardios.isNotEmpty) l.homeCardioSummary(fmtNum(cardioMins)),
           ].join(' + '),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(
-          '今日活动与训练总消耗约 +${fmtNum(_targets.workoutBurn)} kcal${strengthMins > 0 ? ' · 力量耗时 $strengthMins 分钟' : ''}',
-        ),
+        subtitle: Text(l.homeWorkoutBurnSummary(fmtNum(_targets.workoutBurn))),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => widget.onNavigate(3),
       ),
@@ -940,6 +930,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _bodyCard() {
+    final l = context.l10n;
     final w = _latestWeight?.weight;
     return Card(
       child: ListTile(
@@ -948,57 +939,46 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Icon(Icons.monitor_weight_rounded, color: Color(0xFF2B5B84)),
         ),
         title: Text(
-          w == null
-              ? '还没有体重记录'
-              : '当前体重 ${fmtNum(w, digits: 1)} kg${_profile.targetWeight != null ? '（目标 ${fmtNum(_profile.targetWeight!, digits: 1)} kg）' : ''}',
+          w != null ? l.homeWeightLabel(fmtNum(w, digits: 1)) : l.homeWeightNotLogged,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: w == null
-            ? const Text('点击记录体重、体脂率或腰围')
-            : Text('BMI ${fmtNum(Nutrition.bmi(_profile.height, w), digits: 1)}'
-                '（${Nutrition.bmiLabel(Nutrition.bmi(_profile.height, w))}）· 静息 TDEE ${fmtNum(Nutrition.tdee(_profile, w))} kcal'),
-        trailing: const Icon(Icons.chevron_right),
+        subtitle: Text(
+          l.homeBodyTargetSub(
+            L10nHelper.goalLabel(context, _profile.goal),
+            fmtNum(_targets.calories),
+            fmtNum(_targets.protein),
+          ),
+        ),
+        trailing: FilledButton.tonal(onPressed: () => _open(const BodyScreen()), child: Text(l.homeLogBodyBtn)),
         onTap: () => _open(const BodyScreen()),
       ),
     );
   }
 
   Widget _aiBannerCard() {
-    return InkWell(
-      onTap: () => widget.onNavigate(4),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1E3C58), Color(0xFF2B5B84)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      color: cs.secondaryContainer.withValues(alpha: 0.55),
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            'assets/icon/dafeiyu_mascot.png',
+            width: 44,
+            height: 44,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => CircleAvatar(
+              backgroundColor: cs.secondary,
+              foregroundColor: cs.onSecondary,
+              child: const Icon(Icons.smart_toy_rounded),
+            ),
           ),
-          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset('assets/icon/dafeiyu_mascot.png', width: 46, height: 46, fit: BoxFit.cover),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('DeepSeek AI 私人健康管家',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                  SizedBox(height: 2),
-                  Text('结合今日天气、课表、步数与热量缺口生成专属计划',
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
-          ],
-        ),
+        title: Text(l.homeAiCoachBannerTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(l.homeAiCoachBannerSub),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => widget.onNavigate(4),
       ),
     );
   }

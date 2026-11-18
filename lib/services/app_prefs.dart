@@ -5,7 +5,7 @@ import '../db/repo.dart';
 /// 全局界面偏好控制器：
 /// - 主题模式（跟随系统 / 浅色 / 深色）
 /// - 字体缩放（小 0.9 / 标准 1.0 / 大 1.15）
-/// - 语言切换（跟随系统 / 中文 zh / English en）
+/// - 语言切换（跟随系统 system / 中文 zh / English en），挂载至 MaterialApp.locale
 class AppPrefsController extends ChangeNotifier {
   AppPrefsController._();
   static final AppPrefsController instance = AppPrefsController._();
@@ -18,11 +18,16 @@ class AppPrefsController extends ChangeNotifier {
   double get textScale => _textScale;
   String get lang => _lang;
 
-  bool get isEn => _lang == 'en';
+  bool get isEn {
+    if (_lang == 'en') return true;
+    if (_lang == 'zh') return false;
+    return WidgetsBinding.instance.platformDispatcher.locale.languageCode == 'en';
+  }
 
-  Locale? get locale {
-    if (_lang == 'en') return const Locale('en', 'US');
-    if (_lang == 'zh') return const Locale('zh', 'CN');
+  /// 传给 MaterialApp.locale；当为 null 时跟随系统语言
+  Locale? get localeOverride {
+    if (_lang == 'en') return const Locale('en');
+    if (_lang == 'zh') return const Locale('zh');
     return null;
   }
 
@@ -34,7 +39,7 @@ class AppPrefsController extends ChangeNotifier {
         ? ThemeMode.dark
         : (tm == 'light' ? ThemeMode.light : ThemeMode.system);
     _textScale = sc.clamp(0.85, 1.25);
-    _lang = lg;
+    _lang = (lg == 'en' || lg == 'zh' || lg == 'system') ? lg : 'zh';
     notifyListeners();
   }
 
@@ -56,7 +61,4 @@ class AppPrefsController extends ChangeNotifier {
     await Repo.setKv('pref_lang', langCode);
     notifyListeners();
   }
-
-  /// 轻量中英双语骨架翻译辅助
-  String tr(String zh, String en) => _lang == 'en' ? en : zh;
 }

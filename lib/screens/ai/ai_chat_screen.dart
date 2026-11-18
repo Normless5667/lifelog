@@ -9,7 +9,7 @@ import '../../widgets/common.dart';
 import '../settings/settings_screen.dart';
 
 /// AI 助手：自动注入用户的身体资料、运动问卷、近7天饮食、近14天训练和本周课表
-/// 支持生成结构化 JSON 训练计划并「一键导入到训练模块」
+/// 支持生成结构化 JSON 训练计划并一键导入到训练模块
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
 
@@ -22,32 +22,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _scroll = ScrollController();
   List<ChatMessage> _messages = [];
   bool _sending = false;
-
-  static const _planJsonPrompt = '''
-请根据我的个人档案（目标、运动经验、每周可训练天数、单次时长、可用器械、伤病限制）以及本周课表空闲时间，为我定制一份周训练计划。
-要求：先用简短文字说明计划思路，然后在回复末尾附上严格的 JSON 代码块（格式如下，不要省略字段）：
-```json
-{
-  "plan_name": "计划名称，例如：推拉腿·三分化增肌计划",
-  "days": [
-    {
-      "day": "周一",
-      "focus": "推（胸/肩/三头）",
-      "exercises": [
-        {"name": "杠铃卧推", "sets": 4, "reps": "8-10", "weight_hint": "60kg"},
-        {"name": "哑铃推举", "sets": 3, "reps": "10-12", "weight_hint": "16kg"}
-      ]
-    }
-  ]
-}
-```''';
-
-  static const _quickPrompts = <(String, String)>[
-    ('生成训练计划(可导入)', _planJsonPrompt),
-    ('今日总结', '请结合我今天的饮食和训练记录做个简短点评，并告诉我接下来一餐怎么吃最合适。'),
-    ('本周总结', '请总结我近7天的热量摄入、营养素比例和训练情况，指出做得好的地方和需要改进的地方。'),
-    ('下一餐吃什么', '根据我今天剩余的热量和三大营养素缺口，给我推荐2-3个中国常见、容易买到的餐食方案。'),
-  ];
 
   @override
   void initState() {
@@ -96,7 +70,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<void> _importPlan(TrainingPlan plan) async {
     await Repo.saveTrainingPlan(plan);
     if (!mounted) return;
-    toast(context, '已导入「${plan.planName}」！去「训练」页点击对应分化即可直接按计划开练 💪');
+    toast(context, context.l10n.aiPlanImportedToast(plan.planName));
   }
 
   Future<void> _send(String text) async {
@@ -114,8 +88,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     try {
       var sys = await ContextBuilder.buildSystemPrompt();
-      if (content.contains('训练计划') || content.contains('计划')) {
-        sys += '\n当用户请求制定训练计划时，请在文字说明后附带格式为 {"plan_name":"...","days":[{"day":"...","focus":"...","exercises":[{"name":"...","sets":4,"reps":"8-10","weight_hint":"..."}]}]} 的 JSON 代码块，方便用户一键导入。';
+      if (L10nHelper.isWorkoutPlanRequest(content)) {
+        sys += L10nHelper.planSchemaPromptInstruction;
       }
       final recent = _messages.length > 16 ? _messages.sublist(_messages.length - 16) : _messages;
       final reply = await AiService.chat(systemPrompt: sys, history: recent);
@@ -142,7 +116,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final quickPrompts = <(String, String)>[
+      (l.aiQuickGeneratePlan, l.aiPromptGeneratePlan),
+      (l.aiQuickTodaySummary, l.aiPromptTodaySummary),
+      (l.aiQuickWeekSummary, l.aiPromptWeekSummary),
+      (l.aiQuickNextMeal, l.aiPromptNextMeal),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -156,23 +138,23 @@ class _AiChatScreenState extends State<AiChatScreen> {
               child: const Icon(Icons.smart_toy_rounded, color: Color(0xFFAB47BC), size: 20),
             ),
             const SizedBox(width: 10),
-            const Text('AI 健康助手'),
+            Text(l.aiTitle),
           ],
         ),
         actions: [
           if (_messages.isNotEmpty)
             IconButton(
-              tooltip: '清空对话',
+              tooltip: l.aiClearChatTooltip,
               icon: const Icon(Icons.delete_sweep_rounded),
               onPressed: () async {
-                if (await confirm(context, '清空全部聊天记录？')) {
+                if (await confirm(context, l.aiClearChatConfirm)) {
                   await Repo.clearChat();
                   _load();
                 }
               },
             ),
           IconButton(
-            tooltip: 'AI 设置',
+            tooltip: l.aiSettingsTooltip,
             icon: const Icon(Icons.settings_rounded),
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
@@ -186,7 +168,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Row(
-              children: _quickPrompts.map((p) {
+              children: quickPrompts.map((p) {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ActionChip(
@@ -204,9 +186,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 ? Center(
                     child: EmptyHint(
                       icon: Icons.smart_toy_rounded,
-                      text: 'AI 会自动读取你的身体档案、饮食、训练和课表\n点上方「生成训练计划(可导入)」即可定制专属计划并一键放入训练页',
-                      actionLabel: '生成我的专属训练计划',
-                      onAction: () => _send(_planJsonPrompt),
+                      text: l.aiEmptyHint,
+                      actionLabel: l.aiEmptyActionBtn,
+                      onAction: () => _send(l.aiPromptGeneratePlan),
                     ),
                   )
                 : ListView.builder(
@@ -247,7 +229,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                       FilledButton.icon(
                                         onPressed: () => _importPlan(parsedPlan),
                                         icon: const Icon(Icons.download_done_rounded),
-                                        label: Text('导入到训练计划（${parsedPlan.planName}）'),
+                                        label: Text(l.aiImportPlanBtn(parsedPlan.planName)),
                                       ),
                                     ],
                                   ],
@@ -270,9 +252,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       maxLines: 4,
                       textInputAction: TextInputAction.send,
                       onSubmitted: _send,
-                      decoration: const InputDecoration(
-                        hintText: '问问饮食、训练，或说“帮我生成训练计划”…',
-                        prefixIcon: Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                      decoration: InputDecoration(
+                        hintText: l.aiInputHint,
+                        prefixIcon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
                       ),
                     ),
                   ),

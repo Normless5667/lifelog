@@ -77,6 +77,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _openImportMenu() async {
+    final l = context.l10n;
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -84,32 +85,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
-              title: Text('导入课表', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('支持教务系统截图、课程表小程序截图或直接粘贴选课文字'),
+            ListTile(
+              title: Text(l.scheduleImportTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(l.scheduleImportSub),
             ),
             ListTile(
               leading: const Icon(Icons.school_outlined),
-              title: const Text('一键载入我的默认课表'),
-              subtitle: const Text('Database Principles / Machine Learning / UX Design（周一至周五）'),
+              title: Text(l.scheduleImportPresetTitle),
+              subtitle: Text(l.scheduleImportPresetSub),
               onTap: () => Navigator.pop(ctx, 'preset'),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('从相册选课表截图（AI 识别）'),
-              subtitle: const Text('拍下或截屏教务课表，自动提取所有课程'),
+              title: Text(l.scheduleImportGalleryTitle),
+              subtitle: Text(l.scheduleImportGallerySub),
               onTap: () => Navigator.pop(ctx, 'gallery'),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('拍照识别课表'),
-              subtitle: const Text('直接对着电脑屏幕或纸质课表拍照'),
+              title: Text(l.scheduleImportCameraTitle),
+              subtitle: Text(l.scheduleImportCameraSub),
               onTap: () => Navigator.pop(ctx, 'camera'),
             ),
             ListTile(
               leading: const Icon(Icons.content_paste),
-              title: const Text('粘贴教务文字 / JSON 导入'),
-              subtitle: const Text('复制教务网页上的选课列表文字，由 DeepSeek 解析'),
+              title: Text(l.scheduleImportTextTitle),
+              subtitle: Text(l.scheduleImportTextSub),
               onTap: () => Navigator.pop(ctx, 'text'),
             ),
             const SizedBox(height: 8),
@@ -137,7 +138,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       picked = await picker.pickImage(source: src, maxWidth: 1600, maxHeight: 1600, imageQuality: 88);
     } catch (e) {
       if (!mounted) return;
-      toast(context, '无法打开相册/相机：$e');
+      toast(context, context.l10n.dietCameraError('$e'));
       return;
     }
     if (picked == null || !mounted) return;
@@ -162,27 +163,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _importFromText() async {
+    final l = context.l10n;
     final ctrl = TextEditingController();
     final raw = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('粘贴课表文字导入'),
+        title: Text(l.schedulePasteDialogTitle),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           maxLines: 6,
-          decoration: const InputDecoration(
-            hintText: '直接粘贴教务系统里的课程文字，例如：\n高等数学 周一1-2节 1-16周 A203 王老师\n大学英语 周二5-6节 单周 C302',
+          decoration: InputDecoration(
+            hintText: l.schedulePasteDialogHint,
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton(
             onPressed: () {
               if (ctrl.text.trim().isEmpty) return;
               Navigator.pop(ctx, ctrl.text.trim());
             },
-            child: const Text('AI 解析'),
+            child: Text(l.scheduleAiParseBtn),
           ),
         ],
       ),
@@ -210,7 +212,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _confirmImportCourses(List<Course> parsed) async {
-    const weekTypes = ['每周', '单周', '双周'];
+    final l = context.l10n;
     final selected = List<bool>.filled(parsed.length, true);
     var replaceAll = false;
     final ok = await showModalBottomSheet<bool>(
@@ -225,11 +227,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('识别到 ${parsed.length} 门课（勾选要导入的课程）',
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                l.scheduleConfirmImportTitle(parsed.length),
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('清空原有课表后导入'),
+                title: Text(l.scheduleReplaceAllSwitch),
                 value: replaceAll,
                 onChanged: (v) => setS(() => replaceAll = v),
               ),
@@ -239,16 +243,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   itemCount: parsed.length,
                   itemBuilder: (_, i) {
                     final c = parsed[i];
+                    final sub = l.scheduleCourseImportSub(
+                      L10nHelper.weekdayLabel(ctx, c.weekday),
+                      c.startSection,
+                      c.endSection,
+                      c.startWeek,
+                      c.endWeek,
+                      L10nHelper.weekTypeLabel(ctx, c.weekType),
+                    );
                     return CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: selected[i],
                       onChanged: (v) => setS(() => selected[i] = v ?? true),
                       title: Text('${c.name}${c.location?.isNotEmpty == true ? ' @${c.location}' : ''}'),
-                      subtitle: Text(
-                        '${weekdayNames[c.weekday - 1]} 第${c.startSection}-${c.endSection}节 · '
-                        '${c.startWeek}-${c.endWeek}周(${weekTypes[c.weekType]})'
-                        '${c.teacher?.isNotEmpty == true ? ' · ${c.teacher}' : ''}',
-                      ),
+                      subtitle: Text('$sub${c.teacher?.isNotEmpty == true ? ' · ${c.teacher}' : ''}'),
                     );
                   },
                 ),
@@ -257,7 +265,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               FilledButton.icon(
                 onPressed: () => Navigator.pop(ctx, true),
                 icon: const Icon(Icons.download_done),
-                label: const Text('确认导入课表'),
+                label: Text(l.scheduleConfirmImportBtn),
               ),
             ],
           ),
@@ -271,7 +279,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ];
       await Repo.importCourses(toSave, replaceAll: replaceAll);
       if (!mounted) return;
-      toast(context, '成功导入 ${toSave.length} 门课程');
+      toast(context, l.scheduleImportedToast(toSave.length));
       _load();
     }
   }
@@ -284,15 +292,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     var useSysClock = await ReminderService.useSystemClock();
     var notifStatus = await ReminderService.checkNotificationStatus();
     if (!mounted) return;
+    final l = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.notifications_active_rounded, color: Colors.teal),
-              SizedBox(width: 8),
-              Expanded(child: Text('课表与上课提醒设置')),
+              const Icon(Icons.notifications_active_rounded, color: Colors.teal),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l.scheduleSettingsTitle)),
             ],
           ),
           content: SingleChildScrollView(
@@ -312,22 +321,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                            SizedBox(width: 6),
+                            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'OPPO/ColorOS 通知权限可能被降级',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                l.scheduleColorOsWarnTitle,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          '请点击下方按钮进入系统通知设置，将「上课与休息强提醒」设为【重要通知】并开启【震动】与【横幅】。',
-                          style: TextStyle(fontSize: 11),
+                        Text(
+                          l.scheduleColorOsWarnSub,
+                          style: const TextStyle(fontSize: 11),
                         ),
                         const SizedBox(height: 6),
                         OutlinedButton.icon(
@@ -337,29 +346,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             setD(() => notifStatus = s);
                           },
                           icon: const Icon(Icons.settings_suggest_rounded, size: 16),
-                          label: const Text('去系统设置开启「重要通知+震动」', style: TextStyle(fontSize: 12)),
+                          label: Text(l.scheduleOpenChannelSettingsBtn, style: const TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('开启课前手机通知强提醒'),
-                  subtitle: const Text('快上课时调用硬件闹钟震动+横幅弹窗'),
+                  title: Text(l.scheduleEnableReminderSwitch),
+                  subtitle: Text(l.scheduleEnableReminderSub),
                   value: remEnabled,
                   onChanged: (v) => setD(() => remEnabled = v),
                 ),
                 if (remEnabled)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('提前多久提醒'),
+                    title: Text(l.busRemindBeforeLabel),
                     trailing: DropdownButton<int>(
                       value: remMins,
-                      items: const [
-                        DropdownMenuItem(value: 5, child: Text('提前 5 分钟')),
-                        DropdownMenuItem(value: 10, child: Text('提前 10 分钟')),
-                        DropdownMenuItem(value: 15, child: Text('提前 15 分钟')),
-                        DropdownMenuItem(value: 30, child: Text('提前 30 分钟')),
+                      items: [
+                        for (final m in [5, 10, 15, 30])
+                          DropdownMenuItem(value: m, child: Text(l.busRemindMinsOption(m))),
                       ],
                       onChanged: (v) => setD(() => remMins = v ?? remMins),
                     ),
@@ -378,28 +385,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         );
                       },
                       icon: const Icon(Icons.health_and_safety_rounded, size: 16),
-                      label: const Text('通知与震动诊断页', style: TextStyle(fontSize: 12)),
+                      label: Text(l.scheduleDiagnoseBtn, style: const TextStyle(fontSize: 12)),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => ReminderService.openAppNotificationSettings(),
                       icon: const Icon(Icons.tune_rounded, size: 16),
-                      label: const Text('系统通知设置', style: TextStyle(fontSize: 12)),
+                      label: Text(l.scheduleSysNotifBtn, style: const TextStyle(fontSize: 12)),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () async {
                         await ReminderService.testNotification();
-                        if (ctx.mounted) toast(ctx, '已触发强震动测试通知！');
+                        if (ctx.mounted) toast(ctx, l.scheduleTestVibToast);
                       },
                       icon: const Icon(Icons.vibration_rounded, size: 18),
-                      label: const Text('立即测试震动通知', style: TextStyle(fontSize: 12)),
+                      label: Text(l.scheduleTestVibBtn, style: const TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
                 const Divider(height: 22),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('用系统时钟 App 闹钟提醒（可选）'),
-                  subtitle: const Text('调起手机自带「时钟」新建闹钟，100%必响，但会在闹钟列表留记录'),
+                  title: Text(l.scheduleUseSysClockSwitch),
+                  subtitle: Text(l.scheduleUseSysClockSub),
                   value: useSysClock,
                   onChanged: (v) => setD(() => useSysClock = v),
                 ),
@@ -412,19 +419,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         final info = await ReminderService.setNextCourseInSystemClock();
                         if (!ctx.mounted) return;
                         if (info != null) {
-                          toast(ctx, '已为您调起系统时钟设置下一节课闹钟：$info');
+                          toast(ctx, l.scheduleWriteNextAlarmToast(info));
                         } else {
-                          toast(ctx, '未来 7 天内暂无待上课程');
+                          toast(ctx, l.scheduleNoUpcomingClassToast);
                         }
                       },
                       icon: const Icon(Icons.alarm_add_rounded, size: 18),
-                      label: const Text('一键把下一节课写入系统闹钟'),
+                      label: Text(l.scheduleWriteNextAlarmBtn),
                     ),
                   ),
                 const Divider(height: 22),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('第一周的周一'),
+                  title: Text(l.scheduleFirstWeekMonLabel),
                   subtitle: Text(fmtDate(start)),
                   trailing: const Icon(Icons.edit_calendar),
                   onTap: () async {
@@ -433,17 +440,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       initialDate: start,
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2035),
-                      helpText: '选择开学第一周的任意一天',
+                      helpText: l.schedulePickSemesterStartHelp,
                     );
                     if (d != null) setD(() => start = mondayOf(d));
                   },
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('每天节数'),
+                  title: Text(l.scheduleSectionsPerDayLabel),
                   trailing: DropdownButton<int>(
                     value: sections,
-                    items: [for (var i = 4; i <= 16; i++) DropdownMenuItem(value: i, child: Text('$i 节'))],
+                    items: [for (var i = 4; i <= 16; i++) DropdownMenuItem(value: i, child: Text(l.scheduleSectionsCount(i)))],
                     onChanged: (v) => setD(() => sections = v ?? sections),
                   ),
                 ),
@@ -451,8 +458,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('保存')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l.commonSave)),
           ],
         ),
       ),
@@ -470,6 +477,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -483,9 +491,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               onTap: () => setState(() => _week = _currentWeek),
               child: Column(
                 children: [
-                  Text('第 $_week 周'),
-                  Text(_week == _currentWeek ? '本周' : '点击回到本周',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(l.scheduleWeekTitle(_week)),
+                  Text(
+                    _week == _currentWeek ? l.scheduleCurrentWeek : l.scheduleBackToCurrent,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -498,19 +508,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '校车时刻表',
+            tooltip: l.busBoardTitle,
             icon: const Icon(Icons.directions_bus_rounded),
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const BusScheduleScreen()));
             },
           ),
-          IconButton(tooltip: '导入课表', icon: const Icon(Icons.file_upload_outlined), onPressed: _openImportMenu),
-          IconButton(tooltip: '学期与提醒设置', icon: const Icon(Icons.tune), onPressed: _openSettings),
+          IconButton(tooltip: l.scheduleImportTitle, icon: const Icon(Icons.file_upload_outlined), onPressed: _openImportMenu),
+          IconButton(tooltip: l.scheduleSettingsTitle, icon: const Icon(Icons.tune), onPressed: _openSettings),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _edit(),
-        tooltip: '添加课程',
+        tooltip: l.scheduleAddCourseTooltip,
         child: const Icon(Icons.add),
       ),
       body: Stack(
@@ -531,7 +541,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            '🌧️ 今日有雨（降水概率 ${fmtNum(_weather!.precipProb)}%），去教室或坐校车记得带伞！',
+                            l.scheduleRainBanner(fmtNum(_weather!.precipProb)),
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -547,11 +557,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('点格子添加，或 '),
+                        Text(l.scheduleEmptyTapHint),
                         FilledButton.tonalIcon(
                           onPressed: _openImportMenu,
                           icon: const Icon(Icons.auto_awesome, size: 16),
-                          label: const Text('截图 / 文本一键导入课表'),
+                          label: Text(l.scheduleEmptyImportBtn),
                         ),
                       ],
                     ),
@@ -561,16 +571,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           if (_busyAi)
             Container(
               color: Colors.black45,
-              child: const Center(
+              child: Center(
                 child: Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('AI 正在识别并提取全部课程…'),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(l.scheduleAiParsing),
                       ],
                     ),
                   ),
@@ -583,6 +593,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _header() {
+    final l = context.l10n;
     final monday = mondayOf(_semesterStart).add(Duration(days: (_week - 1) * 7));
     final todayD = dateOnly(DateTime.now());
     final cs = Theme.of(context).colorScheme;
@@ -592,7 +603,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         children: [
           SizedBox(
             width: _leftWidth,
-            child: Center(child: Text('${monday.month}\n月', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))),
+            child: Center(
+              child: Text(
+                l.scheduleMonthHeader(monday.month),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
           ),
           for (var i = 0; i < 7; i++)
             Builder(builder: (_) {
@@ -608,7 +625,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(weekdayNames[i], style: TextStyle(fontSize: 12, fontWeight: isToday ? FontWeight.bold : null)),
+                      Text(
+                        L10nHelper.weekdayLabel(context, i + 1),
+                        style: TextStyle(fontSize: 12, fontWeight: isToday ? FontWeight.bold : null),
+                      ),
                       Text('${d.day}', style: const TextStyle(fontSize: 10)),
                     ],
                   ),
@@ -693,7 +713,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _showCourse(Course c) {
-    const weekTypes = ['每周', '单周', '双周'];
+    final l = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -706,9 +726,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             children: [
               Text(c.name, style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: 12),
-              _info(Icons.schedule,
-                  '${weekdayNames[c.weekday - 1]} ${ReminderService.formatRange(c.startSection, c.endSection)}（第 ${c.startSection}-${c.endSection} 节）'),
-              _info(Icons.date_range, '第 ${c.startWeek}-${c.endWeek} 周 · ${weekTypes[c.weekType]}'),
+              _info(
+                Icons.schedule,
+                l.scheduleCourseDetailSection(
+                  L10nHelper.weekdayLabel(ctx, c.weekday),
+                  ReminderService.formatRange(c.startSection, c.endSection),
+                  c.startSection,
+                  c.endSection,
+                ),
+              ),
+              _info(
+                Icons.date_range,
+                l.scheduleCourseDetailWeeks(
+                  c.startWeek,
+                  c.endWeek,
+                  L10nHelper.weekTypeLabel(ctx, c.weekType),
+                ),
+              ),
               if (c.location?.isNotEmpty == true) _info(Icons.place_outlined, c.location!),
               if (c.teacher?.isNotEmpty == true) _info(Icons.person_outline, c.teacher!),
               const SizedBox(height: 16),
@@ -717,13 +751,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   OutlinedButton.icon(
                     onPressed: () async {
                       Navigator.pop(ctx);
-                      if (await confirm(context, '删除课程「${c.name}」？')) {
+                      if (await confirm(context, l.scheduleDeleteCourseConfirm(c.name))) {
                         await Repo.deleteCourse(c.id!);
                         _load();
                       }
                     },
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('删除'),
+                    label: Text(l.commonDelete),
                   ),
                   const Spacer(),
                   FilledButton.icon(
@@ -732,7 +766,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       _edit(course: c);
                     },
                     icon: const Icon(Icons.edit),
-                    label: const Text('编辑'),
+                    label: Text(l.commonEdit),
                   ),
                 ],
               ),

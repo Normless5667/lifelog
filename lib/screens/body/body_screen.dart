@@ -8,7 +8,7 @@ import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'profile_screen.dart';
 
-/// 身体数据：体重曲线、记录列表、BMR/TDEE（全图标化视觉卡片）
+/// 身体数据：体重曲线、记录列表、BMR/TDEE
 class BodyScreen extends StatefulWidget {
   const BodyScreen({super.key});
 
@@ -55,6 +55,7 @@ class _BodyScreenState extends State<BodyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final latest = _records.where((r) => r.weight != null).toList();
     final w = latest.isEmpty ? null : latest.first.weight;
     return Scaffold(
@@ -70,7 +71,7 @@ class _BodyScreenState extends State<BodyScreen> {
               child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5), size: 20),
             ),
             const SizedBox(width: 10),
-            const Text('身体数据'),
+            Text(l.bodyTitle),
           ],
         ),
         actions: [
@@ -80,14 +81,14 @@ class _BodyScreenState extends State<BodyScreen> {
               _load();
             },
             icon: const Icon(Icons.badge_rounded),
-            label: const Text('资料'),
+            label: Text(l.bodyProfileBtn),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addRecord(),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('记体重'),
+        label: Text(l.bodyLogWeightBtn),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -99,8 +100,8 @@ class _BodyScreenState extends State<BodyScreen> {
                     color: Theme.of(context).colorScheme.primaryContainer,
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person_add_alt_1_rounded)),
-                      title: const Text('还没有填写身体资料', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('点击右上角「资料」填写，代谢与热量计算才准确'),
+                      title: Text(l.bodyNoProfileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(l.bodyNoProfileSub),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
@@ -109,26 +110,26 @@ class _BodyScreenState extends State<BodyScreen> {
                     ),
                   ),
                 if (w != null) _statsCard(w),
-                const SectionTitle('体重趋势曲线', icon: Icons.show_chart_rounded, iconColor: Color(0xFF26A69A)),
+                SectionTitle(l.bodyWeightTrendTitle, icon: Icons.show_chart_rounded, iconColor: const Color(0xFF26A69A)),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 20, 20, 12),
                     child: latest.isEmpty
                         ? EmptyHint(
                             icon: Icons.insights_rounded,
-                            text: '记录第一笔体重后即可查看变化趋势图',
-                            actionLabel: '立即记录体重',
+                            text: l.bodyEmptyChartHint,
+                            actionLabel: l.bodyEmptyChartBtn,
                             onAction: () => _addRecord(),
                           )
                         : SizedBox(height: 200, child: _weightChart(latest.reversed.toList())),
                   ),
                 ),
-                const SectionTitle('历史记录', icon: Icons.history_rounded, iconColor: Color(0xFF42A5F5)),
+                SectionTitle(l.bodyHistoryTitle, icon: Icons.history_rounded, iconColor: const Color(0xFF42A5F5)),
                 if (_records.isEmpty)
                   EmptyHint(
                     icon: Icons.monitor_weight_rounded,
-                    text: '还没有身体记录\n每天早上空腹称重最准确哦',
-                    actionLabel: '记录今日体重',
+                    text: l.bodyEmptyHistoryHint,
+                    actionLabel: l.bodyEmptyHistoryBtn,
                     onAction: () => _addRecord(),
                   )
                 else
@@ -137,8 +138,8 @@ class _BodyScreenState extends State<BodyScreen> {
                       children: _records.map((r) {
                         final parts = [
                           if (r.weight != null) '${fmtNum(r.weight!, digits: 1)} kg',
-                          if (r.bodyFat != null) '体脂 ${fmtNum(r.bodyFat!, digits: 1)}%',
-                          if (r.waist != null) '腰围 ${fmtNum(r.waist!, digits: 1)} cm',
+                          if (r.bodyFat != null) l.bodyFatTag(fmtNum(r.bodyFat!, digits: 1)),
+                          if (r.waist != null) l.bodyWaistTag(fmtNum(r.waist!, digits: 1)),
                         ];
                         return ListTile(
                           leading: Container(
@@ -151,7 +152,7 @@ class _BodyScreenState extends State<BodyScreen> {
                             child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
                           ),
                           title: Text(parts.join(' · '), style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(friendlyDate(r.date)),
+                          subtitle: Text(L10nHelper.friendlyDateL10n(context, r.date)),
                           onTap: () => _addRecord(r),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -159,7 +160,7 @@ class _BodyScreenState extends State<BodyScreen> {
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded),
                                 onPressed: () async {
-                                  if (await confirm(context, '删除这条记录？')) {
+                                  if (await confirm(context, l.commonDeleteRecordConfirm)) {
                                     await Repo.deleteBodyRecord(r.id!);
                                     _load();
                                   }
@@ -178,6 +179,7 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Widget _statsCard(double w) {
+    final l = context.l10n;
     final bmi = Nutrition.bmi(_profile.height, w);
     Widget stat(IconData icon, Color color, String label, String value) => Expanded(
           child: Container(
@@ -203,14 +205,14 @@ class _BodyScreenState extends State<BodyScreen> {
         child: Column(
           children: [
             Row(children: [
-              stat(Icons.monitor_weight_rounded, const Color(0xFF42A5F5), '体重 kg', fmtNum(w, digits: 1)),
-              stat(Icons.speed_rounded, const Color(0xFF26A69A), 'BMI (${Nutrition.bmiLabel(bmi)})', fmtNum(bmi, digits: 1)),
-              stat(Icons.local_fire_department_rounded, const Color(0xFFFFA726), '基础代谢', fmtNum(Nutrition.bmr(_profile, w))),
+              stat(Icons.monitor_weight_rounded, const Color(0xFF42A5F5), l.bodyStatWeight, fmtNum(w, digits: 1)),
+              stat(Icons.speed_rounded, const Color(0xFF26A69A), 'BMI (${L10nHelper.bmiStatusLabel(context, bmi)})', fmtNum(bmi, digits: 1)),
+              stat(Icons.local_fire_department_rounded, const Color(0xFFFFA726), l.bodyStatBmr, fmtNum(Nutrition.bmr(_profile, w))),
             ]),
             Row(children: [
-              stat(Icons.bolt_rounded, const Color(0xFFEF5350), '总消耗 TDEE', fmtNum(Nutrition.tdee(_profile, w))),
-              stat(Icons.restaurant_rounded, const Color(0xFF66BB6A), '目标 kcal', fmtNum(Nutrition.calorieTarget(_profile, w))),
-              stat(Icons.flag_rounded, const Color(0xFFAB47BC), '当前目标', Nutrition.goals[_profile.goal] ?? ''),
+              stat(Icons.bolt_rounded, const Color(0xFFEF5350), l.bodyStatTdee, fmtNum(Nutrition.tdee(_profile, w))),
+              stat(Icons.restaurant_rounded, const Color(0xFF66BB6A), l.bodyStatTargetKcal, fmtNum(Nutrition.calorieTarget(_profile, w))),
+              stat(Icons.flag_rounded, const Color(0xFFAB47BC), l.bodyStatGoal, L10nHelper.goalLabel(context, _profile.goal)),
             ]),
           ],
         ),
@@ -219,6 +221,7 @@ class _BodyScreenState extends State<BodyScreen> {
   }
 
   Widget _weightChart(List<BodyRecord> asc) {
+    final l = context.l10n;
     final data = asc.length > 60 ? asc.sublist(asc.length - 60) : asc;
     final first = parseDate(data.first.date);
     final spots = data
@@ -251,7 +254,7 @@ class _BodyScreenState extends State<BodyScreen> {
                       show: true,
                       alignment: Alignment.topRight,
                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFEF5350)),
-                      labelResolver: (_) => '目标 ${fmtNum(targetW, digits: 1)}kg',
+                      labelResolver: (_) => l.bodyChartTargetLine(fmtNum(targetW, digits: 1)),
                     ),
                   ),
                 ],
@@ -331,6 +334,7 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     return AlertDialog(
       title: Row(
@@ -344,7 +348,7 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
             child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5), size: 22),
           ),
           const SizedBox(width: 10),
-          const Text('记录身体数据'),
+          Text(l.bodyDialogTitle),
         ],
       ),
       content: SingleChildScrollView(
@@ -354,7 +358,7 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.event_rounded, color: Color(0xFF26A69A)),
-              title: Text(friendlyDate(_date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(L10nHelper.friendlyDateL10n(context, _date), style: const TextStyle(fontWeight: FontWeight.bold)),
               trailing: const Icon(Icons.edit_calendar_rounded, size: 18),
               onTap: () async {
                 final d = await showDatePicker(
@@ -370,50 +374,50 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
               controller: _weight,
               keyboardType: numKb,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: '体重',
+              decoration: InputDecoration(
+                labelText: l.bodyWeightLabel,
                 suffixText: 'kg',
-                prefixIcon: Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
+                prefixIcon: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _fat,
               keyboardType: numKb,
-              decoration: const InputDecoration(
-                labelText: '体脂率（可选）',
+              decoration: InputDecoration(
+                labelText: l.bodyFatLabel,
                 suffixText: '%',
-                prefixIcon: Icon(Icons.percent_rounded, color: Color(0xFFFFA726)),
+                prefixIcon: const Icon(Icons.percent_rounded, color: Color(0xFFFFA726)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _waist,
               keyboardType: numKb,
-              decoration: const InputDecoration(
-                labelText: '腰围（可选）',
+              decoration: InputDecoration(
+                labelText: l.bodyWaistLabel,
                 suffixText: 'cm',
-                prefixIcon: Icon(Icons.straighten_rounded, color: Color(0xFFAB47BC)),
+                prefixIcon: const Icon(Icons.straighten_rounded, color: Color(0xFFAB47BC)),
               ),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
             final w = double.tryParse(_weight.text);
             final f = double.tryParse(_fat.text);
             final wa = double.tryParse(_waist.text);
             if (w == null && f == null && wa == null) {
-              toast(context, '至少填写一项');
+              toast(context, l.commonAtLeastOneField);
               return;
             }
             Navigator.pop(context, BodyRecord(date: _date, weight: w, bodyFat: f, waist: wa));
           },
           icon: const Icon(Icons.check_rounded),
-          label: const Text('保存'),
+          label: Text(l.commonSave),
         ),
       ],
     );

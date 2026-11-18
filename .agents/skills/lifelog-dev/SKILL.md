@@ -102,6 +102,13 @@ C:\Users\33239\dev\flutter-nops.bat build apk --release
 
 ## 6. 进度日志（倒序，最新在上）
 
+- **2026-11-18 (阶段 9 - 生活助手 v1.5 `1.5.0+6` 全量 gen-l10n 国际化架构改造完成)**：
+  - **P0 彻底废除 `prefs.tr()`，全量接入 Flutter 官方 `gen-l10n` (`AppLocalizations`)**：
+    - 新增 `l10n.yaml` 并在 `pubspec.yaml` 开启 `flutter: generate: true`；
+    - 将 `lib/l10n/app_en.arb` 与 `lib/l10n/app_zh.arb` 从 10 个词条扩充至 **280+ 个结构化词条**，完整覆盖首页、课表、校车实时看板、饮食、拍照确认、训练、训练计时器、动作库、身体数据、个人档案、首次引导问卷、AI 教练、设置、通知诊断、关于页及全部弹窗/Toast，并使用 ICU plural 复数语法处理 `homeStreakDays`（`1-day streak` vs `3-day streak`）；
+    - 彻底删除 `AppPrefsController.tr()` 方法，将全部 16 个页面与通用组件中的 `prefs.tr()` 和硬编码中文全部替换为 `AppLocalizations.of(context)!`（`context.l10n`），并通过 `lib/utils/l10n_ext.dart` (`L10nHelper`) 完成内置 47 个训练动作、部位分类、有氧类型、天气描述、星期/日期的双向本地化映射；
+    - 语言切换接入 `MaterialApp.locale`（支持 `跟随系统 system` / `简体中文 zh` / `English en` 三档切换，不重启立即生效，持久化至 SQLite `kv` 重启保持）；
+    - 通过静态脚本校验 `lib/screens/` 与 `lib/widgets/` 下除注释外 **0 处硬编码中文**。
 - **2026-11-18 (阶段 8 - 生活助手 v1.4 `1.4.0+5` 首页布局修复 + 校车时刻表机场航班屏动态化)**：
   - **P0 首页标题栏重叠与 360dp 小屏溢出修复**：
     - 将日期缩短为 `11/18 周三` 并加上 `Flexible` + `TextOverflow.ellipsis` 兜底；

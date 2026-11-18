@@ -62,6 +62,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     return AlertDialog(
       title: Row(
@@ -75,7 +76,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
             child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFA726), size: 22),
           ),
           const SizedBox(width: 10),
-          Text(widget.existing == null ? '记录饮食' : '编辑饮食'),
+          Text(widget.existing == null ? l.mealEditAddTitle : l.mealEditUpdateTitle),
         ],
       ),
       content: SingleChildScrollView(
@@ -85,7 +86,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
             DropdownButtonFormField<int>(
               initialValue: _mealType,
               decoration: InputDecoration(
-                labelText: '餐次',
+                labelText: l.mealEditTypeLabel,
                 prefixIcon: Icon(_mealIcons[_mealType], color: const Color(0xFFFFA726)),
               ),
               items: [
@@ -96,7 +97,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
                       children: [
                         Icon(_mealIcons[i], size: 18),
                         const SizedBox(width: 8),
-                        Text(mealTypeNames[i]),
+                        Text(L10nHelper.mealTypeLabel(context, i)),
                       ],
                     ),
                   )
@@ -107,27 +108,27 @@ class _MealEditDialogState extends State<MealEditDialog> {
             TextField(
               controller: _name,
               autofocus: widget.existing == null,
-              decoration: const InputDecoration(
-                labelText: '食物名称 *',
-                prefixIcon: Icon(Icons.restaurant_rounded, color: Color(0xFF26A69A)),
+              decoration: InputDecoration(
+                labelText: l.mealEditNameLabel,
+                prefixIcon: const Icon(Icons.restaurant_rounded, color: Color(0xFF26A69A)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _amount,
-              decoration: const InputDecoration(
-                labelText: '份量（如 1碗 / 200g）',
-                prefixIcon: Icon(Icons.scale_rounded, color: Color(0xFF42A5F5)),
+              decoration: InputDecoration(
+                labelText: l.mealEditAmountLabel,
+                prefixIcon: const Icon(Icons.scale_rounded, color: Color(0xFF42A5F5)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _kcal,
               keyboardType: numKb,
-              decoration: const InputDecoration(
-                labelText: '热量',
+              decoration: InputDecoration(
+                labelText: l.mealEditKcalLabel,
                 suffixText: 'kcal',
-                prefixIcon: Icon(Icons.local_fire_department_rounded, color: Color(0xFFEF5350)),
+                prefixIcon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFEF5350)),
               ),
             ),
             const SizedBox(height: 12),
@@ -137,9 +138,9 @@ class _MealEditDialogState extends State<MealEditDialog> {
                   child: TextField(
                     controller: _p,
                     keyboardType: numKb,
-                    decoration: const InputDecoration(
-                      labelText: '蛋白 g',
-                      prefixIcon: Icon(Icons.egg_alt_rounded, size: 18, color: Color(0xFFEF5350)),
+                    decoration: InputDecoration(
+                      labelText: l.foodConfirmProtein,
+                      prefixIcon: const Icon(Icons.egg_alt_rounded, size: 18, color: Color(0xFFEF5350)),
                     ),
                   ),
                 ),
@@ -148,9 +149,9 @@ class _MealEditDialogState extends State<MealEditDialog> {
                   child: TextField(
                     controller: _c,
                     keyboardType: numKb,
-                    decoration: const InputDecoration(
-                      labelText: '碳水 g',
-                      prefixIcon: Icon(Icons.rice_bowl_rounded, size: 18, color: Color(0xFFFFA726)),
+                    decoration: InputDecoration(
+                      labelText: l.foodConfirmCarbs,
+                      prefixIcon: const Icon(Icons.rice_bowl_rounded, size: 18, color: Color(0xFFFFA726)),
                     ),
                   ),
                 ),
@@ -159,9 +160,9 @@ class _MealEditDialogState extends State<MealEditDialog> {
                   child: TextField(
                     controller: _f,
                     keyboardType: numKb,
-                    decoration: const InputDecoration(
-                      labelText: '脂肪 g',
-                      prefixIcon: Icon(Icons.water_drop_rounded, size: 18, color: Color(0xFF42A5F5)),
+                    decoration: InputDecoration(
+                      labelText: l.foodConfirmFat,
+                      prefixIcon: const Icon(Icons.water_drop_rounded, size: 18, color: Color(0xFF42A5F5)),
                     ),
                   ),
                 ),
@@ -171,11 +172,11 @@ class _MealEditDialogState extends State<MealEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
             if (_name.text.trim().isEmpty) {
-              toast(context, '请输入食物名称');
+              toast(context, l.mealEditNameRequired);
               return;
             }
             Navigator.pop(
@@ -196,7 +197,7 @@ class _MealEditDialogState extends State<MealEditDialog> {
             );
           },
           icon: const Icon(Icons.check_rounded),
-          label: const Text('保存'),
+          label: Text(l.commonSave),
         ),
       ],
     );

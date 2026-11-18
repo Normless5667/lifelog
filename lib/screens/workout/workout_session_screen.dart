@@ -47,10 +47,15 @@ class _SetRow {
 class _ExerciseBlock {
   final Exercise exercise;
   final List<_SetRow> sets;
-  final String lastHint;
-  final String? planHint;
+  final List<WorkoutSet> lastWorkSets;
+  final TrainingPlanExercise? planExercise;
 
-  _ExerciseBlock(this.exercise, this.sets, this.lastHint, {this.planHint});
+  _ExerciseBlock(
+    this.exercise,
+    this.sets,
+    this.lastWorkSets, {
+    this.planExercise,
+  });
 }
 
 class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
@@ -97,16 +102,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       byEx.putIfAbsent(s.exerciseId, () => []).add(s);
     }
     for (final entry in byEx.entries) {
-      final ex = exMap[entry.key] ?? Exercise(id: entry.key, name: '动作', category: '其他');
-      final last = await _formatLast(ex);
+      final ex = exMap[entry.key] ??
+          Exercise(id: entry.key, name: 'Exercise', category: L10nHelper.cardioOtherCategory);
+      final lastSets = await Repo.lastSetsForExercise(ex.id!, excludeWorkoutId: widget.workoutId);
+      final lastWork = lastSets.where((s) => !s.isWarmup).toList();
       _blocks.add(_ExerciseBlock(
         ex,
         entry.value.map((s) => _SetRow(w: s.weight, r: s.reps, warmup: s.isWarmup, done: true)).toList(),
-        last,
+        lastWork,
       ));
     }
 
-    // 如果是按 AI 训练计划一键开练，自动初始化动作与组数
     if (_blocks.isEmpty && widget.initialPlanExercises != null) {
       for (final pe in widget.initialPlanExercises!) {
         final ex = await Repo.findOrCreateExercise(pe.name);
@@ -116,13 +122,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         final hintReps = int.tryParse(RegExp(r'\d+').firstMatch(pe.reps)?.group(0) ?? '') ?? 10;
         final defW = hintWeight ?? (lastWork.isEmpty ? 0.0 : lastWork.first.weight);
         final defR = lastWork.isEmpty ? hintReps : lastWork.first.reps;
-        final lastStr = await _formatLast(ex);
         final rows = [for (var i = 0; i < pe.sets.clamp(1, 10); i++) _SetRow(w: defW, r: defR)];
         _blocks.add(_ExerciseBlock(
           ex,
           rows,
-          lastStr,
-          planHint: '计划目标：${pe.sets}组 × ${pe.reps}${pe.weightHint.isNotEmpty ? '（建议 ${pe.weightHint}）' : ''}',
+          lastWork,
+          planExercise: pe,
         ));
       }
     }
@@ -143,7 +148,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           _restRemaining--;
           if (_restRemaining == 0) {
             ReminderService.vibrateShort();
-            toast(context, '⏱️ 组间休息结束！开始下一组吧 💪');
+            toast(context, context.l10n.sessionRestFinishedToast);
           }
         }
       });
@@ -170,7 +175,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
     ReminderService.scheduleRestAlarm(
       dur,
-      nextHint: exerciseName != null ? '「$exerciseName」休息结束，准备下一组 💪' : null,
+      nextHint: exerciseName,
     );
   }
 
@@ -182,14 +187,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     ReminderService.cancelRestAlarm();
   }
 
-  Future<String> _formatLast(Exercise ex) async {
-    final last = await Repo.lastSetsForExercise(ex.id!, excludeWorkoutId: widget.workoutId);
-    final work = last.where((s) => !s.isWarmup).toList();
+  String _formatLast(BuildContext context, Exercise ex, List<WorkoutSet> work) {
     if (work.isEmpty) return '';
-    if (ex.category == '有氧') {
-      return '上次：${work.map((s) => '${fmtNum(s.weight)}分钟${s.reps > 0 ? ' · ${s.reps}步' : ''}').join('  ')}';
+    final l = context.l10n;
+    if (L10nHelper.isCardioCategory(ex.category)) {
+      final recs = work
+          .map((s) => '${fmtNum(s.weight)} ${l.sessionCardioMins}${s.reps > 0 ? ' · ${s.reps} ${l.sessionCardioStepsUnit}' : ''}')
+          .join('  ');
+      return l.sessionLastCardioHint(recs);
     }
-    return '上次：${work.map((s) => '${fmtNum(s.weight, digits: 1)}kg×${s.reps}').join('  ')}';
+    final recs = work.map((s) => '${fmtNum(s.weight, digits: 1)}kg×${s.reps}').join('  ');
+    return l.sessionLastStrengthHint(recs);
   }
 
   Future<void> _addExercise() async {
@@ -200,13 +208,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     if (ex == null) return;
     final lastSets = await Repo.lastSetsForExercise(ex.id!, excludeWorkoutId: widget.workoutId);
     final lastWork = lastSets.where((s) => !s.isWarmup).toList();
-    final isCardio = ex.category == '有氧';
+    final isCardio = L10nHelper.isCardioCategory(ex.category);
     final defW = lastWork.isEmpty ? (isCardio ? 30.0 : 0.0) : lastWork.first.weight;
     final defR = lastWork.isEmpty ? 0 : lastWork.first.reps;
-    final hint = await _formatLast(ex);
     if (!mounted) return;
     setState(() {
-      _blocks.add(_ExerciseBlock(ex, [_SetRow(w: defW, r: defR)], hint));
+      _blocks.add(_ExerciseBlock(ex, [_SetRow(w: defW, r: defR)], lastWork));
     });
   }
 
@@ -224,7 +231,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     var workSets = 0;
     var vol = 0.0;
     for (final b in _blocks) {
-      if (b.exercise.category == '有氧') continue;
+      if (L10nHelper.isCardioCategory(b.exercise.category)) continue;
       for (final s in b.sets) {
         final w = double.tryParse(s.weight.text) ?? 0;
         final r = int.tryParse(s.reps.text) ?? 0;
@@ -272,13 +279,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final stats = _liveStats();
     toast(
       context,
-      '训练完成！耗时 ${_elapsedSeconds ~/ 60} 分钟 · ${stats.sets} 组 · 容量 ${fmtNum(stats.volume)} kg · 消耗约 ${fmtNum(stats.kcal)} kcal',
+      context.l10n.sessionFinishedToast(
+        _elapsedSeconds ~/ 60,
+        stats.sets,
+        fmtNum(stats.volume),
+        fmtNum(stats.kcal),
+      ),
     );
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     final stats = _liveStats();
     return PopScope(
@@ -315,7 +328,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${stats.sets}组 · ${fmtNum(stats.volume)}kg',
+                  l.sessionHeaderStats(stats.sets, fmtNum(stats.volume)),
                   style: const TextStyle(fontSize: 13),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -326,7 +339,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             FilledButton.icon(
               onPressed: _finish,
               icon: const Icon(Icons.stop_circle_outlined, size: 18),
-              label: const Text('结束训练'),
+              label: Text(l.sessionFinishBtn),
             ),
             const SizedBox(width: 8),
           ],
@@ -334,7 +347,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _addExercise,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('添加动作'),
+          label: Text(l.sessionAddExerciseBtn),
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -346,8 +359,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         ? Center(
                             child: EmptyHint(
                               icon: Icons.fitness_center_rounded,
-                              text: '训练计时已开始！\n点击下方按钮选择动作，每完成一组点右侧 ✓ 自动开启组间休息倒计时',
-                              actionLabel: '选择训练动作',
+                              text: l.sessionEmptyHint,
+                              actionLabel: l.sessionSelectExerciseBtn,
                               onAction: _addExercise,
                             ),
                           )
@@ -365,6 +378,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   /// 顶部组间休息计时器横幅（可设 60 / 90 / 120 / 180 秒，支持暂停 / +15s / 跳过）
   Widget _restTimerBanner() {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final active = _restRemaining > 0;
     return Container(
@@ -386,13 +400,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           if (active) ...[
             Expanded(
               child: Text(
-                '组间休息倒计时：${_fmtClock(_restRemaining)}${_restPaused ? ' (已暂停)' : ''}',
+                l.sessionRestActive(
+                  _fmtClock(_restRemaining),
+                  _restPaused ? l.sessionRestPausedTag : '',
+                ),
                 style: TextStyle(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
               ),
             ),
             IconButton(
               visualDensity: VisualDensity.compact,
-              tooltip: _restPaused ? '继续' : '暂停',
+              tooltip: _restPaused ? l.sessionRestResume : l.sessionRestPause,
               icon: Icon(_restPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
               onPressed: () {
                 setState(() => _restPaused = !_restPaused);
@@ -409,10 +426,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             ),
             TextButton(
               onPressed: _stopRestTimer,
-              child: const Text('跳过'),
+              child: Text(l.sessionRestSkip),
             ),
           ] else ...[
-            const Text('组间休息时长：', style: TextStyle(fontSize: 12)),
+            Text(l.sessionRestDurationLabel, style: const TextStyle(fontSize: 12)),
             for (final sec in [60, 90, 120, 180])
               Padding(
                 padding: const EdgeInsets.only(right: 4),
@@ -426,7 +443,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             const Spacer(),
             IconButton(
               visualDensity: VisualDensity.compact,
-              tooltip: '立即开始休息计时',
+              tooltip: l.sessionRestStartNow,
               icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.teal),
               onPressed: () => _startRestTimer(),
             ),
@@ -437,9 +454,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   Widget _buildExerciseCard(int bi, TextInputType numKb) {
+    final l = context.l10n;
     final b = _blocks[bi];
-    final isCardio = b.exercise.category == '有氧';
+    final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
     final vis = categoryVisual(b.exercise.category);
+    final lastHint = _formatLast(context, b.exercise, b.lastWorkSets);
+    final pe = b.planExercise;
+    final planHint = pe == null
+        ? null
+        : l.sessionPlanTargetHint(
+            pe.sets,
+            pe.reps,
+            pe.weightHint.isNotEmpty ? ' (${pe.weightHint})' : '',
+          );
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -461,7 +489,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    b.exercise.name,
+                    L10nHelper.exerciseDisplayName(context, b.exercise.name),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -471,7 +499,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     color: vis.color.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(b.exercise.category, style: TextStyle(fontSize: 11, color: vis.color, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    L10nHelper.exerciseCategoryLabel(context, b.exercise.category),
+                    style: TextStyle(fontSize: 11, color: vis.color, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, size: 20),
@@ -479,19 +510,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 ),
               ],
             ),
-            if (b.planHint != null)
+            if (planHint != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(b.planHint!, style: const TextStyle(fontSize: 12, color: Colors.teal, fontWeight: FontWeight.w600)),
+                child: Text(planHint, style: const TextStyle(fontSize: 12, color: Colors.teal, fontWeight: FontWeight.w600)),
               ),
-            if (b.lastHint.isNotEmpty)
+            if (lastHint.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),
                 child: Row(
                   children: [
                     const Icon(Icons.history_rounded, size: 15, color: Colors.teal),
                     const SizedBox(width: 4),
-                    Expanded(child: Text(b.lastHint, style: Theme.of(context).textTheme.bodySmall)),
+                    Expanded(child: Text(lastHint, style: Theme.of(context).textTheme.bodySmall)),
                   ],
                 ),
               ),
@@ -515,7 +546,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            b.sets[si].warmup ? '热' : '${si + 1}',
+                            b.sets[si].warmup ? l.sessionWarmupTag : '${si + 1}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: b.sets[si].warmup ? Colors.orange : null,
@@ -530,8 +561,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         controller: b.sets[si].weight,
                         keyboardType: numKb,
                         decoration: InputDecoration(
-                          labelText: isCardio ? '时长' : '重量',
-                          suffixText: isCardio ? '分' : 'kg',
+                          labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
+                          suffixText: isCardio ? l.sessionCardioMins : 'kg',
                           prefixIcon: Icon(
                             isCardio ? Icons.timer_rounded : Icons.fitness_center_rounded,
                             size: 17,
@@ -546,8 +577,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         controller: b.sets[si].reps,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: isCardio ? '步数' : '次数',
-                          suffixText: isCardio ? '步' : '次',
+                          labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
+                          suffixText: isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,
                           prefixIcon: Icon(
                             isCardio ? Icons.directions_walk_rounded : Icons.repeat_rounded,
                             size: 17,
@@ -558,7 +589,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     ),
                     if (!isCardio)
                       IconButton(
-                        tooltip: '完成本组并开始休息倒计时',
+                        tooltip: l.sessionCompleteSetTooltip,
                         icon: Icon(
                           b.sets[si].done ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
                           color: b.sets[si].done ? Colors.green : null,
@@ -568,7 +599,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             b.sets[si].done = !b.sets[si].done;
                             if (b.sets[si].done) {
                               b.sets[si].completedAtMs = DateTime.now().millisecondsSinceEpoch;
-                              _startRestTimer(exerciseName: b.exercise.name);
+                              _startRestTimer(
+                                exerciseName: L10nHelper.exerciseDisplayName(context, b.exercise.name),
+                              );
                             }
                           });
                         },
@@ -586,7 +619,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               child: TextButton.icon(
                 onPressed: () => _addSet(b),
                 icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: Text(isCardio ? '再加一段有氧记录' : '加一组（点 ✓ 完成本组并自动倒计时休息）'),
+                label: Text(isCardio ? l.sessionAddCardioRow : l.sessionAddStrengthRow),
               ),
             ),
           ],

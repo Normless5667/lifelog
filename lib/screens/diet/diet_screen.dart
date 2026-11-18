@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
-import '../../services/app_prefs.dart';
 import '../../services/targets.dart';
 import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
@@ -69,10 +68,10 @@ class _DietScreenState extends State<DietScreen> {
 
   int _guessMealType() {
     final h = DateTime.now().hour;
-    if (h < 10) return 0; // 早
-    if (h < 15) return 1; // 午
-    if (h < 21) return 2; // 晚
-    return 3; // 加餐
+    if (h < 10) return 0;
+    if (h < 15) return 1;
+    if (h < 21) return 2;
+    return 3;
   }
 
   Future<void> _openSettings() async {
@@ -92,13 +91,13 @@ class _DietScreenState extends State<DietScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      toast(context, '无法打开相机/相册：$e');
+      toast(context, context.l10n.dietCameraError('$e'));
       return;
     }
     if (picked == null || !mounted) return;
 
     final hint = await _askPhotoHint(File(picked.path));
-    if (hint == null || !mounted) return; // 用户取消
+    if (hint == null || !mounted) return;
 
     setState(() => _busyAi = true);
     try {
@@ -127,11 +126,12 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   Future<String?> _askPhotoHint(File img) async {
+    final l = context.l10n;
     final ctrl = TextEditingController();
     final res = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('发送照片给 AI 分析'),
+        title: Text(l.dietPhotoHintTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -143,20 +143,20 @@ class _DietScreenState extends State<DietScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: ctrl,
-                decoration: const InputDecoration(
-                  labelText: '补充说明（可选）',
-                  hintText: '如：半碗米饭、去皮鸡腿、少油',
+                decoration: InputDecoration(
+                  labelText: l.dietPhotoHintLabel,
+                  hintText: l.dietPhotoHintPlaceholder,
                 ),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton.icon(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
             icon: const Icon(Icons.auto_awesome),
-            label: const Text('开始识别'),
+            label: Text(l.dietStartAnalyze),
           ),
         ],
       ),
@@ -167,27 +167,28 @@ class _DietScreenState extends State<DietScreen> {
 
   /// 文字描述估算热量
   Future<void> _textEstimate({int? defaultMealType}) async {
+    final l = context.l10n;
     final ctrl = TextEditingController();
     final desc = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('AI 文字估算热量'),
+        title: Text(l.dietTextEstimateTitle),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: '描述你吃了什么，例如：\n一碗兰州牛肉面加一个卤蛋、半瓶无糖可乐',
+          decoration: InputDecoration(
+            hintText: l.dietTextEstimateHint,
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton(
             onPressed: () {
               if (ctrl.text.trim().isEmpty) return;
               Navigator.pop(ctx, ctrl.text.trim());
             },
-            child: const Text('估算'),
+            child: Text(l.dietEstimateBtn),
           ),
         ],
       ),
@@ -237,6 +238,7 @@ class _DietScreenState extends State<DietScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final totals = DayTotals.of(_meals);
     return Scaffold(
       appBar: AppBar(
@@ -249,7 +251,7 @@ class _DietScreenState extends State<DietScreen> {
               borderRadius: BorderRadius.circular(6),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Text(friendlyDate(_date)),
+                child: Text(L10nHelper.friendlyDateL10n(context, _date)),
               ),
             ),
             IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _shiftDay(1)),
@@ -263,7 +265,7 @@ class _DietScreenState extends State<DietScreen> {
                 setState(() => _date = today());
                 _load();
               },
-              child: const Text('今天'),
+              child: Text(l.commonToday),
             ),
         ],
       ),
@@ -284,16 +286,16 @@ class _DietScreenState extends State<DietScreen> {
           if (_busyAi)
             Container(
               color: Colors.black45,
-              child: const Center(
+              child: Center(
                 child: Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('AI 正在分析食物与热量…'),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(l.dietAiAnalyzing),
                       ],
                     ),
                   ),
@@ -306,14 +308,14 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   Widget _quickActionRow() {
-    final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return Row(
       children: [
         Expanded(
           child: FilledButton.icon(
             onPressed: () => _photoEstimate(ImageSource.camera),
             icon: const Icon(Icons.camera_alt_outlined),
-            label: Text(prefs.tr('拍照识热量', 'Camera')),
+            label: Text(l.dietScanFood),
           ),
         ),
         const SizedBox(width: 8),
@@ -321,7 +323,7 @@ class _DietScreenState extends State<DietScreen> {
           child: FilledButton.tonalIcon(
             onPressed: () => _photoEstimate(ImageSource.gallery),
             icon: const Icon(Icons.photo_library_outlined),
-            label: Text(prefs.tr('相册选图', 'Gallery')),
+            label: Text(l.dietPickGallery),
           ),
         ),
         const SizedBox(width: 8),
@@ -329,7 +331,7 @@ class _DietScreenState extends State<DietScreen> {
           child: OutlinedButton.icon(
             onPressed: _textEstimate,
             icon: const Icon(Icons.auto_awesome_outlined),
-            label: Text(prefs.tr('文字估算', 'AI Text')),
+            label: Text(l.dietAiTextEstimate),
           ),
         ),
       ],
@@ -351,20 +353,22 @@ class _DietScreenState extends State<DietScreen> {
   ];
 
   Widget _mealSection(int mealType) {
+    final l = context.l10n;
     final items = _meals.where((m) => m.mealType == mealType).toList();
     final subKcal = items.fold<double>(0, (s, m) => s + m.calories);
     final mealColor = _mealColors[mealType];
+    final mealLabel = L10nHelper.mealTypeLabel(context, mealType);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(
-          '${mealTypeNames[mealType]}${subKcal > 0 ? ' · ${fmtNum(subKcal)} kcal' : ''}',
+          '$mealLabel${subKcal > 0 ? ' · ${fmtNum(subKcal)} kcal' : ''}',
           icon: _mealIcons[mealType],
           iconColor: mealColor,
           trailing: TextButton.icon(
             onPressed: () => _manualEdit(defaultMealType: mealType),
             icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-            label: const Text('手动记'),
+            label: Text(l.dietManualAdd),
           ),
         ),
         Card(
@@ -376,8 +380,10 @@ class _DietScreenState extends State<DietScreen> {
                     backgroundColor: mealColor.withValues(alpha: 0.14),
                     child: Icon(_mealIcons[mealType], color: mealColor, size: 20),
                   ),
-                  title: Text('还没有${mealTypeNames[mealType]}记录，点击添加或上方拍美食',
-                      style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13)),
+                  title: Text(
+                    l.dietEmptyMealHint(mealLabel),
+                    style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13),
+                  ),
                   onTap: () => _manualEdit(defaultMealType: mealType),
                 )
               : Column(
@@ -405,7 +411,9 @@ class _DietScreenState extends State<DietScreen> {
                       ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 3),
-                        child: Text('🥩 ${fmtNum(m.protein)}g  ·  🍚 ${fmtNum(m.carbs)}g  ·  🥑 ${fmtNum(m.fat)}g'),
+                        child: Text(
+                          'P ${fmtNum(m.protein)}g  ·  C ${fmtNum(m.carbs)}g  ·  F ${fmtNum(m.fat)}g',
+                        ),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -424,7 +432,7 @@ class _DietScreenState extends State<DietScreen> {
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
                             onPressed: () async {
-                              if (await confirm(context, '删除「${m.name}」？')) {
+                              if (await confirm(context, l.dietDeleteMealConfirm(m.name))) {
                                 await Repo.deleteMeal(m.id!);
                                 _load();
                               }

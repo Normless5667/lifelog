@@ -15,12 +15,11 @@ import '../../widgets/common.dart';
 import 'about_screen.dart';
 import 'notification_diagnostics_screen.dart';
 
-/// 设置页 v1.2：
-/// - API Base URL 预设下拉（DeepSeek / OpenAI / 通义千问 / 自定义，只填 deepseek 自动补全路径）
-/// - 模型名称预设下拉（deepseek-chat / deepseek-reasoner / 自定义）
-/// - 外观与语言（深色模式跟随系统、三档字号调节、中文/English 切换）
-/// - 通知与震动诊断页入口
-/// - JSON / CSV 数据导出
+/// 设置页：
+/// - 外观与语言（跟随系统 / 简体中文 / English，三档字号调节）
+/// - 天气城市与定位方式（GPS 优先 6h 缓存 + 手动固定城市防代理跑偏）
+/// - API Base URL 与模型名称预设
+/// - 通知与震动诊断页入口 + JSON / CSV 数据导出
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -43,16 +42,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testing = false;
   bool _loading = true;
 
-  // 天气城市设置（null 表示自动 GPS 定位）
   String? _manualWeatherCity;
   final _customCityCtrl = TextEditingController();
   bool _searchingCity = false;
-
-  static const _chatBasePresets = <(String label, String url)>[
-    ('DeepSeek (默认)', 'https://api.deepseek.com'),
-    ('OpenAI', 'https://api.openai.com/v1'),
-    ('通义千问 (阿里云)', 'https://dashscope.aliyuncs.com/compatible-mode/v1'),
-  ];
 
   static const _chatModelPresets = <String>[
     'deepseek-chat',
@@ -63,9 +55,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   static const _visionPresets = <(String label, String url, String model)>[
     ('DeepSeek Flash', 'https://api.deepseek.com', 'deepseek-flash'),
-    ('通义千问 VL (阿里云百炼)', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-vl-max'),
-    ('智谱 GLM-4V', 'https://open.bigmodel.cn/api/paas/v4', 'glm-4v-flash'),
-    ('OpenAI GPT-4o mini', 'https://api.openai.com/v1', 'gpt-4o-mini'),
+    ('Qwen-VL Max', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-vl-max'),
+    ('GLM-4V Flash', 'https://open.bigmodel.cn/api/paas/v4', 'glm-4v-flash'),
+    ('GPT-4o mini', 'https://api.openai.com/v1', 'gpt-4o-mini'),
   ];
 
   @override
@@ -132,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       model: _visionModel.text.trim(),
     ));
     if (!mounted) return;
-    toast(context, '设置已保存');
+    toast(context, context.l10n.commonSavedToast);
   }
 
   Future<void> _test(AiConfig cfg) async {
@@ -141,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final reply = await AiService.testConfig(cfg);
       if (!mounted) return;
-      toast(context, '连接成功：$reply');
+      toast(context, context.l10n.settingsTestSuccessToast(reply));
     } catch (e) {
       if (!mounted) return;
       showAiError(context, e);
@@ -159,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        subject: '生活助手 数据备份 (JSON)',
+        subject: 'life_assistant_backup.json',
       ),
     );
   }
@@ -167,18 +159,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _exportCsv() async {
     final data = await Repo.exportAll();
     final buf = StringBuffer();
-    buf.writeln('=== 饮食记录 (meals) ===');
-    buf.writeln('日期,餐次,食物名称,份量,热量(kcal),蛋白质(g),碳水(g),脂肪(g)');
+    buf.writeln('=== meals ===');
+    buf.writeln('date,meal_type,name,amount,calories,protein,carbs,fat');
     for (final m in (data['meals'] as List? ?? const [])) {
       buf.writeln('${m['date']},${m['meal_type']},"${m['name']}","${m['amount'] ?? ''}",${m['calories']},${m['protein']},${m['carbs']},${m['fat']}');
     }
-    buf.writeln('\n=== 身体记录 (body_records) ===');
-    buf.writeln('日期,体重(kg),体脂率(%),腰围(cm)');
+    buf.writeln('\n=== body_records ===');
+    buf.writeln('date,weight_kg,body_fat_pct,waist_cm');
     for (final b in (data['body_records'] as List? ?? const [])) {
       buf.writeln('${b['date']},${b['weight'] ?? ''},${b['body_fat'] ?? ''},${b['waist'] ?? ''}');
     }
-    buf.writeln('\n=== 有氧记录 (cardio_records) ===');
-    buf.writeln('日期,类型,时长(分钟),距离(km),消耗(kcal)');
+    buf.writeln('\n=== cardio_records ===');
+    buf.writeln('date,type,duration_minutes,distance_km,calories');
     for (final c in (data['cardio_records'] as List? ?? const [])) {
       buf.writeln('${c['date']},${c['type']},${c['duration_minutes']},${c['distance_km'] ?? ''},${c['calories']}');
     }
@@ -188,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        subject: '生活助手 表格导出 (CSV)',
+        subject: 'life_assistant_export.csv',
       ),
     );
   }
@@ -199,14 +191,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListenableBuilder(
       listenable: prefs,
       builder: (context, _) {
+        final l = context.l10n;
+        final chatBasePresets = <(String label, String url)>[
+          (l.settingsPresetDeepseek, 'https://api.deepseek.com'),
+          (l.settingsPresetOpenai, 'https://api.openai.com/v1'),
+          (l.settingsPresetQwen, 'https://dashscope.aliyuncs.com/compatible-mode/v1'),
+        ];
+
         return Scaffold(
           appBar: AppBar(
-            title: Text(prefs.tr('设置', 'Settings')),
+            title: Text(l.settingsTitle),
             actions: [
               TextButton.icon(
                 onPressed: _save,
                 icon: const Icon(Icons.check_rounded),
-                label: Text(prefs.tr('保存', 'Save')),
+                label: Text(l.commonSave),
               ),
             ],
           ),
@@ -216,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     SectionTitle(
-                      prefs.tr('外观、字号与语言', 'Appearance, Font & Language'),
+                      l.settingsAppearanceSection,
                       icon: Icons.palette_rounded,
                       iconColor: const Color(0xFF2B5B84),
                     ),
@@ -226,38 +225,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(prefs.tr('深色模式', 'Theme Mode'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(l.settingsThemeMode, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 8),
                             SegmentedButton<ThemeMode>(
                               segments: [
-                                ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_rounded), label: Text(prefs.tr('跟随系统', 'System'))),
-                                ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_rounded), label: Text(prefs.tr('浅色', 'Light'))),
-                                ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_rounded), label: Text(prefs.tr('深色', 'Dark'))),
+                                ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_rounded), label: Text(l.settingsThemeSystem)),
+                                ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_rounded), label: Text(l.settingsThemeLight)),
+                                ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_rounded), label: Text(l.settingsThemeDark)),
                               ],
                               selected: {prefs.themeMode},
                               onSelectionChanged: (s) => prefs.setThemeMode(s.first),
                             ),
                             const SizedBox(height: 14),
-                            Text(prefs.tr('字体大小（户外阅读建议选大）', 'Font Size'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(l.settingsFontSize, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 8),
                             SegmentedButton<double>(
                               segments: [
-                                ButtonSegment(value: 0.9, label: Text(prefs.tr('小', 'Small'))),
-                                ButtonSegment(value: 1.0, label: Text(prefs.tr('标准', 'Medium'))),
-                                ButtonSegment(value: 1.15, label: Text(prefs.tr('大', 'Large'))),
+                                ButtonSegment(value: 0.9, label: Text(l.settingsFontSmall)),
+                                ButtonSegment(value: 1.0, label: Text(l.settingsFontMedium)),
+                                ButtonSegment(value: 1.15, label: Text(l.settingsFontLarge)),
                               ],
                               selected: {prefs.textScale},
                               onSelectionChanged: (s) => prefs.setTextScale(s.first),
                             ),
                             const SizedBox(height: 14),
-                            Text(prefs.tr('界面语言 / Language', 'Language'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(l.settingsLanguage, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 8),
                             SegmentedButton<String>(
-                              segments: const [
-                                ButtonSegment(value: 'zh', icon: Icon(Icons.translate_rounded), label: Text('简体中文')),
-                                ButtonSegment(value: 'en', icon: Icon(Icons.language_rounded), label: Text('English')),
+                              segments: [
+                                ButtonSegment(value: 'system', icon: const Icon(Icons.phonelink_setup_rounded), label: Text(l.settingsLangSystem)),
+                                ButtonSegment(value: 'zh', icon: const Icon(Icons.translate_rounded), label: Text(l.settingsLangZh)),
+                                ButtonSegment(value: 'en', icon: const Icon(Icons.language_rounded), label: Text(l.settingsLangEn)),
                               ],
-                              selected: {prefs.lang == 'en' ? 'en' : 'zh'},
+                              selected: {prefs.lang},
                               onSelectionChanged: (s) => prefs.setLang(s.first),
                             ),
                           ],
@@ -265,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     SectionTitle(
-                      prefs.tr('天气城市与定位方式', 'Weather City & Location'),
+                      l.settingsWeatherSection,
                       icon: Icons.location_on_rounded,
                       iconColor: const Color(0xFF26A69A),
                     ),
@@ -276,16 +276,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              prefs.tr(
-                                '当前模式：${_manualWeatherCity == null ? "自动 GPS 定位（6小时缓存，失败兜底 IP）" : "手动固定城市 · $_manualWeatherCity"}',
-                                'Current: ${_manualWeatherCity ?? "Auto GPS Location (6h cache)"}',
-                              ),
+                              _manualWeatherCity == null
+                                  ? l.settingsWeatherModeAuto
+                                  : l.settingsWeatherModeManual(_manualWeatherCity!),
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              '开启代理/VPN 时若未开 GPS 可能误判到代理所在地（如香港），可直接点选下方常用城市锁定天气：',
-                              style: TextStyle(fontSize: 12),
+                            Text(
+                              l.settingsWeatherProxyHint,
+                              style: const TextStyle(fontSize: 12),
                             ),
                             const SizedBox(height: 10),
                             Wrap(
@@ -294,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 ChoiceChip(
                                   avatar: const Icon(Icons.my_location_rounded, size: 16),
-                                  label: Text(prefs.tr('自动 GPS 定位', 'Auto GPS')),
+                                  label: Text(l.settingsWeatherAutoChip),
                                   selected: _manualWeatherCity == null,
                                   onSelected: (_) async {
                                     await WeatherService.setAutoLocationMode();
@@ -304,13 +303,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       _manualWeatherCity = null;
                                       _customCityCtrl.clear();
                                     });
-                                    toast(context, '已切换为自动 GPS 定位并刷新天气');
+                                    toast(context, l.settingsWeatherAutoToast);
                                   },
                                 ),
                                 ...WeatherService.presetCities.map((p) {
                                   final selected = _manualWeatherCity == p.city;
+                                  final displayLabel = L10nHelper.weatherPresetLabel(context, p);
                                   return ChoiceChip(
-                                    label: Text(p.label),
+                                    label: Text(displayLabel),
                                     selected: selected,
                                     onSelected: (_) async {
                                       await WeatherService.setManualCity(city: p.city, lat: p.lat, lon: p.lon);
@@ -320,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _manualWeatherCity = p.city;
                                         _customCityCtrl.text = p.city;
                                       });
-                                      toast(context, '已锁定天气城市为：${p.label}');
+                                      toast(context, l.settingsWeatherLockedToast(displayLabel));
                                     },
                                   );
                                 }),
@@ -334,8 +334,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     controller: _customCityCtrl,
                                     decoration: InputDecoration(
                                       isDense: true,
-                                      labelText: prefs.tr('自定义搜索城市（支持中英文）', 'Custom City Name'),
-                                      hintText: '如 Ho Chi Minh City / Hanoi / 成都',
+                                      labelText: l.settingsWeatherCustomLabel,
+                                      hintText: l.settingsWeatherCustomHint,
                                       prefixIcon: const Icon(Icons.location_city_rounded, size: 18),
                                     ),
                                   ),
@@ -356,7 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               _manualWeatherCity = resolved;
                                               _customCityCtrl.text = resolved;
                                             });
-                                            toast(context, '已锁定天气城市为：$resolved');
+                                            toast(context, l.settingsWeatherLockedToast(resolved));
                                           } catch (e) {
                                             if (!mounted) return;
                                             toast(context, e.toString().replaceAll('Exception: ', ''));
@@ -367,7 +367,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   icon: _searchingCity
                                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                                       : const Icon(Icons.search_rounded, size: 18),
-                                  label: Text(prefs.tr('设为该城', 'Set')),
+                                  label: Text(l.settingsWeatherSetBtn),
                                 ),
                               ],
                             ),
@@ -376,19 +376,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     SectionTitle(
-                      prefs.tr('对话与建议模型（支持一键预设）', 'Chat AI Model (DeepSeek / OpenAI)'),
+                      l.settingsChatAiSection,
                       icon: Icons.smart_toy_rounded,
                       iconColor: const Color(0xFFFF7A22),
                     ),
-                    const Text(
-                      '支持点选下方服务商预设，或直接输入 deepseek / 域名（系统会自动补全 /chat/completions）。API Key 加密保存在本机。',
-                      style: TextStyle(fontSize: 12),
+                    Text(
+                      l.settingsChatAiHint,
+                      style: const TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
-                      children: _chatBasePresets.map((p) {
+                      children: chatBasePresets.map((p) {
                         final selected = _chatUrl.text.trim() == p.$2;
                         return ChoiceChip(
                           label: Text(p.$1),
@@ -405,10 +405,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: _chatUrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Base URL（可直接填 deepseek 或完整地址）',
+                      decoration: InputDecoration(
+                        labelText: l.settingsBaseUrlLabel,
                         hintText: 'https://api.deepseek.com',
-                        prefixIcon: Icon(Icons.link_rounded, color: Color(0xFF2B5B84)),
+                        prefixIcon: const Icon(Icons.link_rounded, color: Color(0xFF2B5B84)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -416,7 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       controller: _chatKey,
                       obscureText: _obscureChat,
                       decoration: InputDecoration(
-                        labelText: 'API Key',
+                        labelText: l.settingsApiKeyLabel,
                         hintText: 'sk-...',
                         prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFFFF7A22)),
                         suffixIcon: IconButton(
@@ -439,10 +439,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _chatModel,
-                      decoration: const InputDecoration(
-                        labelText: '模型名称（可点上方预设或手填）',
+                      decoration: InputDecoration(
+                        labelText: l.settingsModelNameLabel,
                         hintText: 'deepseek-chat / deepseek-reasoner',
-                        prefixIcon: Icon(Icons.memory_rounded, color: Color(0xFF26A69A)),
+                        prefixIcon: const Icon(Icons.memory_rounded, color: Color(0xFF26A69A)),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -451,15 +451,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: FilledButton.tonalIcon(
                         onPressed: _testing ? null : () => _test(_currentChat()),
                         icon: const Icon(Icons.bolt_rounded),
-                        label: Text(_testing ? '测试中…' : '测试连接'),
+                        label: Text(_testing ? l.settingsTestingBtn : l.settingsTestConnectionBtn),
                       ),
                     ),
                     const Divider(height: 28),
-                    const SectionTitle('拍照识图模型（方案 A）', icon: Icons.camera_enhance_rounded, iconColor: Color(0xFF26A69A)),
+                    SectionTitle(l.settingsVisionSection, icon: Icons.camera_enhance_rounded, iconColor: const Color(0xFF26A69A)),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('与对话模型共用同一套配置'),
-                      subtitle: const Text('若当前对话模型不支持图片输入，请关闭此开关并点选下方视觉模型'),
+                      title: Text(l.settingsVisionSameSwitch),
+                      subtitle: Text(l.settingsVisionSameSub),
                       value: _visionSame,
                       onChanged: (v) => setState(() => _visionSame = v),
                     ),
@@ -483,9 +483,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: _visionUrl,
-                        decoration: const InputDecoration(
-                          labelText: '识图 Base URL',
-                          prefixIcon: Icon(Icons.link_rounded),
+                        decoration: InputDecoration(
+                          labelText: l.settingsVisionBaseUrlLabel,
+                          prefixIcon: const Icon(Icons.link_rounded),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -493,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         controller: _visionKey,
                         obscureText: _obscureVision,
                         decoration: InputDecoration(
-                          labelText: '识图 API Key',
+                          labelText: l.settingsVisionApiKeyLabel,
                           prefixIcon: const Icon(Icons.key_rounded),
                           suffixIcon: IconButton(
                             icon: Icon(_obscureVision ? Icons.visibility : Icons.visibility_off),
@@ -504,10 +504,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: _visionModel,
-                        decoration: const InputDecoration(
-                          labelText: '识图模型名称',
-                          hintText: '如 qwen-vl-max / deepseek-flash',
-                          prefixIcon: Icon(Icons.visibility_rounded),
+                        decoration: InputDecoration(
+                          labelText: l.settingsVisionModelLabel,
+                          hintText: 'qwen-vl-max / deepseek-flash',
+                          prefixIcon: const Icon(Icons.visibility_rounded),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -516,7 +516,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: OutlinedButton.icon(
                           onPressed: _testing ? null : () => _test(_currentVision()),
                           icon: const Icon(Icons.bolt_rounded),
-                          label: Text(_testing ? '测试中…' : '测试识图接口'),
+                          label: Text(_testing ? l.settingsTestingBtn : l.settingsTestVisionBtn),
                         ),
                       ),
                     ],
@@ -524,10 +524,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     FilledButton.icon(
                       onPressed: _save,
                       icon: const Icon(Icons.save_rounded),
-                      label: const Text('保存 AI 配置'),
+                      label: Text(l.settingsSaveAiBtn),
                     ),
                     const Divider(height: 28),
-                    const SectionTitle('系统通知与数据备份', icon: Icons.security_rounded, iconColor: Color(0xFF42A5F5)),
+                    SectionTitle(l.settingsSystemDataSection, icon: Icons.security_rounded, iconColor: const Color(0xFF42A5F5)),
                     Card(
                       child: Column(
                         children: [
@@ -541,8 +541,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               child: const Icon(Icons.health_and_safety_rounded, color: Color(0xFFFF7A22)),
                             ),
-                            title: const Text('通知与震动诊断页（ColorOS 必看）', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('排查为什么没响、一键开启重要通知与全屏横幅'),
+                            title: Text(l.settingsDiagTileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.settingsDiagTileSub),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () {
                               Navigator.push(
@@ -562,8 +562,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               child: const Icon(Icons.data_object_rounded, color: Color(0xFF26A69A)),
                             ),
-                            title: const Text('导出完整备份 (JSON)', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('包含课表、饮食、力量训练、有氧、身体记录'),
+                            title: Text(l.settingsExportJsonTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.settingsExportJsonSub),
                             trailing: const Icon(Icons.ios_share_rounded),
                             onTap: _exportJson,
                           ),
@@ -578,8 +578,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               child: const Icon(Icons.table_chart_rounded, color: Color(0xFF42A5F5)),
                             ),
-                            title: const Text('导出 Excel 表格 (CSV)', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('方便在电脑或手机表格中查看饮食、体重与有氧明细'),
+                            title: Text(l.settingsExportCsvTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.settingsExportCsvSub),
                             trailing: const Icon(Icons.ios_share_rounded),
                             onTap: _exportCsv,
                           ),
@@ -589,8 +589,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               borderRadius: BorderRadius.circular(10),
                               child: Image.asset('assets/icon/dafeiyu_mascot.png', width: 40, height: 40, fit: BoxFit.cover),
                             ),
-                            title: const Text('关于生活助手', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('版本 v1.4.0 · 由大肥鱼协助开发'),
+                            title: Text(l.settingsAboutTileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.settingsAboutTileSub),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () {
                               Navigator.push(

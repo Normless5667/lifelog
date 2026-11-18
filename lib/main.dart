@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'l10n/app_localizations.dart';
 import 'screens/ai/ai_chat_screen.dart';
 import 'screens/diet/diet_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
 import 'screens/workout/workout_list_screen.dart';
 import 'services/app_prefs.dart';
+import 'utils/l10n_ext.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,15 +79,11 @@ class LifeLogApp extends StatelessWidget {
       listenable: prefs,
       builder: (context, _) {
         return MaterialApp(
-          title: prefs.tr('生活助手', 'Life Assistant'),
+          onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.appTitle,
           debugShowCheckedModeBanner: false,
-          locale: prefs.locale ?? const Locale('zh', 'CN'),
-          supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          locale: prefs.localeOverride,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           themeMode: prefs.themeMode,
           theme: _buildTheme(Brightness.light),
           darkTheme: _buildTheme(Brightness.dark),
@@ -131,6 +128,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final prefs = AppPrefsController.instance;
+    final l = context.l10n;
     return ListenableBuilder(
       listenable: prefs,
       builder: (context, _) {
@@ -151,27 +149,27 @@ class _HomeShellState extends State<HomeShell> {
               NavigationDestination(
                 icon: _navBadge(Icons.today_rounded, const Color(0xFF2B5B84)),
                 selectedIcon: _navBadge(Icons.today_rounded, const Color(0xFF2B5B84), selected: true),
-                label: prefs.tr('今天', 'Today'),
+                label: l.tabToday,
               ),
               NavigationDestination(
                 icon: _navBadge(Icons.calendar_month_rounded, const Color(0xFF42A5F5)),
                 selectedIcon: _navBadge(Icons.calendar_month_rounded, const Color(0xFF42A5F5), selected: true),
-                label: prefs.tr('课表', 'Schedule'),
+                label: l.tabSchedule,
               ),
               NavigationDestination(
                 icon: _navBadge(Icons.restaurant_rounded, const Color(0xFFFF7A22)),
                 selectedIcon: _navBadge(Icons.restaurant_rounded, const Color(0xFFFF7A22), selected: true),
-                label: prefs.tr('饮食', 'Diet'),
+                label: l.tabDiet,
               ),
               NavigationDestination(
                 icon: _navBadge(Icons.fitness_center_rounded, const Color(0xFFEF5350)),
                 selectedIcon: _navBadge(Icons.fitness_center_rounded, const Color(0xFFEF5350), selected: true),
-                label: prefs.tr('训练', 'Workout'),
+                label: l.tabWorkout,
               ),
               NavigationDestination(
                 icon: _navBadge(Icons.smart_toy_rounded, const Color(0xFFAB47BC)),
                 selectedIcon: _navBadge(Icons.smart_toy_rounded, const Color(0xFFAB47BC), selected: true),
-                label: prefs.tr('AI', 'AI'),
+                label: l.tabAi,
               ),
             ],
           ),
