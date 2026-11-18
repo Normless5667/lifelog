@@ -5,13 +5,17 @@ import '../utils/date_utils.dart';
 import 'widget_service.dart';
 
 /// 手机硬件级计步器服务（基于 Android Sensor.TYPE_STEP_COUNTER）。
-/// TYPE_STEP_COUNTER 返回的是开机以来的总步数，因此按天存储基准值 (baseline)，
-/// 每日零点切换日期时自动重置基准，并支持将今日步数折算为活动消耗 kcal。
+/// - 步数写库节流到 ≥30 秒一次，且仅当步数发生实质变化时才写库，杜绝高频传感器导致持续唤醒
 class StepService {
   StepService._();
 
   static const _ch = MethodChannel('com.lifelog/reminders');
   static const defaultGoal = 8000;
+  static const _writeThrottleMs = 30 * 1000; // 写库节流 30 秒
+
+  static int _lastWriteMs = 0;
+  static int _lastWrittenSteps = -1;
+  static String _lastWrittenDate = '';
 
   static Future<void> requestPermission() async {
     try {
@@ -25,12 +29,7 @@ class StepService {
   static Future<void> setStepGoal(int goal) =>
       Repo.setKv('daily_step_goal', '$goal');
 
-  /// 读取今日步数状态：
-  /// - [supported] 设备是否有计步传感器
-  /// - [granted] 是否已授予定步权限
-  /// - [todaySteps] 今日已走步数
-  /// - [burnedKcal] 步数折算消耗千卡（约每 1000 步 0.55 × 体重kg kcal，默认约 35~40 kcal / 千步）
-  /// - [syncWidget] 若为 true，当步数变化时以 5 分钟节流触发桌面小组件更新
+  /// 读取今日步数状态（带 30 秒写库节流保护）
   static Future<({
     bool supported,
     bool granted,
@@ -53,7 +52,6 @@ class StepService {
           final baseDate = await Repo.getKv('steps_base_date');
           var baseRaw = int.tryParse(await Repo.getKv('steps_base_raw') ?? '');
 
-          // 新的一天，或者手机重启导致 rawSteps 小于基准值时，重置今日基准
           if (baseDate != t || baseRaw == null || rawSteps < baseRaw) {
             baseRaw = rawSteps - savedToday;
             await Repo.setKv('steps_base_date', t);
@@ -61,7 +59,18 @@ class StepService {
           }
 
           final currentSteps = (rawSteps - baseRaw).clamp(0, 200000);
-          await Repo.setKv('steps_val_$t', '$currentSteps');
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          final shouldWriteDb = (t != _lastWrittenDate) ||
+              (currentSteps != savedToday &&
+                  currentSteps != _lastWrittenSteps &&
+                  (nowMs - _lastWriteMs >= _writeThrottleMs));
+
+          if (shouldWriteDb) {
+            _lastWriteMs = nowMs;
+            _lastWrittenSteps = currentSteps;
+            _lastWrittenDate = t;
+            await Repo.setKv('steps_val_$t', '$currentSteps');
+          }
           if (syncWidget && currentSteps != savedToday) {
             WidgetService.sync(fromStepUpdate: true);
           }

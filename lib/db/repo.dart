@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../services/battery_probe_service.dart';
 import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import 'database.dart';
@@ -20,6 +21,13 @@ class Repo {
   }
 
   static Future<void> setKv(String key, String value) async {
+    BatteryProbeService.instance.recordDbWrite();
+    await (await _db).insert('kv', {'key': key, 'value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// 供耗电探针自身持久化使用，不计入业务写库次数
+  static Future<void> setKvSilent(String key, String value) async {
     await (await _db).insert('kv', {'key': key, 'value': value},
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
@@ -45,6 +53,7 @@ class Repo {
   }
 
   static Future<int> saveCourse(Course c) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     final int res;
     if (c.id == null) {
@@ -58,11 +67,13 @@ class Repo {
   }
 
   static Future<void> deleteCourse(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('courses', where: 'id = ?', whereArgs: [id]);
     WidgetService.sync(force: true);
   }
 
   static Future<void> importCourses(List<Course> courses, {bool replaceAll = false}) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     await db.transaction((txn) async {
       if (replaceAll) {
@@ -107,6 +118,7 @@ class Repo {
   }
 
   static Future<int> saveMeal(Meal m) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     final int res;
     if (m.id == null) {
@@ -120,6 +132,7 @@ class Repo {
   }
 
   static Future<void> deleteMeal(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('meals', where: 'id = ?', whereArgs: [id]);
     WidgetService.sync(force: true);
   }
@@ -138,11 +151,13 @@ class Repo {
 
   /// 同一天只保留一条记录（覆盖）
   static Future<void> saveBodyRecord(BodyRecord r) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).insert('body_records', r.toMap()..remove('id'),
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   static Future<void> deleteBodyRecord(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('body_records', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -152,26 +167,32 @@ class Repo {
     return rows.map(Exercise.fromMap).toList();
   }
 
-  static Future<int> addExercise(Exercise e) async =>
-      (await _db).insert('exercises', e.toMap()..remove('id'));
+  static Future<int> addExercise(Exercise e) async {
+    BatteryProbeService.instance.recordDbWrite();
+    return (await _db).insert('exercises', e.toMap()..remove('id'));
+  }
 
   static Future<void> deleteExercise(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('exercises', where: 'id = ? AND is_custom = 1', whereArgs: [id]);
   }
 
   // ---------------- 训练 ----------------
   static Future<int> createWorkout(Workout w) async {
+    BatteryProbeService.instance.recordDbWrite();
     final id = await (await _db).insert('workouts', w.toMap()..remove('id'));
     WidgetService.sync(force: true);
     return id;
   }
 
   static Future<void> updateWorkout(Workout w) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).update('workouts', w.toMap(), where: 'id = ?', whereArgs: [w.id]);
     WidgetService.sync(force: true);
   }
 
   static Future<void> deleteWorkout(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     await db.transaction((txn) async {
       await txn.delete('workout_sets', where: 'workout_id = ?', whereArgs: [id]);
@@ -202,6 +223,7 @@ class Repo {
 
   /// 用整组替换某次训练的所有组（编辑页保存时调用）
   static Future<void> replaceSets(int workoutId, List<WorkoutSet> sets) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     await db.transaction((txn) async {
       await txn.delete('workout_sets', where: 'workout_id = ?', whereArgs: [workoutId]);
@@ -251,6 +273,7 @@ class Repo {
   }
 
   static Future<int> saveCardioRecord(CardioRecord r) async {
+    BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
     final int res;
     if (r.id == null) {
@@ -264,6 +287,7 @@ class Repo {
   }
 
   static Future<void> deleteCardioRecord(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('cardio_records', where: 'id = ?', whereArgs: [id]);
     WidgetService.sync(force: true);
   }
@@ -334,10 +358,13 @@ class Repo {
     return rows.map(ChatMessage.fromMap).toList();
   }
 
-  static Future<int> addChatMessage(ChatMessage m) async =>
-      (await _db).insert('chat_messages', m.toMap()..remove('id'));
+  static Future<int> addChatMessage(ChatMessage m) async {
+    BatteryProbeService.instance.recordDbWrite();
+    return (await _db).insert('chat_messages', m.toMap()..remove('id'));
+  }
 
   static Future<void> clearChat() async {
+    BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('chat_messages');
   }
 

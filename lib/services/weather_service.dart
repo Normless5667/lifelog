@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'battery_probe_service.dart';
 
 class WeatherCityPreset {
   final String label;
@@ -300,15 +301,20 @@ class WeatherService {
       }
     }
 
-    // 3. 优先真实 GPS 定位（Geolocator，5 秒超时）
+    // 3. 优先真实 GPS 定位（Geolocator，5 秒超时，requestPermission 全局只调一次，绝不反复弹窗唤醒）
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
         var perm = await Geolocator.checkPermission();
         if (perm == LocationPermission.denied) {
-          perm = await Geolocator.requestPermission();
+          final alreadyAsked = await Repo.getKv('weather_gps_perm_asked_v1') == '1';
+          if (!alreadyAsked) {
+            await Repo.setKv('weather_gps_perm_asked_v1', '1');
+            perm = await Geolocator.requestPermission();
+          }
         }
         if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+          BatteryProbeService.instance.recordGpsCall();
           Position? pos;
           try {
             pos = await Geolocator.getCurrentPosition(

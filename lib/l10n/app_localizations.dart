@@ -3225,7 +3225,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v1.5.0 (Build 6)'**
+  /// **'Version v1.6.0 (Build 7)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -3237,8 +3237,333 @@ abstract class AppLocalizations {
   /// No description provided for @aboutDesc.
   ///
   /// In en, this message translates to:
-  /// **'All-in-one personal assistant featuring class schedules, live airport-style shuttle bus board (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.'**
+  /// **'All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.'**
   String get aboutDesc;
+
+  /// No description provided for @batteryDiagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery & Performance Diagnostics'**
+  String get batteryDiagTitle;
+
+  /// No description provided for @batteryDiagTileSub.
+  ///
+  /// In en, this message translates to:
+  /// **'7-day foreground/background time, timer activity, GPS, DB writes & widget syncs'**
+  String get batteryDiagTileSub;
+
+  /// No description provided for @batteryDiagResetBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Stats'**
+  String get batteryDiagResetBtn;
+
+  /// No description provided for @batteryDiagResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all rolling 7-day battery diagnostic counters?'**
+  String get batteryDiagResetConfirm;
+
+  /// No description provided for @batteryDiagResetToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery diagnostic counters reset'**
+  String get batteryDiagResetToast;
+
+  /// No description provided for @batteryDiagSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24h & Active Resource Monitor'**
+  String get batteryDiagSummaryTitle;
+
+  /// No description provided for @batteryDiagActiveTimers.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Periodic Timers right now: {count}'**
+  String batteryDiagActiveTimers(int count);
+
+  /// No description provided for @batteryDiagFgTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Foreground'**
+  String get batteryDiagFgTime;
+
+  /// No description provided for @batteryDiagBgTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get batteryDiagBgTime;
+
+  /// No description provided for @batteryDiagTimerTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer Active'**
+  String get batteryDiagTimerTime;
+
+  /// No description provided for @batteryDiagGpsCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Calls'**
+  String get batteryDiagGpsCalls;
+
+  /// No description provided for @batteryDiagDbWrites.
+  ///
+  /// In en, this message translates to:
+  /// **'DB Writes'**
+  String get batteryDiagDbWrites;
+
+  /// No description provided for @batteryDiagWidgetSyncs.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget Syncs'**
+  String get batteryDiagWidgetSyncs;
+
+  /// No description provided for @batteryDiagHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolling 7-Day Telemetry (Stored in kv)'**
+  String get batteryDiagHistoryTitle;
+
+  /// No description provided for @batteryDiagDaySub.
+  ///
+  /// In en, this message translates to:
+  /// **'FG {fg} · BG {bg} · Timer {timer}\nGPS {gps} · DB Writes {db} · Widget {widget}'**
+  String batteryDiagDaySub(
+    String fg,
+    String bg,
+    String timer,
+    int gps,
+    int db,
+    int widget,
+  );
+
+  /// No description provided for @batteryDiagTipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Power Saving Optimizations Active'**
+  String get batteryDiagTipTitle;
+
+  /// No description provided for @batteryDiagTipSub.
+  ///
+  /// In en, this message translates to:
+  /// **'• AppWidget updatePeriodMillis=0 (event-driven push only)\n• Pedometer sensor unregistered in background & throttled to 30s\n• Bus & workout timers auto-pause when screen is invisible or backgrounded\n• GPS permission requested at most once, coordinates cached for 6h'**
+  String get batteryDiagTipSub;
+
+  /// No description provided for @widgetGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Widget to Home Screen'**
+  String get widgetGuideTitle;
+
+  /// No description provided for @widgetGuideTileSub.
+  ///
+  /// In en, this message translates to:
+  /// **'View today\'s classes, remaining calories & steps right on your home screen'**
+  String get widgetGuideTileSub;
+
+  /// No description provided for @widgetGuideHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin \"Life Assistant\" to Your Home Screen'**
+  String get widgetGuideHeader;
+
+  /// No description provided for @widgetGuideDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'See your daily schedule, remaining calorie budget, and live step count at a glance without opening the app.'**
+  String get widgetGuideDesc;
+
+  /// No description provided for @widgetGuideStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Tap \"Add to Home Screen\" below (supported on Android 8.0+ launchers).'**
+  String get widgetGuideStep1;
+
+  /// No description provided for @widgetGuideStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Or long-press an empty area on your phone\'s home screen → tap \"Widgets\".'**
+  String get widgetGuideStep2;
+
+  /// No description provided for @widgetGuideStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Find \"Life Assistant\" and drag the 4×2 card onto your home screen.'**
+  String get widgetGuideStep3;
+
+  /// No description provided for @widgetGuidePinBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Home Screen Now'**
+  String get widgetGuidePinBtn;
+
+  /// No description provided for @widgetGuidePinSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'System widget prompt opened — confirm on your home screen!'**
+  String get widgetGuidePinSuccess;
+
+  /// No description provided for @widgetGuidePinFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Please long-press your home screen → Widgets → Life Assistant to add it.'**
+  String get widgetGuidePinFallback;
+
+  /// No description provided for @busOriginLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin'**
+  String get busOriginLabel;
+
+  /// No description provided for @busDestinationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination'**
+  String get busDestinationLabel;
+
+  /// No description provided for @busSwapStopsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap Origin & Destination'**
+  String get busSwapStopsTooltip;
+
+  /// No description provided for @busSameStopError.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin and destination cannot be the same stop'**
+  String get busSameStopError;
+
+  /// No description provided for @busAutoSwitchedDirToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-switched direction to match {origin} → {dest}'**
+  String busAutoSwitchedDirToast(String origin, String dest);
+
+  /// No description provided for @busNoMoreTripsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'No more trips today'**
+  String get busNoMoreTripsToday;
+
+  /// No description provided for @busNoMoreTripsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'All buses for this segment have departed today · First bus tomorrow at {time}'**
+  String busNoMoreTripsSub(String time);
+
+  /// No description provided for @busTimelineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Route Timeline ({slot})'**
+  String busTimelineTitle(String slot);
+
+  /// No description provided for @busStopPassedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed'**
+  String get busStopPassedTag;
+
+  /// No description provided for @busStopCurrentTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Stop'**
+  String get busStopCurrentTag;
+
+  /// No description provided for @busStopInMinutesTag.
+  ///
+  /// In en, this message translates to:
+  /// **'in {mins} min'**
+  String busStopInMinutesTag(int mins);
+
+  /// No description provided for @busStopArrivingNowTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving'**
+  String get busStopArrivingNowTag;
+
+  /// No description provided for @busStopOriginTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get busStopOriginTag;
+
+  /// No description provided for @busStopDestTag.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get busStopDestTag;
+
+  /// No description provided for @busBusHereLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus en route ({pct}%)'**
+  String busBusHereLabel(int pct);
+
+  /// No description provided for @busSelectSlotLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip Slot:'**
+  String get busSelectSlotLabel;
+
+  /// No description provided for @busRefreshSpinToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule & live position refreshed'**
+  String get busRefreshSpinToast;
+
+  /// No description provided for @aiPlanCardHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout Plan Generated'**
+  String get aiPlanCardHeader;
+
+  /// No description provided for @aiPlanDayExerciseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} exercises'**
+  String aiPlanDayExerciseCount(int count);
+
+  /// No description provided for @aiPlanViewDetailsBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get aiPlanViewDetailsBtn;
+
+  /// No description provided for @aiPlanImportBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Import to Workout'**
+  String get aiPlanImportBtn;
+
+  /// No description provided for @aiPlanImportedDoneBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported ✓'**
+  String get aiPlanImportedDoneBtn;
+
+  /// No description provided for @aiPlanGeneratingPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating workout plan…'**
+  String get aiPlanGeneratingPlaceholder;
+
+  /// No description provided for @aiPlanParseFailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Structured plan block could not be parsed.'**
+  String get aiPlanParseFailedHint;
+
+  /// No description provided for @aiPlanShowRawReplyBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Raw Reply'**
+  String get aiPlanShowRawReplyBtn;
+
+  /// No description provided for @aiPlanHideRawReplyBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Raw Reply'**
+  String get aiPlanHideRawReplyBtn;
 }
 
 class _AppLocalizationsDelegate

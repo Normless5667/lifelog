@@ -13,6 +13,7 @@ import '../../services/weather_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'about_screen.dart';
+import 'battery_diagnostics_screen.dart';
 import 'notification_diagnostics_screen.dart';
 
 /// 设置页：
@@ -531,6 +532,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Card(
                       child: Column(
                         children: [
+                          ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF26A69A).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.battery_charging_full_rounded, color: Color(0xFF26A69A)),
+                            ),
+                            title: Text(l.batteryDiagTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.batteryDiagTileSub),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const BatteryDiagnosticsScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2B5B84).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.widgets_rounded, color: Color(0xFF2B5B84)),
+                            ),
+                            title: Text(l.widgetGuideTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(l.widgetGuideTileSub),
+                            trailing: const Icon(Icons.add_to_home_screen_rounded),
+                            onTap: () => showAddHomeWidgetGuideDialog(context),
+                          ),
+                          const Divider(height: 1),
                           ListTile(
                             leading: Container(
                               width: 40,

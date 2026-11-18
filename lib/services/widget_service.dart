@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../db/repo.dart';
 import '../models/models.dart';
 import '../utils/date_utils.dart';
+import 'battery_probe_service.dart';
 import 'reminder_service.dart';
 import 'step_service.dart';
 import 'targets.dart';
@@ -21,6 +22,9 @@ class WidgetService {
   static const _stepThrottleMs = 5 * 60 * 1000; // 步数实时跳动时每 5 分钟最多推送一次
   static int _lastStepPushMs = 0;
   static bool _initialized = false;
+  static String _lastCourseLine = '';
+  static String _lastCalorieLine = '';
+  static String _lastStepLine = '';
 
   /// 初始化原生反向回调监听（如 MainActivity.onStop 触发兜底刷新、计步传感器 5 分钟节流回调）
   static void init() {
@@ -102,18 +106,38 @@ class WidgetService {
     } catch (_) {}
   }
 
-  /// 直接推送已计算好的三行文案到原生 AppWidget
+  /// 直接推送已计算好的三行文案到原生 AppWidget（若内容未变化则跳过 IPC 调用，省电防刷）
   static Future<void> pushLines({
     required String courseLine,
     required String calorieLine,
     required String stepLine,
   }) async {
+    if (courseLine == _lastCourseLine &&
+        calorieLine == _lastCalorieLine &&
+        stepLine == _lastStepLine) {
+      return;
+    }
+    _lastCourseLine = courseLine;
+    _lastCalorieLine = calorieLine;
+    _lastStepLine = stepLine;
     try {
+      BatteryProbeService.instance.recordWidgetRefresh();
       await _ch.invokeMethod('updateHomeWidget', {
         'course': courseLine,
         'calorie': calorieLine,
         'step': stepLine,
       });
     } catch (_) {}
+  }
+
+  /// 调用 Android 8.0+ 原生 requestPinAppWidget 一键将小组件固定到桌面
+  static Future<bool> requestPinToHomeScreen() async {
+    try {
+      await sync(force: true);
+      final ok = await _ch.invokeMethod<bool>('requestPinHomeWidget');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 }

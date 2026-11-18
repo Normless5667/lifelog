@@ -15,6 +15,7 @@ import 'body/body_screen.dart';
 import 'body/onboarding_sheet.dart';
 import 'diet/food_confirm_sheet.dart';
 import 'schedule/bus_schedule_screen.dart';
+import 'settings/battery_diagnostics_screen.dart';
 import 'settings/settings_screen.dart';
 
 /// 今日仪表盘（生活助手）：
@@ -31,8 +32,9 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final _quickFoodCtrl = TextEditingController();
+  late final AnimationController _weatherSpinCtrl;
   bool _loading = true;
   bool _busyQuickAi = false;
   bool _hasProfile = true;
@@ -63,12 +65,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _weatherSpinCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
     WidgetService.init();
     _load(checkOnboarding: true);
   }
 
   @override
   void dispose() {
+    _weatherSpinCtrl.dispose();
     _quickFoodCtrl.dispose();
     super.dispose();
   }
@@ -247,6 +254,17 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(ctx);
                 _open(const BusScheduleScreen());
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0x2226A69A),
+                child: Icon(Icons.widgets_rounded, color: Color(0xFF26A69A)),
+              ),
+              title: Text(l.widgetGuideTitle),
+              onTap: () {
+                Navigator.pop(ctx);
+                showAddHomeWidgetGuideDialog(context);
               },
             ),
             const SizedBox(height: 8),
@@ -439,8 +457,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       visualDensity: VisualDensity.compact,
                       tooltip: l.commonRefresh,
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      icon: RotationTransition(
+                        turns: _weatherSpinCtrl,
+                        child: const Icon(Icons.refresh_rounded, size: 18),
+                      ),
                       onPressed: () async {
+                        _weatherSpinCtrl.forward(from: 0);
                         final fresh = await WeatherService.getWeather(forceRefresh: true);
                         if (mounted && fresh != null) setState(() => _weather = fresh);
                       },

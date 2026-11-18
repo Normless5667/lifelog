@@ -1810,7 +1810,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v1.5.0 (Build 6)';
+  String get aboutVersion => 'Version v1.6.0 (Build 7)';
 
   @override
   String get aboutBadge =>
@@ -1818,5 +1818,200 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutDesc =>
-      'All-in-one personal assistant featuring class schedules, live airport-style shuttle bus board (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.';
+      'All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.';
+
+  @override
+  String get batteryDiagTitle => 'Battery & Performance Diagnostics';
+
+  @override
+  String get batteryDiagTileSub =>
+      '7-day foreground/background time, timer activity, GPS, DB writes & widget syncs';
+
+  @override
+  String get batteryDiagResetBtn => 'Reset Stats';
+
+  @override
+  String get batteryDiagResetConfirm =>
+      'Reset all rolling 7-day battery diagnostic counters?';
+
+  @override
+  String get batteryDiagResetToast => 'Battery diagnostic counters reset';
+
+  @override
+  String get batteryDiagSummaryTitle => 'Last 24h & Active Resource Monitor';
+
+  @override
+  String batteryDiagActiveTimers(int count) {
+    return 'Active Periodic Timers right now: $count';
+  }
+
+  @override
+  String get batteryDiagFgTime => 'Foreground';
+
+  @override
+  String get batteryDiagBgTime => 'Background';
+
+  @override
+  String get batteryDiagTimerTime => 'Timer Active';
+
+  @override
+  String get batteryDiagGpsCalls => 'GPS Calls';
+
+  @override
+  String get batteryDiagDbWrites => 'DB Writes';
+
+  @override
+  String get batteryDiagWidgetSyncs => 'Widget Syncs';
+
+  @override
+  String get batteryDiagHistoryTitle =>
+      'Rolling 7-Day Telemetry (Stored in kv)';
+
+  @override
+  String batteryDiagDaySub(
+    String fg,
+    String bg,
+    String timer,
+    int gps,
+    int db,
+    int widget,
+  ) {
+    return 'FG $fg · BG $bg · Timer $timer\nGPS $gps · DB Writes $db · Widget $widget';
+  }
+
+  @override
+  String get batteryDiagTipTitle => 'Power Saving Optimizations Active';
+
+  @override
+  String get batteryDiagTipSub =>
+      '• AppWidget updatePeriodMillis=0 (event-driven push only)\n• Pedometer sensor unregistered in background & throttled to 30s\n• Bus & workout timers auto-pause when screen is invisible or backgrounded\n• GPS permission requested at most once, coordinates cached for 6h';
+
+  @override
+  String get widgetGuideTitle => 'Add Widget to Home Screen';
+
+  @override
+  String get widgetGuideTileSub =>
+      'View today\'s classes, remaining calories & steps right on your home screen';
+
+  @override
+  String get widgetGuideHeader => 'Pin \"Life Assistant\" to Your Home Screen';
+
+  @override
+  String get widgetGuideDesc =>
+      'See your daily schedule, remaining calorie budget, and live step count at a glance without opening the app.';
+
+  @override
+  String get widgetGuideStep1 =>
+      '1. Tap \"Add to Home Screen\" below (supported on Android 8.0+ launchers).';
+
+  @override
+  String get widgetGuideStep2 =>
+      '2. Or long-press an empty area on your phone\'s home screen → tap \"Widgets\".';
+
+  @override
+  String get widgetGuideStep3 =>
+      '3. Find \"Life Assistant\" and drag the 4×2 card onto your home screen.';
+
+  @override
+  String get widgetGuidePinBtn => 'Add to Home Screen Now';
+
+  @override
+  String get widgetGuidePinSuccess =>
+      'System widget prompt opened — confirm on your home screen!';
+
+  @override
+  String get widgetGuidePinFallback =>
+      'Please long-press your home screen → Widgets → Life Assistant to add it.';
+
+  @override
+  String get busOriginLabel => 'Origin';
+
+  @override
+  String get busDestinationLabel => 'Destination';
+
+  @override
+  String get busSwapStopsTooltip => 'Swap Origin & Destination';
+
+  @override
+  String get busSameStopError =>
+      'Origin and destination cannot be the same stop';
+
+  @override
+  String busAutoSwitchedDirToast(String origin, String dest) {
+    return 'Auto-switched direction to match $origin → $dest';
+  }
+
+  @override
+  String get busNoMoreTripsToday => 'No more trips today';
+
+  @override
+  String busNoMoreTripsSub(String time) {
+    return 'All buses for this segment have departed today · First bus tomorrow at $time';
+  }
+
+  @override
+  String busTimelineTitle(String slot) {
+    return 'Live Route Timeline ($slot)';
+  }
+
+  @override
+  String get busStopPassedTag => 'Passed';
+
+  @override
+  String get busStopCurrentTag => 'Current Stop';
+
+  @override
+  String busStopInMinutesTag(int mins) {
+    return 'in $mins min';
+  }
+
+  @override
+  String get busStopArrivingNowTag => 'Arriving';
+
+  @override
+  String get busStopOriginTag => 'Start';
+
+  @override
+  String get busStopDestTag => 'End';
+
+  @override
+  String busBusHereLabel(int pct) {
+    return 'Bus en route ($pct%)';
+  }
+
+  @override
+  String get busSelectSlotLabel => 'Trip Slot:';
+
+  @override
+  String get busRefreshSpinToast => 'Schedule & live position refreshed';
+
+  @override
+  String get aiPlanCardHeader => 'Workout Plan Generated';
+
+  @override
+  String aiPlanDayExerciseCount(int count) {
+    return '$count exercises';
+  }
+
+  @override
+  String get aiPlanViewDetailsBtn => 'View Details';
+
+  @override
+  String get aiPlanImportBtn => 'Import to Workout';
+
+  @override
+  String get aiPlanImportedDoneBtn => 'Imported ✓';
+
+  @override
+  String get aiPlanGeneratingPlaceholder => 'Generating workout plan…';
+
+  @override
+  String get aiPlanParseFailedHint =>
+      'Structured plan block could not be parsed.';
+
+  @override
+  String get aiPlanShowRawReplyBtn => 'Show Raw Reply';
+
+  @override
+  String get aiPlanHideRawReplyBtn => 'Hide Raw Reply';
 }

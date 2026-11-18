@@ -37,7 +37,9 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     private var reminderChannel: MethodChannel? = null
     private var sensorManager: SensorManager? = null
     private var stepSensorSupported: Boolean = false
+    private var stepListenerRegistered: Boolean = false
     private var latestRawStepCounter: Int = -1
+    private var lastStepEventHandledMs: Long = 0L
     private var lastStepWidgetSyncMs: Long = 0L
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
@@ -50,7 +52,13 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         LifeAssistantWidgetProvider.refreshAll(this)
     }
 
+    override fun onResume() {
+        super.onResume()
+        initStepSensor()
+    }
+
     override fun onStop() {
+        unregisterStepSensor()
         try {
             reminderChannel?.invokeMethod("syncWidgetOnStop", null)
         } catch (_: Exception) {}
@@ -249,6 +257,17 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                         LifeAssistantWidgetProvider.saveAndRefresh(this, course, calorie, step)
                         result.success(true)
                     }
+                    "requestPinHomeWidget" -> {
+                        var pinned = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val mgr = android.appwidget.AppWidgetManager.getInstance(this)
+                            if (mgr.isRequestPinAppWidgetSupported) {
+                                val provider = android.content.ComponentName(this, LifeAssistantWidgetProvider::class.java)
+                                pinned = mgr.requestPinAppWidget(provider, null, null)
+                            }
+                        }
+                        result.success(pinned)
+                    }
                     "pickJsonFile" -> {
                         pendingJsonResult = result
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -364,7 +383,11 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             val stepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
             if (stepSensor != null) {
                 stepSensorSupported = true
-                sm.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_UI)
+                if (!stepListenerRegistered) {
+                    // 使用 SENSOR_DELAY_NORMAL + 30 秒硬件批处理延迟，大幅减少传感器中断唤醒
+                    sm.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL, 30_000_000)
+                    stepListenerRegistered = true
+                }
             } else {
                 stepSensorSupported = false
             }
@@ -373,10 +396,24 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         }
     }
 
+    private fun unregisterStepSensor() {
+        try {
+            if (stepListenerRegistered) {
+                sensorManager?.unregisterListener(this)
+                stepListenerRegistered = false
+            }
+        } catch (_: Exception) {}
+    }
+
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER && event.values.isNotEmpty()) {
-            latestRawStepCounter = event.values[0].toInt()
+            val raw = event.values[0].toInt()
+            // 首次读取立即记录，后续节流到至少 30 秒处理一次，杜绝高频唤醒
             val now = System.currentTimeMillis()
+            if (latestRawStepCounter < 0 || now - lastStepEventHandledMs >= 30_000L) {
+                latestRawStepCounter = raw
+                lastStepEventHandledMs = now
+            }
             if (now - lastStepWidgetSyncMs >= 5 * 60 * 1000L) {
                 lastStepWidgetSyncMs = now
                 try {

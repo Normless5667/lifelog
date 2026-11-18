@@ -1753,12 +1753,196 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v1.5.0 (Build 6)';
+  String get aboutVersion => '版本 v1.6.0 (Build 7)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
 
   @override
   String get aboutDesc =>
-      '集课程表、多路线机场屏校车倒计时（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。';
+      '集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。';
+
+  @override
+  String get batteryDiagTitle => '耗电与性能诊断';
+
+  @override
+  String get batteryDiagTileSub => '查看近 7 天前后台时长、计时器活跃度、GPS、写库与小组件刷新次数';
+
+  @override
+  String get batteryDiagResetBtn => '重置统计';
+
+  @override
+  String get batteryDiagResetConfirm => '确定清空最近 7 天的耗电诊断计数吗？';
+
+  @override
+  String get batteryDiagResetToast => '耗电诊断统计已重置';
+
+  @override
+  String get batteryDiagSummaryTitle => '最近 24 小时与当前活跃资源监控';
+
+  @override
+  String batteryDiagActiveTimers(int count) {
+    return '当前运行中的周期计时器：$count 个';
+  }
+
+  @override
+  String get batteryDiagFgTime => '前台时长';
+
+  @override
+  String get batteryDiagBgTime => '后台时长';
+
+  @override
+  String get batteryDiagTimerTime => '计时器活跃';
+
+  @override
+  String get batteryDiagGpsCalls => 'GPS 调用';
+
+  @override
+  String get batteryDiagDbWrites => '数据库写入';
+
+  @override
+  String get batteryDiagWidgetSyncs => '小组件刷新';
+
+  @override
+  String get batteryDiagHistoryTitle => '近 7 天滚动统计明细（存于 kv 表）';
+
+  @override
+  String batteryDiagDaySub(
+    String fg,
+    String bg,
+    String timer,
+    int gps,
+    int db,
+    int widget,
+  ) {
+    return '前台 $fg · 后台 $bg · 计时器 $timer\nGPS $gps 次 · 写库 $db 次 · 小组件 $widget 次';
+  }
+
+  @override
+  String get batteryDiagTipTitle => '已生效的省电优化策略';
+
+  @override
+  String get batteryDiagTipSub =>
+      '• 桌面小组件 updatePeriodMillis=0（仅事件驱动推送，零后台定时唤醒）\n• 计步传感器在退后台时自动注销监听，前台写库节流至 ≥30 秒\n• 校车与训练计时器在页面不可见或按 Home 键退后台时立即暂停\n• GPS 权限全局仅询问一次，定位坐标本地缓存 6 小时';
+
+  @override
+  String get widgetGuideTitle => '把小组件添加到桌面';
+
+  @override
+  String get widgetGuideTileSub => '在手机桌面直接看今日课程、剩余热量与实时步数';
+
+  @override
+  String get widgetGuideHeader => '一键添加「生活助手」桌面小组件';
+
+  @override
+  String get widgetGuideDesc => '无需打开 App，在手机主屏幕即可一眼看到今日课程安排、剩余可吃热量和实时步数。';
+
+  @override
+  String get widgetGuideStep1 => '1. 点击下方「一键添加到桌面」（支持 Android 8.0+ 主流桌面）。';
+
+  @override
+  String get widgetGuideStep2 => '2. 或回到手机桌面，长按空白处 → 点击底部「小组件 / 插件」。';
+
+  @override
+  String get widgetGuideStep3 => '3. 找到「生活助手 · 今日概览」（4×2 卡片），拖到桌面即可。';
+
+  @override
+  String get widgetGuidePinBtn => '一键添加到桌面';
+
+  @override
+  String get widgetGuidePinSuccess => '已调起系统桌面添加弹窗，请在弹窗中确认！';
+
+  @override
+  String get widgetGuidePinFallback =>
+      '当前桌面不支持自动弹窗，请长按手机桌面空白处 → 小组件 → 选择「生活助手」添加。';
+
+  @override
+  String get busOriginLabel => '起点';
+
+  @override
+  String get busDestinationLabel => '终点';
+
+  @override
+  String get busSwapStopsTooltip => '一键交换起点与终点';
+
+  @override
+  String get busSameStopError => '起点和终点不能相同，请选择不同的站点';
+
+  @override
+  String busAutoSwitchedDirToast(String origin, String dest) {
+    return '已根据所选起终点自动切换至对应方向：$origin → $dest';
+  }
+
+  @override
+  String get busNoMoreTripsToday => '今日已无班次';
+
+  @override
+  String busNoMoreTripsSub(String time) {
+    return '该区间今日所有班次均已发车 · 明日首班 $time';
+  }
+
+  @override
+  String busTimelineTitle(String slot) {
+    return '实时站点时间轴（$slot）';
+  }
+
+  @override
+  String get busStopPassedTag => '✓ 已过';
+
+  @override
+  String get busStopCurrentTag => '← 当前站';
+
+  @override
+  String busStopInMinutesTag(int mins) {
+    return '还有 $mins 分';
+  }
+
+  @override
+  String get busStopArrivingNowTag => '即将到站';
+
+  @override
+  String get busStopOriginTag => '起点';
+
+  @override
+  String get busStopDestTag => '终点';
+
+  @override
+  String busBusHereLabel(int pct) {
+    return '车在这里 · 行驶中 ($pct%)';
+  }
+
+  @override
+  String get busSelectSlotLabel => '班次切换：';
+
+  @override
+  String get busRefreshSpinToast => '校车时刻与车辆位置已刷新';
+
+  @override
+  String get aiPlanCardHeader => '已生成训练计划';
+
+  @override
+  String aiPlanDayExerciseCount(int count) {
+    return '$count 个动作';
+  }
+
+  @override
+  String get aiPlanViewDetailsBtn => '查看详情';
+
+  @override
+  String get aiPlanImportBtn => '导入到训练';
+
+  @override
+  String get aiPlanImportedDoneBtn => '已导入 ✓';
+
+  @override
+  String get aiPlanGeneratingPlaceholder => '正在生成计划…';
+
+  @override
+  String get aiPlanParseFailedHint => '结构化计划数据解析失败，可点击下方查看原始回复。';
+
+  @override
+  String get aiPlanShowRawReplyBtn => '显示原始回复';
+
+  @override
+  String get aiPlanHideRawReplyBtn => '收起原始回复';
 }

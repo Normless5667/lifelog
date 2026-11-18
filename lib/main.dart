@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
 import 'screens/workout/workout_list_screen.dart';
 import 'services/app_prefs.dart';
+import 'services/battery_probe_service.dart';
 import 'utils/l10n_ext.dart';
 
 Future<void> main() async {
@@ -15,6 +16,7 @@ Future<void> main() async {
   await initializeDateFormatting('zh_CN');
   await initializeDateFormatting('en_US');
   await AppPrefsController.instance.load();
+  await BatteryProbeService.instance.init();
   runApp(const LifeLogApp());
 }
 
@@ -81,6 +83,7 @@ class LifeLogApp extends StatelessWidget {
         return MaterialApp(
           onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.appTitle,
           debugShowCheckedModeBanner: false,
+          navigatorObservers: [BatteryProbeService.routeObserver],
           locale: prefs.localeOverride,
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,

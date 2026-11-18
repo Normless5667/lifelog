@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
+import '../../services/battery_probe_service.dart';
 import '../../services/nutrition.dart';
 import '../../services/reminder_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'exercise_library_screen.dart';
 
-/// 单次训练会话：开始 → 实时计时 (mm:ss) → 每组完成自动触发组间休息倒计时 → 结束保存总时长/总容量/总消耗
+/// 单次训练会话：
+/// - 计时采用绝对时间戳差值计算，退后台或被新页面遮挡时自动停止 UI Timer（省电），回前台自动对齐时间
+/// - 顶部秒表拆分为 ValueListenableBuilder 局部刷新，不触发整页 TextField 重建
 class WorkoutSessionScreen extends StatefulWidget {
   final int workoutId;
   final bool isNew;
@@ -58,29 +61,47 @@ class _ExerciseBlock {
   });
 }
 
-class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
+class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
+    with WidgetsBindingObserver, RouteAware {
+  static const _timerTag = 'workout_session';
   Workout? _workout;
   final List<_ExerciseBlock> _blocks = [];
   bool _loading = true;
   double _userWeightKg = 65;
 
-  // 会话实时正计时 + 组间休息倒计时
   Timer? _ticker;
-  int _elapsedSeconds = 0;
+  bool _routeVisible = true;
+  bool _appInForeground = true;
+  final ValueNotifier<int> _elapsedNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> _restRemainingNotifier = ValueNotifier<int>(0);
   int _restTargetSeconds = 90;
-  int _restRemaining = 0;
+  int? _restEndAtMs;
   bool _restPaused = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ReminderService.setKeepScreenOn(true);
     _load();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      BatteryProbeService.routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
-    _ticker?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    BatteryProbeService.routeObserver.unsubscribe(this);
+    _stopTicker();
+    _elapsedNotifier.dispose();
+    _restRemainingNotifier.dispose();
     ReminderService.cancelRestAlarm();
     ReminderService.setKeepScreenOn(false);
     for (final b in _blocks) {
@@ -89,6 +110,75 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       }
     }
     super.dispose();
+  }
+
+  @override
+  void didPushNext() {
+    _routeVisible = false;
+    _stopTicker();
+  }
+
+  @override
+  void didPopNext() {
+    _routeVisible = true;
+    _syncTimeFromWallClock();
+    _ensureTickerIfVisible();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _appInForeground = false;
+      _stopTicker();
+    } else if (state == AppLifecycleState.resumed) {
+      _appInForeground = true;
+      _syncTimeFromWallClock();
+      _ensureTickerIfVisible();
+    }
+  }
+
+  void _syncTimeFromWallClock() {
+    final w = _workout;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (w != null) {
+      if (w.endTime != null && !widget.isNew) {
+        _elapsedNotifier.value = ((w.endTime! - w.startTime) ~/ 1000).clamp(0, 86400);
+      } else {
+        _elapsedNotifier.value = ((nowMs - w.startTime) ~/ 1000).clamp(0, 86400);
+      }
+    }
+    if (!_restPaused && _restEndAtMs != null) {
+      final rem = ((_restEndAtMs! - nowMs) / 1000).ceil();
+      if (rem <= 0) {
+        _restEndAtMs = null;
+        if (_restRemainingNotifier.value > 0) {
+          _restRemainingNotifier.value = 0;
+          if (mounted) {
+            ReminderService.vibrateShort();
+            toast(context, context.l10n.sessionRestFinishedToast);
+          }
+        }
+      } else {
+        _restRemainingNotifier.value = rem;
+      }
+    }
+  }
+
+  void _ensureTickerIfVisible() {
+    if (!_routeVisible || !_appInForeground || _ticker != null) return;
+    BatteryProbeService.instance.onTimerStarted(_timerTag);
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _syncTimeFromWallClock();
+    });
+  }
+
+  void _stopTicker() {
+    if (_ticker != null) {
+      _ticker?.cancel();
+      _ticker = null;
+      BatteryProbeService.instance.onTimerStopped(_timerTag);
+    }
   }
 
   Future<void> _load() async {
@@ -132,31 +222,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       }
     }
 
-    if (w != null) {
-      if (w.endTime != null && !widget.isNew) {
-        _elapsedSeconds = ((w.endTime! - w.startTime) ~/ 1000).clamp(0, 86400);
-      } else {
-        _elapsedSeconds = ((DateTime.now().millisecondsSinceEpoch - w.startTime) ~/ 1000).clamp(0, 86400);
-      }
-    }
-
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        _elapsedSeconds++;
-        if (_restRemaining > 0 && !_restPaused) {
-          _restRemaining--;
-          if (_restRemaining == 0) {
-            ReminderService.vibrateShort();
-            toast(context, context.l10n.sessionRestFinishedToast);
-          }
-        }
-      });
-    });
+    _workout = w;
+    _syncTimeFromWallClock();
+    _ensureTickerIfVisible();
 
     if (!mounted) return;
     setState(() {
-      _workout = w;
       _loading = false;
     });
   }
@@ -169,10 +240,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   void _startRestTimer({int? seconds, String? exerciseName}) {
     final dur = seconds ?? _restTargetSeconds;
-    setState(() {
-      _restRemaining = dur;
-      _restPaused = false;
-    });
+    _restPaused = false;
+    _restEndAtMs = DateTime.now().millisecondsSinceEpoch + dur * 1000;
+    _restRemainingNotifier.value = dur;
     ReminderService.scheduleRestAlarm(
       dur,
       nextHint: exerciseName,
@@ -180,10 +250,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   void _stopRestTimer() {
-    setState(() {
-      _restRemaining = 0;
-      _restPaused = false;
-    });
+    _restPaused = false;
+    _restEndAtMs = null;
+    _restRemainingNotifier.value = 0;
     ReminderService.cancelRestAlarm();
   }
 
@@ -241,7 +310,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         }
       }
     }
-    final mins = (_elapsedSeconds / 60.0).clamp(1.0, 180.0);
+    final mins = (_elapsedNotifier.value / 60.0).clamp(1.0, 180.0);
     final kcal = Nutrition.calcMetCalories(met: Nutrition.strengthMet, weightKg: _userWeightKg, minutes: mins);
     return (sets: workSets, volume: vol, kcal: kcal);
   }
@@ -249,6 +318,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Future<void> _finish() async {
     final w = _workout;
     if (w == null) return;
+    _stopTicker();
     ReminderService.cancelRestAlarm();
     final allSets = <WorkoutSet>[];
     for (final b in _blocks) {
@@ -272,7 +342,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       if (mounted) Navigator.pop(context);
       return;
     }
-    w.endTime = w.startTime + (_elapsedSeconds * 1000);
+    final elapsedSecs = _elapsedNotifier.value;
+    w.endTime = w.startTime + (elapsedSecs * 1000);
     await Repo.updateWorkout(w);
     await Repo.replaceSets(w.id!, allSets);
     if (!mounted) return;
@@ -280,7 +351,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     toast(
       context,
       context.l10n.sessionFinishedToast(
-        _elapsedSeconds ~/ 60,
+        elapsedSecs ~/ 60,
         stats.sets,
         fmtNum(stats.volume),
         fmtNum(stats.kcal),
@@ -314,12 +385,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   children: [
                     const Icon(Icons.timer_rounded, size: 16, color: Color(0xFFEF5350)),
                     const SizedBox(width: 4),
-                    Text(
-                      _fmtClock(_elapsedSeconds),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFFEF5350),
+                    ValueListenableBuilder<int>(
+                      valueListenable: _elapsedNotifier,
+                      builder: (_, secs, _) => Text(
+                        _fmtClock(secs),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFFEF5350),
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                   ],
@@ -376,80 +451,87 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
-  /// 顶部组间休息计时器横幅（可设 60 / 90 / 120 / 180 秒，支持暂停 / +15s / 跳过）
+  /// 顶部组间休息计时器横幅（仅用 ValueListenableBuilder 局部更新倒计时，不重绘下方列表）
   Widget _restTimerBanner() {
     final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final active = _restRemaining > 0;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: active ? cs.primaryContainer : cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: active ? cs.primary : cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            active ? Icons.hourglass_top_rounded : Icons.self_improvement_rounded,
-            color: active ? cs.primary : cs.outline,
-            size: 20,
+    return ValueListenableBuilder<int>(
+      valueListenable: _restRemainingNotifier,
+      builder: (context, restRem, _) {
+        final active = restRem > 0;
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? cs.primaryContainer : cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: active ? cs.primary : cs.outlineVariant.withValues(alpha: 0.4)),
           ),
-          const SizedBox(width: 8),
-          if (active) ...[
-            Expanded(
-              child: Text(
-                l.sessionRestActive(
-                  _fmtClock(_restRemaining),
-                  _restPaused ? l.sessionRestPausedTag : '',
-                ),
-                style: TextStyle(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
+          child: Row(
+            children: [
+              Icon(
+                active ? Icons.hourglass_top_rounded : Icons.self_improvement_rounded,
+                color: active ? cs.primary : cs.outline,
+                size: 20,
               ),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: _restPaused ? l.sessionRestResume : l.sessionRestPause,
-              icon: Icon(_restPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
-              onPressed: () {
-                setState(() => _restPaused = !_restPaused);
-                if (_restPaused) {
-                  ReminderService.cancelRestAlarm();
-                } else {
-                  ReminderService.scheduleRestAlarm(_restRemaining);
-                }
-              },
-            ),
-            TextButton(
-              onPressed: () => _startRestTimer(seconds: _restRemaining + 15),
-              child: const Text('+15s'),
-            ),
-            TextButton(
-              onPressed: _stopRestTimer,
-              child: Text(l.sessionRestSkip),
-            ),
-          ] else ...[
-            Text(l.sessionRestDurationLabel, style: const TextStyle(fontSize: 12)),
-            for (final sec in [60, 90, 120, 180])
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: ChoiceChip(
+              const SizedBox(width: 8),
+              if (active) ...[
+                Expanded(
+                  child: Text(
+                    l.sessionRestActive(
+                      _fmtClock(restRem),
+                      _restPaused ? l.sessionRestPausedTag : '',
+                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
+                  ),
+                ),
+                IconButton(
                   visualDensity: VisualDensity.compact,
-                  label: Text('${sec}s', style: const TextStyle(fontSize: 11)),
-                  selected: _restTargetSeconds == sec,
-                  onSelected: (_) => setState(() => _restTargetSeconds = sec),
+                  tooltip: _restPaused ? l.sessionRestResume : l.sessionRestPause,
+                  icon: Icon(_restPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+                  onPressed: () {
+                    setState(() => _restPaused = !_restPaused);
+                    if (_restPaused) {
+                      _restEndAtMs = null;
+                      ReminderService.cancelRestAlarm();
+                    } else {
+                      _restEndAtMs = DateTime.now().millisecondsSinceEpoch + restRem * 1000;
+                      ReminderService.scheduleRestAlarm(restRem);
+                    }
+                  },
                 ),
-              ),
-            const Spacer(),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: l.sessionRestStartNow,
-              icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.teal),
-              onPressed: () => _startRestTimer(),
-            ),
-          ],
-        ],
-      ),
+                TextButton(
+                  onPressed: () => _startRestTimer(seconds: restRem + 15),
+                  child: const Text('+15s'),
+                ),
+                TextButton(
+                  onPressed: _stopRestTimer,
+                  child: Text(l.sessionRestSkip),
+                ),
+              ] else ...[
+                Text(l.sessionRestDurationLabel, style: const TextStyle(fontSize: 12)),
+                for (final sec in [60, 90, 120, 180])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: ChoiceChip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('${sec}s', style: const TextStyle(fontSize: 11)),
+                      selected: _restTargetSeconds == sec,
+                      onSelected: (_) => setState(() => _restTargetSeconds = sec),
+                    ),
+                  ),
+                const Spacer(),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: l.sessionRestStartNow,
+                  icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.teal),
+                  onPressed: () => _startRestTimer(),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -560,6 +642,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       child: TextField(
                         controller: b.sets[si].weight,
                         keyboardType: numKb,
+                        onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
                           suffixText: isCardio ? l.sessionCardioMins : 'kg',
@@ -576,6 +659,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       child: TextField(
                         controller: b.sets[si].reps,
                         keyboardType: TextInputType.number,
+                        onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
                           suffixText: isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,

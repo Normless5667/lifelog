@@ -969,7 +969,98 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v1.5.0 (Build 6)",
+  "aboutVersion": "Version v1.6.0 (Build 7)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
-  "aboutDesc": "All-in-one personal assistant featuring class schedules, live airport-style shuttle bus board (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach."
+  "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
+
+  "batteryDiagTitle": "Battery & Performance Diagnostics",
+  "batteryDiagTileSub": "7-day foreground/background time, timer activity, GPS, DB writes & widget syncs",
+  "batteryDiagResetBtn": "Reset Stats",
+  "batteryDiagResetConfirm": "Reset all rolling 7-day battery diagnostic counters?",
+  "batteryDiagResetToast": "Battery diagnostic counters reset",
+  "batteryDiagSummaryTitle": "Last 24h & Active Resource Monitor",
+  "batteryDiagActiveTimers": "Active Periodic Timers right now: {count}",
+  "@batteryDiagActiveTimers": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "batteryDiagFgTime": "Foreground",
+  "batteryDiagBgTime": "Background",
+  "batteryDiagTimerTime": "Timer Active",
+  "batteryDiagGpsCalls": "GPS Calls",
+  "batteryDiagDbWrites": "DB Writes",
+  "batteryDiagWidgetSyncs": "Widget Syncs",
+  "batteryDiagHistoryTitle": "Rolling 7-Day Telemetry (Stored in kv)",
+  "batteryDiagDaySub": "FG {fg} · BG {bg} · Timer {timer}\nGPS {gps} · DB Writes {db} · Widget {widget}",
+  "@batteryDiagDaySub": {
+    "placeholders": {
+      "fg": { "type": "String" },
+      "bg": { "type": "String" },
+      "timer": { "type": "String" },
+      "gps": { "type": "int" },
+      "db": { "type": "int" },
+      "widget": { "type": "int" }
+    }
+  },
+  "batteryDiagTipTitle": "Power Saving Optimizations Active",
+  "batteryDiagTipSub": "• AppWidget updatePeriodMillis=0 (event-driven push only)\n• Pedometer sensor unregistered in background & throttled to 30s\n• Bus & workout timers auto-pause when screen is invisible or backgrounded\n• GPS permission requested at most once, coordinates cached for 6h",
+
+  "widgetGuideTitle": "Add Widget to Home Screen",
+  "widgetGuideTileSub": "View today's classes, remaining calories & steps right on your home screen",
+  "widgetGuideHeader": "Pin \"Life Assistant\" to Your Home Screen",
+  "widgetGuideDesc": "See your daily schedule, remaining calorie budget, and live step count at a glance without opening the app.",
+  "widgetGuideStep1": "1. Tap \"Add to Home Screen\" below (supported on Android 8.0+ launchers).",
+  "widgetGuideStep2": "2. Or long-press an empty area on your phone's home screen → tap \"Widgets\".",
+  "widgetGuideStep3": "3. Find \"Life Assistant\" and drag the 4×2 card onto your home screen.",
+  "widgetGuidePinBtn": "Add to Home Screen Now",
+  "widgetGuidePinSuccess": "System widget prompt opened — confirm on your home screen!",
+  "widgetGuidePinFallback": "Please long-press your home screen → Widgets → Life Assistant to add it.",
+
+  "busOriginLabel": "Origin",
+  "busDestinationLabel": "Destination",
+  "busSwapStopsTooltip": "Swap Origin & Destination",
+  "busSameStopError": "Origin and destination cannot be the same stop",
+  "busAutoSwitchedDirToast": "Auto-switched direction to match {origin} → {dest}",
+  "@busAutoSwitchedDirToast": {
+    "placeholders": {
+      "origin": { "type": "String" },
+      "dest": { "type": "String" }
+    }
+  },
+  "busNoMoreTripsToday": "No more trips today",
+  "busNoMoreTripsSub": "All buses for this segment have departed today · First bus tomorrow at {time}",
+  "@busNoMoreTripsSub": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "busTimelineTitle": "Live Route Timeline ({slot})",
+  "@busTimelineTitle": {
+    "placeholders": { "slot": { "type": "String" } }
+  },
+  "busStopPassedTag": "Passed",
+  "busStopCurrentTag": "Current Stop",
+  "busStopInMinutesTag": "in {mins} min",
+  "@busStopInMinutesTag": {
+    "placeholders": { "mins": { "type": "int" } }
+  },
+  "busStopArrivingNowTag": "Arriving",
+  "busStopOriginTag": "Start",
+  "busStopDestTag": "End",
+  "busBusHereLabel": "Bus en route ({pct}%)",
+  "@busBusHereLabel": {
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "busSelectSlotLabel": "Trip Slot:",
+  "busRefreshSpinToast": "Schedule & live position refreshed",
+
+  "aiPlanCardHeader": "Workout Plan Generated",
+  "aiPlanDayExerciseCount": "{count} exercises",
+  "@aiPlanDayExerciseCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "aiPlanViewDetailsBtn": "View Details",
+  "aiPlanImportBtn": "Import to Workout",
+  "aiPlanImportedDoneBtn": "Imported ✓",
+  "aiPlanGeneratingPlaceholder": "Generating workout plan…",
+  "aiPlanParseFailedHint": "Structured plan block could not be parsed.",
+  "aiPlanShowRawReplyBtn": "Show Raw Reply",
+  "aiPlanHideRawReplyBtn": "Hide Raw Reply"
 }
