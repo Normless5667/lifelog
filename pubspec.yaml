@@ -47,6 +47,7 @@ dependencies:
   fl_chart: any
   share_plus: any
   flutter_markdown_plus: any
+  geolocator: any
 
 dev_dependencies:
   flutter_test:

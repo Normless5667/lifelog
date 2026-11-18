@@ -34,16 +34,37 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     private val restAlarmReqCode = 2001
     private val pickJsonReqCode = 905
     private var pendingJsonResult: MethodChannel.Result? = null
+    private var reminderChannel: MethodChannel? = null
     private var sensorManager: SensorManager? = null
     private var stepSensorSupported: Boolean = false
     private var latestRawStepCounter: Int = -1
+    private var lastStepWidgetSyncMs: Long = 0L
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        LifeAssistantWidgetProvider.refreshAll(this)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        LifeAssistantWidgetProvider.refreshAll(this)
+    }
+
+    override fun onStop() {
+        try {
+            reminderChannel?.invokeMethod("syncWidgetOnStop", null)
+        } catch (_: Exception) {}
+        LifeAssistantWidgetProvider.refreshAll(this)
+        super.onStop()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         ensureChannelCreated()
         initStepSensor()
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
-            .setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        reminderChannel = channel
+        channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "requestPermission" -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -355,6 +376,13 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER && event.values.isNotEmpty()) {
             latestRawStepCounter = event.values[0].toInt()
+            val now = System.currentTimeMillis()
+            if (now - lastStepWidgetSyncMs >= 5 * 60 * 1000L) {
+                lastStepWidgetSyncMs = now
+                try {
+                    reminderChannel?.invokeMethod("onStepSensorThrottled", latestRawStepCounter)
+                } catch (_: Exception) {}
+            }
         }
     }
 

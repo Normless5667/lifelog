@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../services/ai_service.dart';
 import '../../services/app_prefs.dart';
 import '../../services/targets.dart';
+import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import '../settings/settings_screen.dart';
@@ -38,6 +39,7 @@ class _DietScreenState extends State<DietScreen> {
   Future<void> _load() async {
     final meals = await Repo.getMeals(_date);
     final targets = await DailyTargets.load(date: _date);
+    WidgetService.sync(force: true);
     if (!mounted) return;
     setState(() {
       _meals = meals;

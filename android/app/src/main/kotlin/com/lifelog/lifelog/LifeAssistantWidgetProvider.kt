@@ -25,6 +25,10 @@ class LifeAssistantWidgetProvider : AppWidgetProvider() {
                 .putString("step", stepLine)
                 .apply()
 
+            refreshAll(context)
+        }
+
+        fun refreshAll(context: Context) {
             val mgr = AppWidgetManager.getInstance(context)
             val ids = mgr.getAppWidgetIds(ComponentName(context, LifeAssistantWidgetProvider::class.java))
             for (id in ids) {

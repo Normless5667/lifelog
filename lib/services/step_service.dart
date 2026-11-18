@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'widget_service.dart';
 
 /// 手机硬件级计步器服务（基于 Android Sensor.TYPE_STEP_COUNTER）。
 /// TYPE_STEP_COUNTER 返回的是开机以来的总步数，因此按天存储基准值 (baseline)，
@@ -29,13 +30,14 @@ class StepService {
   /// - [granted] 是否已授予定步权限
   /// - [todaySteps] 今日已走步数
   /// - [burnedKcal] 步数折算消耗千卡（约每 1000 步 0.55 × 体重kg kcal，默认约 35~40 kcal / 千步）
+  /// - [syncWidget] 若为 true，当步数变化时以 5 分钟节流触发桌面小组件更新
   static Future<({
     bool supported,
     bool granted,
     int todaySteps,
     int goal,
     double burnedKcal,
-  })> getTodaySteps({double weightKg = 65}) async {
+  })> getTodaySteps({double weightKg = 65, bool syncWidget = true}) async {
     final goal = await stepGoal();
     final t = today();
     final savedToday = int.tryParse(await Repo.getKv('steps_val_$t') ?? '') ?? 0;
@@ -60,6 +62,9 @@ class StepService {
 
           final currentSteps = (rawSteps - baseRaw).clamp(0, 200000);
           await Repo.setKv('steps_val_$t', '$currentSteps');
+          if (syncWidget && currentSteps != savedToday) {
+            WidgetService.sync(fromStepUpdate: true);
+          }
           final kcal = (currentSteps / 1000.0) * (weightKg * 0.55);
           return (
             supported: true,

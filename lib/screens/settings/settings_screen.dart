@@ -9,6 +9,7 @@ import '../../db/repo.dart';
 import '../../services/ai_service.dart';
 import '../../services/app_prefs.dart';
 import '../../services/settings_service.dart';
+import '../../services/weather_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'about_screen.dart';
@@ -41,6 +42,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _obscureVision = true;
   bool _testing = false;
   bool _loading = true;
+
+  // 天气城市设置（null 表示自动 GPS 定位）
+  String? _manualWeatherCity;
+  final _customCityCtrl = TextEditingController();
+  bool _searchingCity = false;
 
   static const _chatBasePresets = <(String label, String url)>[
     ('DeepSeek (默认)', 'https://api.deepseek.com'),
@@ -76,6 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _visionUrl.dispose();
     _visionKey.dispose();
     _visionModel.dispose();
+    _customCityCtrl.dispose();
     super.dispose();
   }
 
@@ -83,6 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final chat = await SettingsService.chatConfig();
     final same = await SettingsService.visionSameAsChat();
     final vis = await SettingsService.visionConfig(raw: true);
+    final manualCity = await WeatherService.getManualCity();
     if (!mounted) return;
     setState(() {
       _chatUrl.text = chat.baseUrl;
@@ -92,6 +100,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _visionUrl.text = vis.baseUrl;
       _visionKey.text = vis.apiKey;
       _visionModel.text = vis.model;
+      _manualWeatherCity = manualCity?.city;
+      _customCityCtrl.text = manualCity?.city ?? '';
       _loading = false;
     });
   }
@@ -249,6 +259,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ],
                               selected: {prefs.lang == 'en' ? 'en' : 'zh'},
                               onSelectionChanged: (s) => prefs.setLang(s.first),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SectionTitle(
+                      prefs.tr('天气城市与定位方式', 'Weather City & Location'),
+                      icon: Icons.location_on_rounded,
+                      iconColor: const Color(0xFF26A69A),
+                    ),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prefs.tr(
+                                '当前模式：${_manualWeatherCity == null ? "自动 GPS 定位（6小时缓存，失败兜底 IP）" : "手动固定城市 · $_manualWeatherCity"}',
+                                'Current: ${_manualWeatherCity ?? "Auto GPS Location (6h cache)"}',
+                              ),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '开启代理/VPN 时若未开 GPS 可能误判到代理所在地（如香港），可直接点选下方常用城市锁定天气：',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                ChoiceChip(
+                                  avatar: const Icon(Icons.my_location_rounded, size: 16),
+                                  label: Text(prefs.tr('自动 GPS 定位', 'Auto GPS')),
+                                  selected: _manualWeatherCity == null,
+                                  onSelected: (_) async {
+                                    await WeatherService.setAutoLocationMode();
+                                    await WeatherService.getWeather(forceRefresh: true);
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _manualWeatherCity = null;
+                                      _customCityCtrl.clear();
+                                    });
+                                    toast(context, '已切换为自动 GPS 定位并刷新天气');
+                                  },
+                                ),
+                                ...WeatherService.presetCities.map((p) {
+                                  final selected = _manualWeatherCity == p.city;
+                                  return ChoiceChip(
+                                    label: Text(p.label),
+                                    selected: selected,
+                                    onSelected: (_) async {
+                                      await WeatherService.setManualCity(city: p.city, lat: p.lat, lon: p.lon);
+                                      await WeatherService.getWeather(forceRefresh: true);
+                                      if (!mounted) return;
+                                      setState(() {
+                                        _manualWeatherCity = p.city;
+                                        _customCityCtrl.text = p.city;
+                                      });
+                                      toast(context, '已锁定天气城市为：${p.label}');
+                                    },
+                                  );
+                                }),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _customCityCtrl,
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      labelText: prefs.tr('自定义搜索城市（支持中英文）', 'Custom City Name'),
+                                      hintText: '如 Ho Chi Minh City / Hanoi / 成都',
+                                      prefixIcon: const Icon(Icons.location_city_rounded, size: 18),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                FilledButton.tonalIcon(
+                                  onPressed: _searchingCity
+                                      ? null
+                                      : () async {
+                                          final q = _customCityCtrl.text.trim();
+                                          if (q.isEmpty) return;
+                                          setState(() => _searchingCity = true);
+                                          try {
+                                            final resolved = await WeatherService.searchAndSetManualCity(q);
+                                            await WeatherService.getWeather(forceRefresh: true);
+                                            if (!mounted) return;
+                                            setState(() {
+                                              _manualWeatherCity = resolved;
+                                              _customCityCtrl.text = resolved;
+                                            });
+                                            toast(context, '已锁定天气城市为：$resolved');
+                                          } catch (e) {
+                                            if (!mounted) return;
+                                            toast(context, e.toString().replaceAll('Exception: ', ''));
+                                          } finally {
+                                            if (mounted) setState(() => _searchingCity = false);
+                                          }
+                                        },
+                                  icon: _searchingCity
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : const Icon(Icons.search_rounded, size: 18),
+                                  label: Text(prefs.tr('设为该城', 'Set')),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -469,7 +590,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Image.asset('assets/icon/dafeiyu_mascot.png', width: 40, height: 40, fit: BoxFit.cover),
                             ),
                             title: const Text('关于生活助手', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('版本 v1.2.0 · 由大肥鱼协助开发'),
+                            subtitle: const Text('版本 v1.4.0 · 由大肥鱼协助开发'),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () {
                               Navigator.push(

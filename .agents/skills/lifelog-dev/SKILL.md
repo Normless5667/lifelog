@@ -115,6 +115,12 @@ C:\Users\33239\dev\flutter-nops.bat build apk --release
     - 实时秒级跳秒倒计时：使用 `Timer.periodic(1s)` + `targetTime.difference(DateTime.now())` 绝对时间差计算（切后台不跑偏），并在 `dispose()` 中严格 `cancel()`；
     - 新增「上一班 → 本班」水平区间进度条 `_IntervalProgressBar`，用圆点实时标出当前时刻位置；
     - 顶部新增 `[去程 → BUV] [回程 ← 家]` `SegmentedButton`（按当前时间智能默认），卡片内高亮用户常用站点并支持点按任意站点一键切换常用站。
+  - **P0 桌面小组件 (AppWidget) 全链路数据打通 (`WidgetService`)**：
+    - 新增 `lib/services/widget_service.dart`：统一将今日课程格式化为简短单行（如 `📅 Database Princ… 09:00 · UX Design 13:00`）、剩余热量与今日步数，通过 `MethodChannel` 调用原生 `LifeAssistantWidgetProvider.saveAndRefresh`；
+    - 触发时机全覆盖：① App 启动及首页加载完成、② 饮食增删改 (`Repo.saveMeal` / `deleteMeal` / `DietScreen`)、③ 训练与有氧增删改 (`Repo.createWorkout` / `updateWorkout` / `replaceSets` / `saveCardioRecord`)、④ 硬件计步器实时更新（`StepService` 与 `MainActivity.onSensorChanged` 双端 5 分钟节流）、⑤ `MainActivity.onStop()` 切后台兜底自动同步并调用 `LifeAssistantWidgetProvider.refreshAll`。
+  - **P0 天气定位升级（`geolocator` 真实 GPS + 6 小时定位缓存 + 手动指定城市）**：
+    - 引入 `geolocator` 插件，优先使用真实 GPS 定位（5 秒超时 + 坐标反查城市，不依赖代理出口 IP），权限拒绝或超时才 fallback 到 `ipwho.is`，且定位结果缓存 **6 小时**；
+    - 在设置页及首页天气卡片点击弹窗中新增「天气城市与定位方式」：支持一键锁定胡志明市 (`Ho Chi Minh City`)、河内 (`Hanoi`)、岘港、香港等常用城市，或输入任意中英文城市名通过 Open-Meteo Geocoding 搜索锁定，彻底解决挂香港代理导致天气显示香港的问题。
 - **2026-11-18 (阶段 7 - 生活助手 v1.3 `1.3.0+4` 多路线校车时刻表架构 + BUV 拼写修正)**：
   - **校车表 `BUY CAMPUS` → `BUV CAMPUS` 拼写修正**：已修正 `assets/bus_schedule.json` 与 `assets/bus_routes.json` 中的终点站名称。
   - **多路线可扩展校车架构 (v1.3)**：

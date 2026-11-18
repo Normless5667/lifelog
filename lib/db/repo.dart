@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import 'database.dart';
 
@@ -45,13 +46,20 @@ class Repo {
 
   static Future<int> saveCourse(Course c) async {
     final db = await _db;
-    if (c.id == null) return db.insert('courses', c.toMap()..remove('id'));
-    await db.update('courses', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
-    return c.id!;
+    final int res;
+    if (c.id == null) {
+      res = await db.insert('courses', c.toMap()..remove('id'));
+    } else {
+      await db.update('courses', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
+      res = c.id!;
+    }
+    WidgetService.sync(force: true);
+    return res;
   }
 
   static Future<void> deleteCourse(int id) async {
     await (await _db).delete('courses', where: 'id = ?', whereArgs: [id]);
+    WidgetService.sync(force: true);
   }
 
   static Future<void> importCourses(List<Course> courses, {bool replaceAll = false}) async {
@@ -64,6 +72,7 @@ class Repo {
         await txn.insert('courses', c.toMap()..remove('id'));
       }
     });
+    WidgetService.sync(force: true);
   }
 
   /// 学期第一周的周一日期
@@ -99,13 +108,20 @@ class Repo {
 
   static Future<int> saveMeal(Meal m) async {
     final db = await _db;
-    if (m.id == null) return db.insert('meals', m.toMap()..remove('id'));
-    await db.update('meals', m.toMap(), where: 'id = ?', whereArgs: [m.id]);
-    return m.id!;
+    final int res;
+    if (m.id == null) {
+      res = await db.insert('meals', m.toMap()..remove('id'));
+    } else {
+      await db.update('meals', m.toMap(), where: 'id = ?', whereArgs: [m.id]);
+      res = m.id!;
+    }
+    WidgetService.sync(force: true);
+    return res;
   }
 
   static Future<void> deleteMeal(int id) async {
     await (await _db).delete('meals', where: 'id = ?', whereArgs: [id]);
+    WidgetService.sync(force: true);
   }
 
   // ---------------- 身体数据 ----------------
@@ -144,11 +160,15 @@ class Repo {
   }
 
   // ---------------- 训练 ----------------
-  static Future<int> createWorkout(Workout w) async =>
-      (await _db).insert('workouts', w.toMap()..remove('id'));
+  static Future<int> createWorkout(Workout w) async {
+    final id = await (await _db).insert('workouts', w.toMap()..remove('id'));
+    WidgetService.sync(force: true);
+    return id;
+  }
 
   static Future<void> updateWorkout(Workout w) async {
     await (await _db).update('workouts', w.toMap(), where: 'id = ?', whereArgs: [w.id]);
+    WidgetService.sync(force: true);
   }
 
   static Future<void> deleteWorkout(int id) async {
@@ -157,6 +177,7 @@ class Repo {
       await txn.delete('workout_sets', where: 'workout_id = ?', whereArgs: [id]);
       await txn.delete('workouts', where: 'id = ?', whereArgs: [id]);
     });
+    WidgetService.sync(force: true);
   }
 
   static Future<List<Workout>> getWorkouts({int? limit, String? from}) async {
@@ -189,6 +210,7 @@ class Repo {
         await txn.insert('workout_sets', s.toMap()..remove('id'));
       }
     });
+    WidgetService.sync(force: true);
   }
 
   /// 某个动作在 [excludeWorkoutId] 之外最近一次训练的所有组
@@ -230,13 +252,20 @@ class Repo {
 
   static Future<int> saveCardioRecord(CardioRecord r) async {
     final db = await _db;
-    if (r.id == null) return db.insert('cardio_records', r.toMap()..remove('id'));
-    await db.update('cardio_records', r.toMap(), where: 'id = ?', whereArgs: [r.id]);
-    return r.id!;
+    final int res;
+    if (r.id == null) {
+      res = await db.insert('cardio_records', r.toMap()..remove('id'));
+    } else {
+      await db.update('cardio_records', r.toMap(), where: 'id = ?', whereArgs: [r.id]);
+      res = r.id!;
+    }
+    WidgetService.sync(force: true);
+    return res;
   }
 
   static Future<void> deleteCardioRecord(int id) async {
     await (await _db).delete('cardio_records', where: 'id = ?', whereArgs: [id]);
+    WidgetService.sync(force: true);
   }
 
   // ---------------- 训练计划 & 首次问卷 ----------------

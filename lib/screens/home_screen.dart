@@ -10,6 +10,7 @@ import '../services/reminder_service.dart';
 import '../services/step_service.dart';
 import '../services/targets.dart';
 import '../services/weather_service.dart';
+import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import '../widgets/common.dart';
 import 'body/body_screen.dart';
@@ -64,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetService.init();
     _load(checkOnboarding: true);
   }
 
@@ -103,12 +105,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final totals = DayTotals.of(meals);
     final remKcal = (targets.calories - totals.calories).round();
-    final firstCourse = todayCourses.isEmpty
-        ? '📅 今日无课'
-        : '📅 ${ReminderService.formatRange(todayCourses.first.startSection, todayCourses.first.endSection)} ${todayCourses.first.name}';
-    ReminderService.updateHomeWidget(
-      courseLine: firstCourse,
-      calorieLine: '🔥 剩余热量：$remKcal kcal（已吃 ${totals.calories.round()}）',
+    final courseLine = WidgetService.formatCoursesLine(todayCourses);
+    final calorieLine = remKcal >= 0
+        ? '🔥 剩余热量：$remKcal kcal（已吃 ${totals.calories.round()}）'
+        : '🔥 超出热量：${remKcal.abs()} kcal（已吃 ${totals.calories.round()}）';
+    WidgetService.pushLines(
+      courseLine: courseLine,
+      calorieLine: calorieLine,
       stepLine: '👟 今日步数：${stepState.todaySteps} / ${stepState.goal} 步',
     );
     ReminderService.syncAlarms();
@@ -416,45 +419,125 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (w != null)
           Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  Text(w.emoji, style: const TextStyle(fontSize: 30)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${fmtNum(w.temperature)}°C ${w.conditionText} · ${w.city}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          w.compactSubtitle,
-                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: _openWeatherCityQuickSheet,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    Text(w.emoji, style: const TextStyle(fontSize: 30)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${fmtNum(w.temperature)}°C ${w.conditionText} · ${w.city}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            w.compactSubtitle,
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    onPressed: () async {
-                      final fresh = await WeatherService.getWeather(forceRefresh: true);
-                      if (mounted && fresh != null) setState(() => _weather = fresh);
-                    },
-                  ),
-                ],
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: '刷新天气 / 切换城市',
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      onPressed: () async {
+                        final fresh = await WeatherService.getWeather(forceRefresh: true);
+                        if (mounted && fresh != null) setState(() => _weather = fresh);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Future<void> _openWeatherCityQuickSheet() async {
+    final manual = await WeatherService.getManualCity();
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.location_on_rounded, color: Color(0xFF26A69A)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '天气定位与城市切换（防代理/VPN 跑偏）',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    avatar: const Icon(Icons.my_location_rounded, size: 16),
+                    label: const Text('自动 GPS 定位 (6h缓存)'),
+                    selected: manual == null,
+                    onSelected: (_) async {
+                      Navigator.pop(ctx);
+                      await WeatherService.setAutoLocationMode();
+                      final fresh = await WeatherService.getWeather(forceRefresh: true);
+                      if (mounted && fresh != null) setState(() => _weather = fresh);
+                    },
+                  ),
+                  ...WeatherService.presetCities.map((p) {
+                    final sel = manual?.city == p.city;
+                    return ChoiceChip(
+                      label: Text(p.label),
+                      selected: sel,
+                      onSelected: (_) async {
+                        Navigator.pop(ctx);
+                        await WeatherService.setManualCity(city: p.city, lat: p.lat, lon: p.lon);
+                        final fresh = await WeatherService.getWeather(forceRefresh: true);
+                        if (mounted && fresh != null) setState(() => _weather = fresh);
+                      },
+                    );
+                  }),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _open(const SettingsScreen());
+                  },
+                  icon: const Icon(Icons.settings_rounded, size: 16),
+                  label: const Text('去设置页搜索更多城市'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
