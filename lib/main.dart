@@ -10,6 +10,7 @@ import 'screens/workout/workout_list_screen.dart';
 import 'services/app_prefs.dart';
 import 'services/battery_probe_service.dart';
 import 'services/usage_telemetry_service.dart';
+import 'theme/app_theme.dart';
 import 'utils/l10n_ext.dart';
 
 Future<void> main() async {
@@ -25,57 +26,6 @@ Future<void> main() async {
 class LifeLogApp extends StatelessWidget {
   const LifeLogApp({super.key});
 
-  /// Keep 风格配色与大圆角卡片设计语言（主色深蓝 #2B5B84 + 活力强调橙 #FF7A22，卡片 20dp，按钮 16dp，输入框 12dp）
-  static ThemeData _buildTheme(Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-    final cs = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF2B5B84),
-      primary: isDark ? const Color(0xFF64B5F6) : const Color(0xFF2B5B84),
-      secondary: const Color(0xFFFF7A22),
-      tertiary: const Color(0xFF26A69A),
-      brightness: brightness,
-    );
-    return ThemeData(
-      colorScheme: cs,
-      useMaterial3: true,
-      scaffoldBackgroundColor: isDark ? const Color(0xFF12161F) : const Color(0xFFF6F8FB),
-      cardTheme: CardThemeData(
-        elevation: isDark ? 0 : 1,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
-        color: isDark ? const Color(0xFF1C222E) : Colors.white,
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.35)),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: cs.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: cs.primary, width: 1.8),
-        ),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF171C26) : Colors.white,
-        isDense: true,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final prefs = AppPrefsController.instance;
@@ -90,8 +40,8 @@ class LifeLogApp extends StatelessWidget {
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           themeMode: prefs.themeMode,
-          theme: _buildTheme(Brightness.light),
-          darkTheme: _buildTheme(Brightness.dark),
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
@@ -126,14 +76,31 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => _index = i);
   }
 
-  static Widget _navBadge(IconData icon, Color color, {bool selected = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+  static Widget _navBadge(
+    BuildContext context,
+    IconData icon,
+    Color moduleColor, {
+    bool selected = false,
+  }) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final bg = selected
+        ? AppColors.softBg(context, moduleColor, lightAlpha: 0.14, darkAlpha: 0.20)
+        : Colors.transparent;
+    final borderColor = selected
+        ? AppColors.softBorder(context, moduleColor, lightAlpha: 0.24, darkAlpha: 0.32)
+        : Colors.transparent;
+    final iconColor = selected ? moduleColor : AppColors.textSecondary(context);
+
+    return AnimatedContainer(
+      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
       decoration: BoxDecoration(
-        color: selected ? color : color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
+        color: bg,
+        borderRadius: AppRadius.bPill,
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: Icon(icon, size: 22, color: selected ? Colors.white : color),
+      child: Icon(icon, size: 22, color: iconColor),
     );
   }
 
@@ -151,39 +118,61 @@ class _HomeShellState extends State<HomeShell> {
           const WorkoutListScreen(),
           const AiChatScreen(),
         ];
+
+        final cToday = AppColors.moduleToday(context);
+        final cSchedule = AppColors.moduleSchedule(context);
+        final cDiet = AppColors.moduleDiet(context);
+        final cWorkout = AppColors.moduleWorkout(context);
+        final cAi = AppColors.moduleAi(context);
+
         return Scaffold(
           body: pages[_index],
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: _goTo,
-            indicatorColor: Colors.transparent,
-            destinations: [
-              NavigationDestination(
-                icon: _navBadge(Icons.today_rounded, const Color(0xFF2B5B84)),
-                selectedIcon: _navBadge(Icons.today_rounded, const Color(0xFF2B5B84), selected: true),
-                label: l.tabToday,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.border(context).withValues(
+                    alpha: AppColors.isDark(context) ? 0.65 : 0.85,
+                  ),
+                  width: 1,
+                ),
               ),
-              NavigationDestination(
-                icon: _navBadge(Icons.calendar_month_rounded, const Color(0xFF42A5F5)),
-                selectedIcon: _navBadge(Icons.calendar_month_rounded, const Color(0xFF42A5F5), selected: true),
-                label: l.tabSchedule,
-              ),
-              NavigationDestination(
-                icon: _navBadge(Icons.restaurant_rounded, const Color(0xFFFF7A22)),
-                selectedIcon: _navBadge(Icons.restaurant_rounded, const Color(0xFFFF7A22), selected: true),
-                label: l.tabDiet,
-              ),
-              NavigationDestination(
-                icon: _navBadge(Icons.fitness_center_rounded, const Color(0xFFEF5350)),
-                selectedIcon: _navBadge(Icons.fitness_center_rounded, const Color(0xFFEF5350), selected: true),
-                label: l.tabWorkout,
-              ),
-              NavigationDestination(
-                icon: _navBadge(Icons.smart_toy_rounded, const Color(0xFFAB47BC)),
-                selectedIcon: _navBadge(Icons.smart_toy_rounded, const Color(0xFFAB47BC), selected: true),
-                label: l.tabAi,
-              ),
-            ],
+            ),
+            child: NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: _goTo,
+              indicatorColor: Colors.transparent,
+              destinations: [
+                NavigationDestination(
+                  icon: _navBadge(context, Icons.today_rounded, cToday),
+                  selectedIcon: _navBadge(context, Icons.today_rounded, cToday, selected: true),
+                  label: l.tabToday,
+                ),
+                NavigationDestination(
+                  icon: _navBadge(context, Icons.calendar_month_rounded, cSchedule),
+                  selectedIcon:
+                      _navBadge(context, Icons.calendar_month_rounded, cSchedule, selected: true),
+                  label: l.tabSchedule,
+                ),
+                NavigationDestination(
+                  icon: _navBadge(context, Icons.restaurant_rounded, cDiet),
+                  selectedIcon:
+                      _navBadge(context, Icons.restaurant_rounded, cDiet, selected: true),
+                  label: l.tabDiet,
+                ),
+                NavigationDestination(
+                  icon: _navBadge(context, Icons.fitness_center_rounded, cWorkout),
+                  selectedIcon:
+                      _navBadge(context, Icons.fitness_center_rounded, cWorkout, selected: true),
+                  label: l.tabWorkout,
+                ),
+                NavigationDestination(
+                  icon: _navBadge(context, Icons.smart_toy_rounded, cAi),
+                  selectedIcon: _navBadge(context, Icons.smart_toy_rounded, cAi, selected: true),
+                  label: l.tabAi,
+                ),
+              ],
+            ),
           ),
         );
       },

@@ -19,12 +19,10 @@ import 'schedule/bus_schedule_screen.dart';
 import 'settings/battery_diagnostics_screen.dart';
 import 'settings/settings_screen.dart';
 
-/// 今日仪表盘（生活助手）：
-/// - Open-Meteo 实时天气卡片（GPS 优先 + 6 小时定位缓存 + 手动城市切换）
-/// - 校车下一班倒计时卡片（点按进入机场航班屏动态看板）
-/// - 硬件级自动计步器进度环（TYPE_STEP_COUNTER）
-/// - 连续打卡天数 (Streak) + 一句话 AI 速记饮食 + 右下角快捷记录 FAB
-/// - 自动同步更新安卓桌面小组件 (AppWidget)
+/// 今日仪表盘（生活助手 v2.0 视觉重写）：
+/// - 统一引用 AppColors / AppTypography / AppSpacing / AppRadius / AppShadows
+/// - 向下滚动自动收起悬浮按钮（避免遮挡底部内容）
+/// - 深浅色自适应低饱和度语义模块色与高对比度数字焦点排版
 class HomeScreen extends StatefulWidget {
   final void Function(int tabIndex) onNavigate;
   const HomeScreen({super.key, required this.onNavigate});
@@ -39,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _loading = true;
   bool _busyQuickAi = false;
   bool _hasProfile = true;
+  bool _fabVisible = true;
   int _streak = 0;
   DayTotals _totals = DayTotals.of(const []);
   DailyTargets _targets = const DailyTargets(2000, 100, 250, 55);
@@ -97,8 +96,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final start = await Repo.getSemesterStart();
     final week = weekOfSemester(start, DateTime.now());
     final wd = DateTime.now().weekday;
-    final todayCourses = courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
-      ..sort((a, b) => a.startSection.compareTo(b.startSection));
+    final todayCourses =
+        courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
+          ..sort((a, b) => a.startSection.compareTo(b.startSection));
     final workouts = (await Repo.getWorkouts(from: t)).where((w) => w.date == t).toList();
     final cardios = await Repo.getCardioRecords(date: t);
     var sets = 0;
@@ -147,7 +147,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final saved = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (_) => OnboardingSheet(initialProfile: profile, initialWeight: weight?.weight),
+            builder: (_) => OnboardingSheet(
+              initialProfile: profile,
+              initialWeight: weight?.weight,
+            ),
           ),
         );
         if (saved == true) _load();
@@ -212,7 +215,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
     } catch (e) {
       final dur = DateTime.now().millisecondsSinceEpoch - t0;
-      UsageTelemetryService.instance.trackFeature('ai_log', 'fail', durationMs: dur, errorMsg: '$e');
+      UsageTelemetryService.instance.trackFeature(
+        'ai_log',
+        'fail',
+        durationMs: dur,
+        errorMsg: '$e',
+      );
       if (!mounted) return;
       setState(() => _busyQuickAi = false);
       showAiError(context, e, onOpenSettings: () => _open(const SettingsScreen()));
@@ -224,72 +232,139 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.bolt_rounded, color: Color(0xFFFF7A22)),
-              title: Text(l.homeQuickRecord, style: const TextStyle(fontWeight: FontWeight.bold)),
+      builder: (ctx) {
+        Widget sheetItem({
+          required IconData icon,
+          required Color color,
+          required String title,
+          required VoidCallback onTap,
+        }) {
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.xxs,
             ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x22FF7A22),
-                child: Icon(Icons.restaurant_rounded, color: Color(0xFFFF7A22)),
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(ctx, color, lightAlpha: 0.12, darkAlpha: 0.18),
+                borderRadius: AppRadius.bMd,
               ),
-              title: Text(l.homeQuickDiet),
-              onTap: () {
-                Navigator.pop(ctx);
-                widget.onNavigate(2);
-              },
+              child: Icon(icon, color: color, size: 20),
             ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x22EF5350),
-                child: Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350)),
-              ),
-              title: Text(l.homeQuickWorkout),
-              onTap: () {
-                Navigator.pop(ctx);
-                widget.onNavigate(3);
-              },
+            title: Text(title, style: AppTypography.subtitle(ctx)),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: AppColors.textTertiary(ctx),
             ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x2242A5F5),
-                child: Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
-              ),
-              title: Text(l.homeQuickWeight),
-              onTap: () {
-                Navigator.pop(ctx);
-                _open(const BodyScreen());
-              },
+            onTap: onTap,
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    0,
+                    AppSpacing.xl,
+                    AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, color: AppColors.accent(ctx), size: 22),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(l.homeQuickRecord, style: AppTypography.sectionTitle(ctx)),
+                    ],
+                  ),
+                ),
+                sheetItem(
+                  icon: Icons.restaurant_rounded,
+                  color: AppColors.moduleDiet(ctx),
+                  title: l.homeQuickDiet,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    widget.onNavigate(2);
+                  },
+                ),
+                sheetItem(
+                  icon: Icons.fitness_center_rounded,
+                  color: AppColors.moduleWorkout(ctx),
+                  title: l.homeQuickWorkout,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    widget.onNavigate(3);
+                  },
+                ),
+                sheetItem(
+                  icon: Icons.monitor_weight_rounded,
+                  color: AppColors.moduleBody(ctx),
+                  title: l.homeQuickWeight,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _open(const BodyScreen());
+                  },
+                ),
+                sheetItem(
+                  icon: Icons.directions_bus_rounded,
+                  color: AppColors.moduleSchedule(ctx),
+                  title: l.homeQuickBus,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _open(const BusScheduleScreen());
+                  },
+                ),
+                sheetItem(
+                  icon: Icons.widgets_rounded,
+                  color: AppColors.teal(ctx),
+                  title: l.widgetGuideTitle,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    showAddHomeWidgetGuideDialog(context);
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x222B5B84),
-                child: Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84)),
-              ),
-              title: Text(l.homeQuickBus),
-              onTap: () {
-                Navigator.pop(ctx);
-                _open(const BusScheduleScreen());
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0x2226A69A),
-                child: Icon(Icons.widgets_rounded, color: Color(0xFF26A69A)),
-              ),
-              title: Text(l.widgetGuideTitle),
-              onTap: () {
-                Navigator.pop(ctx);
-                showAddHomeWidgetGuideDialog(context);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+          ),
+        );
+      },
+    );
+  }
+
+  bool _onScrollNotification(ScrollUpdateNotification n) {
+    final dy = n.scrollDelta ?? 0;
+    if (dy > 6 && _fabVisible && n.metrics.pixels > 40) {
+      setState(() => _fabVisible = false);
+    } else if ((dy < -6 || n.metrics.pixels <= 20) && !_fabVisible) {
+      setState(() => _fabVisible = true);
+    }
+    return false;
+  }
+
+  Widget _appBarActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: IconButton(
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.surfaceSubtle(context),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+          minimumSize: const Size(36, 36),
+          padding: const EdgeInsets.all(AppSpacing.sm),
         ),
+        icon: Icon(icon, size: 19, color: AppColors.textPrimary(context)),
+        onPressed: onPressed,
       ),
     );
   }
@@ -298,22 +373,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final l = context.l10n;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final primary = AppColors.primary(context);
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.lg,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.softBg(context, primary, lightAlpha: 0.12, darkAlpha: 0.20),
+                borderRadius: AppRadius.bSm,
+                border: Border.all(color: AppColors.softBorder(context, primary)),
               ),
-              child: Icon(Icons.wb_sunny_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+              child: Icon(Icons.wb_sunny_rounded, size: 18, color: primary),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Flexible(
               child: Text(
                 '${now.month}/${now.day} ${L10nHelper.weekdayLabel(context, now.weekday)}',
+                style: AppTypography.pageTitle(context),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -321,77 +403,104 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         actions: [
-          IconButton(
+          _appBarActionButton(
+            icon: Icons.directions_bus_rounded,
             tooltip: l.busBoardTitle,
-            icon: const Icon(Icons.directions_bus_rounded),
             onPressed: () => _open(const BusScheduleScreen()),
           ),
-          IconButton(
+          _appBarActionButton(
+            icon: Icons.monitor_weight_rounded,
             tooltip: l.bodyTitle,
-            icon: const Icon(Icons.monitor_weight_rounded),
             onPressed: () => _open(const BodyScreen()),
           ),
-          IconButton(
-            tooltip: l.settingsTitle,
-            icon: const Icon(Icons.settings_rounded),
-            onPressed: () => _open(const SettingsScreen()),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: _appBarActionButton(
+              icon: Icons.settings_rounded,
+              tooltip: l.settingsTitle,
+              onPressed: () => _open(const SettingsScreen()),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openQuickRecordMenu,
-        tooltip: l.homeQuickRecord,
-        backgroundColor: const Color(0xFFFF7A22),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add_rounded, size: 28),
+      floatingActionButton: AnimatedSlide(
+        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        offset: _fabVisible ? Offset.zero : const Offset(0, 2.0),
+        child: AnimatedOpacity(
+          duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 180),
+          opacity: _fabVisible ? 1.0 : 0.0,
+          child: FloatingActionButton.small(
+            onPressed: _openQuickRecordMenu,
+            tooltip: l.homeQuickRecord,
+            elevation: 2,
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
+            child: const Icon(Icons.add_rounded, size: 24),
+          ),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                children: [
-                  _streakAndWeatherSection(),
-                  _busCard(),
-                  const SizedBox(height: 8),
-                  _quickHeroBanner(),
-                  const SizedBox(height: 8),
-                  _quickMealInputCard(),
-                  if (!_hasProfile) _profilePrompt(),
-                  CalorieSummaryCard(totals: _totals, targets: _targets, onTap: () => widget.onNavigate(2)),
-                  _stepCounterCard(),
-                  SectionTitle(
-                    _week > 0 ? l.homeTodayClassesWeek(_week) : l.homeTodayClasses,
-                    icon: Icons.school_rounded,
-                    iconColor: const Color(0xFF2B5B84),
-                    trailing: TextButton.icon(
-                      onPressed: () => widget.onNavigate(1),
-                      icon: const Icon(Icons.calendar_view_week_rounded, size: 16),
-                      label: Text(l.homeAllSchedule),
+              child: NotificationListener<ScrollUpdateNotification>(
+                onNotification: _onScrollNotification,
+                child: ListView(
+                  padding: AppSpacing.pagePadding,
+                  children: [
+                    _streakAndWeatherSection(),
+                    const SizedBox(height: AppSpacing.md),
+                    _busCard(),
+                    const SizedBox(height: AppSpacing.md),
+                    _quickHeroBanner(),
+                    const SizedBox(height: AppSpacing.md),
+                    _quickMealInputCard(),
+                    if (!_hasProfile) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _profilePrompt(),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    CalorieSummaryCard(
+                      totals: _totals,
+                      targets: _targets,
+                      onTap: () => widget.onNavigate(2),
                     ),
-                  ),
-                  _coursesCard(),
-                  SectionTitle(
-                    l.homeTodayWorkoutTitle,
-                    icon: Icons.fitness_center_rounded,
-                    iconColor: const Color(0xFFEF5350),
-                    trailing: TextButton.icon(
-                      onPressed: () => widget.onNavigate(3),
-                      icon: const Icon(Icons.chevron_right, size: 18),
-                      label: Text(l.homeGoWorkout),
+                    const SizedBox(height: AppSpacing.md),
+                    _stepCounterCard(),
+                    SectionTitle(
+                      _week > 0 ? l.homeTodayClassesWeek(_week) : l.homeTodayClasses,
+                      icon: Icons.school_rounded,
+                      iconColor: AppColors.moduleSchedule(context),
+                      trailing: TextButton.icon(
+                        onPressed: () => widget.onNavigate(1),
+                        icon: const Icon(Icons.calendar_view_week_rounded, size: 15),
+                        label: Text(l.homeAllSchedule),
+                      ),
                     ),
-                  ),
-                  _workoutCard(),
-                  SectionTitle(
-                    l.homeBodyStatus,
-                    icon: Icons.favorite_rounded,
-                    iconColor: const Color(0xFFEC407A),
-                  ),
-                  _bodyCard(),
-                  const SizedBox(height: 12),
-                  _aiBannerCard(),
-                ],
+                    _coursesCard(),
+                    SectionTitle(
+                      l.homeTodayWorkoutTitle,
+                      icon: Icons.fitness_center_rounded,
+                      iconColor: AppColors.moduleWorkout(context),
+                      trailing: TextButton.icon(
+                        onPressed: () => widget.onNavigate(3),
+                        icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                        label: Text(l.homeGoWorkout),
+                      ),
+                    ),
+                    _workoutCard(),
+                    SectionTitle(
+                      l.homeBodyStatus,
+                      icon: Icons.favorite_rounded,
+                      iconColor: AppColors.moduleBody(context),
+                    ),
+                    _bodyCard(),
+                    const SizedBox(height: AppSpacing.lg),
+                    _aiBannerCard(),
+                  ],
+                ),
               ),
             ),
     );
@@ -401,41 +510,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _streakAndWeatherSection() {
     final w = _weather;
     final l = context.l10n;
+    final accent = AppColors.accent(context);
+    final scheduleColor = AppColors.moduleSchedule(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs + 1,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFFF7A22).withValues(alpha: 0.35)),
+                  color: AppColors.softBg(context, accent, lightAlpha: 0.12, darkAlpha: 0.18),
+                  borderRadius: AppRadius.bPill,
+                  border: Border.all(color: AppColors.softBorder(context, accent)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.local_fire_department_rounded, size: 16, color: Color(0xFFFF7A22)),
-                    const SizedBox(width: 4),
+                    Icon(Icons.local_fire_department_rounded, size: 15, color: accent),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       l.homeStreakDays(_streak),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF7A22),
-                      ),
+                      style: AppTypography.badge(context, color: accent),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   _streak > 0 ? l.homeStreakKeepGoing : l.homeStreakStartHint,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
+                  style: AppTypography.caption(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -444,60 +555,88 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
         if (w != null)
-          Card(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: _openWeatherCityQuickSheet,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    Text(w.emoji, style: const TextStyle(fontSize: 30)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          SurfaceCard(
+            onTap: _openWeatherCityQuickSheet,
+            padding: AppSpacing.cardCompactPadding,
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, scheduleColor),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Text(w.emoji, style: const TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            '${fmtNum(w.temperature)}°C ${L10nHelper.weatherConditionLabel(context, w.weatherCode)} · ${w.city}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            '${fmtNum(w.temperature)}°',
+                            style: AppTypography.metricLarge(context),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            L10nHelper.weatherCompactSubLabel(context, w),
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: AppSpacing.xs + 2),
+                          Expanded(
+                            child: Text(
+                              '${L10nHelper.weatherConditionLabel(context, w.weatherCode)} · ${w.city}',
+                              style: AppTypography.subtitle(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      tooltip: l.commonRefresh,
-                      icon: RotationTransition(
-                        turns: _weatherSpinCtrl,
-                        child: const Icon(Icons.refresh_rounded, size: 18),
+                      const SizedBox(height: 3),
+                      Text(
+                        L10nHelper.weatherCompactSubLabel(context, w),
+                        style: AppTypography.caption(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      onPressed: () async {
-                        _weatherSpinCtrl.forward(from: 0);
-                        final t0 = DateTime.now().millisecondsSinceEpoch;
-                        UsageTelemetryService.instance.trackFeature('weather_refresh', 'tap');
-                        final fresh = await WeatherService.getWeather(forceRefresh: true);
-                        final dur = DateTime.now().millisecondsSinceEpoch - t0;
-                        UsageTelemetryService.instance.trackFeature(
-                          'weather_refresh',
-                          fresh != null ? 'success' : 'fail',
-                          durationMs: dur,
-                        );
-                        if (mounted && fresh != null) setState(() => _weather = fresh);
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.xs),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: l.commonRefresh,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.surfaceSubtle(context),
+                    minimumSize: const Size(32, 32),
+                    padding: const EdgeInsets.all(6),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bSm),
+                  ),
+                  icon: RotationTransition(
+                    turns: _weatherSpinCtrl,
+                    child: Icon(
+                      Icons.refresh_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary(context),
+                    ),
+                  ),
+                  onPressed: () async {
+                    _weatherSpinCtrl.forward(from: 0);
+                    final t0 = DateTime.now().millisecondsSinceEpoch;
+                    UsageTelemetryService.instance.trackFeature('weather_refresh', 'tap');
+                    final fresh = await WeatherService.getWeather(forceRefresh: true);
+                    final dur = DateTime.now().millisecondsSinceEpoch - t0;
+                    UsageTelemetryService.instance.trackFeature(
+                      'weather_refresh',
+                      fresh != null ? 'success' : 'fail',
+                      durationMs: dur,
+                    );
+                    if (mounted && fresh != null) setState(() => _weather = fresh);
+                  },
+                ),
+              ],
             ),
           ),
       ],
@@ -513,27 +652,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.location_on_rounded, color: Color(0xFF26A69A)),
-                  const SizedBox(width: 8),
+                  Icon(Icons.location_on_rounded, color: AppColors.teal(ctx)),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       l.weatherSheetTitle,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: AppTypography.cardTitle(ctx),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: [
                   ChoiceChip(
                     avatar: const Icon(Icons.my_location_rounded, size: 16),
@@ -553,7 +697,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       selected: sel,
                       onSelected: (_) async {
                         Navigator.pop(ctx);
-                        await WeatherService.setManualCity(city: p.city, lat: p.lat, lon: p.lon);
+                        await WeatherService.setManualCity(
+                          city: p.city,
+                          lat: p.lat,
+                          lon: p.lon,
+                        );
                         final fresh = await WeatherService.getWeather(forceRefresh: true);
                         if (mounted && fresh != null) setState(() => _weather = fresh);
                       },
@@ -561,7 +709,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   }),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -583,6 +731,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   /// 校车下一班倒计时卡片（两行清晰展示完整站名 + 路线名 + 倒计时）
   Widget _busCard() {
     final l = context.l10n;
+    final primary = AppColors.primary(context);
+    final accent = AppColors.accent(context);
     final summaryText = L10nHelper.busDirectionSummary(
       context,
       rawDirection: _busDirection,
@@ -590,63 +740,68 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       minutesUntil: _busMinsUntil,
       isWeekend: _busIsWeekend,
     );
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _open(const BusScheduleScreen()),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2B5B84).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
+
+    return SurfaceCard(
+      onTap: () => _open(const BusScheduleScreen()),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, primary, lightAlpha: 0.12, darkAlpha: 0.18),
+              borderRadius: AppRadius.bMd,
+            ),
+            child: Icon(Icons.directions_bus_rounded, color: primary, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.busHomeTitle(_busStop),
+                  style: AppTypography.cardTitle(context),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: const Icon(Icons.directions_bus_rounded, color: Color(0xFF2B5B84)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.xs + 2,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      l.busHomeTitle(_busStop),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm - 1,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.softBg(context, accent),
+                        borderRadius: AppRadius.bXs,
+                      ),
+                      child: Text(
+                        _busRouteName,
+                        style: AppTypography.badge(context, color: accent).copyWith(fontSize: 10),
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF7A22).withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _busRouteName,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFFFF7A22),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Text(summaryText, style: const TextStyle(fontSize: 12)),
-                      ],
+                    Text(
+                      summaryText,
+                      style: AppTypography.bodySecondary(context),
                     ),
                   ],
                 ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: AppSpacing.xs),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: AppColors.textTertiary(context),
+          ),
+        ],
       ),
     );
   }
@@ -654,142 +809,196 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   /// 手机传感器自动计步卡片（含目标进度环与热量折算）
   Widget _stepCounterCard() {
     final l = context.l10n;
+    final teal = AppColors.teal(context);
     final ratio = (_todaySteps / (_stepGoal <= 0 ? 8000 : _stepGoal)).clamp(0.0, 1.0);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 54,
-              height: 54,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CircularProgressIndicator(
-                    value: ratio,
-                    strokeWidth: 6,
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    return SurfaceCard(
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: ratio),
+                  duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, val, _) => CircularProgressIndicator(
+                    value: val,
+                    strokeWidth: 5.5,
                     strokeCap: StrokeCap.round,
-                    backgroundColor: const Color(0xFF26A69A).withValues(alpha: 0.16),
-                    color: const Color(0xFF26A69A),
+                    backgroundColor: AppColors.softBg(context, teal, lightAlpha: 0.14, darkAlpha: 0.20),
+                    color: teal,
                   ),
-                  const Center(child: Icon(Icons.directions_walk_rounded, color: Color(0xFF26A69A), size: 22)),
-                ],
-              ),
+                ),
+                Center(
+                  child: Icon(Icons.directions_walk_rounded, color: teal, size: 22),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.stepTitle(_todaySteps, _stepGoal),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    !_stepSupported
-                        ? l.stepUnsupported
-                        : (!_stepGranted
-                            ? l.stepPermissionNeeded
-                            : l.stepBurnedSummary(fmtNum(_stepBurnKcal))),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(width: AppSpacing.md + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.stepTitle(_todaySteps, _stepGoal),
+                  style: AppTypography.cardTitle(context),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  !_stepSupported
+                      ? l.stepUnsupported
+                      : (!_stepGranted
+                          ? l.stepPermissionNeeded
+                          : l.stepBurnedSummary(fmtNum(_stepBurnKcal))),
+                  style: AppTypography.bodySecondary(context),
+                ),
+              ],
             ),
-            if (_stepSupported && !_stepGranted)
-              FilledButton.tonal(
-                onPressed: () async {
-                  await StepService.requestPermission();
-                  _load();
-                },
-                child: Text(l.stepAuthorize),
-              ),
-          ],
-        ),
+          ),
+          if (_stepSupported && !_stepGranted)
+            FilledButton.tonal(
+              onPressed: () async {
+                await StepService.requestPermission();
+                _load();
+              },
+              child: Text(l.stepAuthorize),
+            ),
+        ],
       ),
     );
   }
 
   Widget _quickMealInputCard() {
     final l = context.l10n;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          children: [
-            const Icon(Icons.bolt_rounded, color: Color(0xFFFF7A22)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: TextField(
-                controller: _quickFoodCtrl,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _submitQuickFood(),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false,
-                  hintText: l.homeQuickLogHint,
-                ),
+    final accent = AppColors.accent(context);
+    return SurfaceCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs + 2,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, accent),
+              borderRadius: AppRadius.bSm,
+            ),
+            child: Icon(Icons.bolt_rounded, color: accent, size: 18),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: TextField(
+              controller: _quickFoodCtrl,
+              textInputAction: TextInputAction.send,
+              style: AppTypography.body(context, color: AppColors.textPrimary(context)),
+              onSubmitted: (_) => _submitQuickFood(),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                hintText: l.homeQuickLogHint,
               ),
             ),
-            _busyQuickAi
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                  )
-                : FilledButton.tonalIcon(
-                    onPressed: _submitQuickFood,
-                    icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: Text(l.homeAiQuickLog),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          _busyQuickAi
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-          ],
-        ),
+                )
+              : FilledButton.tonalIcon(
+                  onPressed: _submitQuickFood,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.softBg(
+                      context,
+                      accent,
+                      lightAlpha: 0.14,
+                      darkAlpha: 0.22,
+                    ),
+                    foregroundColor: accent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 15),
+                  label: Text(l.homeAiQuickLog),
+                ),
+        ],
       ),
     );
   }
 
+  /// 四个模块快捷入口：统一圆角（卡片 16dp、图标容器 12dp）、统一阴影与低饱和度深色适配
   Widget _quickHeroBanner() {
-    Widget pill(IconData icon, String label, Color color, VoidCallback onTap) {
+    Widget pill(IconData icon, String label, Color moduleColor, VoidCallback onTap) {
       return Expanded(
-        child: InkWell(
+        child: ScaleTap(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadius.bLg,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.md,
+              horizontal: AppSpacing.xs,
+            ),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardTheme.color,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color.withValues(alpha: 0.25)),
+              color: AppColors.surface(context),
+              borderRadius: AppRadius.bLg,
+              border: Border.all(
+                color: AppColors.border(context).withValues(
+                  alpha: AppColors.isDark(context) ? 0.75 : 0.85,
+                ),
+              ),
+              boxShadow: AppShadows.subtle(context),
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.75)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    color: AppColors.softBg(
+                      context,
+                      moduleColor,
+                      lightAlpha: 0.12,
+                      darkAlpha: 0.18,
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.28),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                    borderRadius: AppRadius.bMd,
+                    border: Border.all(
+                      color: AppColors.softBorder(
+                        context,
+                        moduleColor,
+                        lightAlpha: 0.20,
+                        darkAlpha: 0.28,
                       ),
-                    ],
+                    ),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 26),
+                  child: Icon(icon, color: moduleColor, size: 22),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  style: AppTypography.badge(
+                    context,
+                    color: AppColors.textPrimary(context),
+                  ).copyWith(fontSize: 11.5, fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -804,50 +1013,101 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final l = context.l10n;
     return Row(
       children: [
-        pill(Icons.camera_alt_rounded, l.homeHeroSnapMeal, const Color(0xFFFF7A22), () => widget.onNavigate(2)),
-        const SizedBox(width: 8),
-        pill(Icons.fitness_center_rounded, l.homeHeroStartWorkout, const Color(0xFFEF5350), () => widget.onNavigate(3)),
-        const SizedBox(width: 8),
-        pill(Icons.monitor_weight_rounded, l.homeHeroLogWeight, const Color(0xFF2B5B84), () => _open(const BodyScreen())),
-        const SizedBox(width: 8),
-        pill(Icons.smart_toy_rounded, l.homeHeroAiCoach, const Color(0xFFAB47BC), () => widget.onNavigate(4)),
+        pill(
+          Icons.camera_alt_rounded,
+          l.homeHeroSnapMeal,
+          AppColors.moduleDiet(context),
+          () => widget.onNavigate(2),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        pill(
+          Icons.fitness_center_rounded,
+          l.homeHeroStartWorkout,
+          AppColors.moduleWorkout(context),
+          () => widget.onNavigate(3),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        pill(
+          Icons.monitor_weight_rounded,
+          l.homeHeroLogWeight,
+          AppColors.moduleBody(context),
+          () => _open(const BodyScreen()),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        pill(
+          Icons.smart_toy_rounded,
+          l.homeHeroAiCoach,
+          AppColors.moduleAi(context),
+          () => widget.onNavigate(4),
+        ),
       ],
     );
   }
 
   Widget _profilePrompt() {
     final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.primaryContainer,
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: cs.primary,
-          foregroundColor: cs.onPrimary,
-          child: const Icon(Icons.person_add_alt_1_rounded),
-        ),
-        title: Text(l.homeProfilePromptTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(l.homeProfilePromptSub),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => _open(OnboardingSheet(initialProfile: _profile, initialWeight: _latestWeight?.weight)),
+    final primary = AppColors.primary(context);
+    return SurfaceCard(
+      backgroundColor: AppColors.softBg(context, primary, lightAlpha: 0.08, darkAlpha: 0.14),
+      borderColor: AppColors.softBorder(context, primary),
+      padding: AppSpacing.cardCompactPadding,
+      onTap: () => _open(
+        OnboardingSheet(initialProfile: _profile, initialWeight: _latestWeight?.weight),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: primary,
+              borderRadius: AppRadius.bMd,
+            ),
+            child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.homeProfilePromptTitle, style: AppTypography.cardTitle(context)),
+                const SizedBox(height: 2),
+                Text(l.homeProfilePromptSub, style: AppTypography.bodySecondary(context)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary(context)),
+        ],
       ),
     );
   }
 
   Widget _coursesCard() {
     final l = context.l10n;
+    final teal = AppColors.teal(context);
     if (_todayCourses.isEmpty) {
-      return Card(
-        child: ListTile(
-          leading: const CircleAvatar(
-            backgroundColor: Color(0x2226A69A),
-            child: Icon(Icons.celebration_rounded, color: Color(0xFF26A69A)),
-          ),
-          title: Text(l.homeNoClassesToday),
+      return SurfaceCard(
+        padding: AppSpacing.cardCompactPadding,
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, teal),
+                borderRadius: AppRadius.bMd,
+              ),
+              child: Icon(Icons.celebration_rounded, color: teal, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(l.homeNoClassesToday, style: AppTypography.subtitle(context)),
+            ),
+          ],
         ),
       );
     }
+
     return Column(
       children: _todayCourses.map((c) {
         final st = ReminderService.sectionStartTime(c.startSection);
@@ -855,10 +1115,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         String two(int n) => n.toString().padLeft(2, '0');
         final startStr = '${two(st.hour)}:${two(st.minute)}';
         final endStr = '${two(et.hour)}:${two(et.minute)}';
-        final color = Color(c.color);
+        final color = AppColors.adaptForDark(context, Color(c.color));
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -867,72 +1127,116 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(startStr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Text(endStr, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+                    Text(
+                      startStr,
+                      style: AppTypography.metricMedium(context).copyWith(fontSize: 13),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(endStr, style: AppTypography.caption(context)),
                   ],
                 ),
               ),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardTheme.color,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border(left: BorderSide(color: color, width: 5)),
+                    color: AppColors.surface(context),
+                    borderRadius: AppRadius.bLg,
+                    border: Border.all(
+                      color: AppColors.border(context).withValues(
+                        alpha: AppColors.isDark(context) ? 0.75 : 0.85,
+                      ),
+                    ),
+                    boxShadow: AppShadows.card(context),
                   ),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 15,
-                            backgroundColor: color.withValues(alpha: 0.18),
-                            child: Icon(courseIcon(c.name), size: 17, color: color),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              c.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text('ACADEMIC', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-                          ),
-                        ],
+                  child: ClipRRect(
+                    borderRadius: AppRadius.bLg,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(left: BorderSide(color: color, width: 4)),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 4,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (c.location?.isNotEmpty == true)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
+                          Row(
+                            children: [
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: AppColors.softBg(context, color),
+                                  borderRadius: AppRadius.bSm,
+                                ),
+                                child: Icon(courseIcon(c.name), size: 16, color: color),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  c.name,
+                                  style: AppTypography.subtitle(context),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.softBg(context, color),
+                                  borderRadius: AppRadius.bPill,
+                                ),
+                                child: Text(
+                                  'ACADEMIC',
+                                  style: AppTypography.badge(context, color: color)
+                                      .copyWith(fontSize: 9.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (c.location?.isNotEmpty == true ||
+                              c.teacher?.isNotEmpty == true) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Wrap(
+                              spacing: AppSpacing.md,
+                              runSpacing: AppSpacing.xs,
                               children: [
-                                Icon(Icons.place_rounded, size: 14, color: color),
-                                const SizedBox(width: 3),
-                                Text(c.location!, style: const TextStyle(fontSize: 12)),
+                                if (c.location?.isNotEmpty == true)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.place_rounded, size: 13, color: color),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        c.location!,
+                                        style: AppTypography.bodySecondary(context),
+                                      ),
+                                    ],
+                                  ),
+                                if (c.teacher?.isNotEmpty == true)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_rounded,
+                                        size: 13,
+                                        color: AppColors.textTertiary(context),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        c.teacher!,
+                                        style: AppTypography.bodySecondary(context),
+                                      ),
+                                    ],
+                                  ),
                               ],
                             ),
-                          if (c.teacher?.isNotEmpty == true)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.person_rounded, size: 14, color: Theme.of(context).colorScheme.outline),
-                                const SizedBox(width: 3),
-                                Text(c.teacher!, style: const TextStyle(fontSize: 12)),
-                              ],
-                            ),
+                          ],
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -945,36 +1249,91 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _workoutCard() {
     final l = context.l10n;
+    final workoutColor = AppColors.moduleWorkout(context);
+    final successColor = AppColors.success(context);
+
     if (_todayWorkouts.isEmpty && _todayCardios.isEmpty) {
-      return Card(
-        child: ListTile(
-          leading: const CircleAvatar(
-            backgroundColor: Color(0x22EF5350),
-            child: Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350)),
-          ),
-          title: Text(l.homeNoWorkoutToday),
-          subtitle: Text(l.homeNoWorkoutSub),
-          trailing: FilledButton.tonal(onPressed: () => widget.onNavigate(3), child: Text(l.homeStartWorkoutBtn)),
+      return SurfaceCard(
+        padding: AppSpacing.cardCompactPadding,
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, workoutColor),
+                borderRadius: AppRadius.bMd,
+              ),
+              child: Icon(Icons.fitness_center_rounded, color: workoutColor, size: 22),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.homeNoWorkoutToday, style: AppTypography.cardTitle(context)),
+                  const SizedBox(height: 2),
+                  Text(l.homeNoWorkoutSub, style: AppTypography.bodySecondary(context)),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.tonal(
+              onPressed: () => widget.onNavigate(3),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.softBg(
+                  context,
+                  workoutColor,
+                  lightAlpha: 0.12,
+                  darkAlpha: 0.20,
+                ),
+                foregroundColor: workoutColor,
+              ),
+              child: Text(l.homeStartWorkoutBtn),
+            ),
+          ],
         ),
       );
     }
+
     final cardioMins = _todayCardios.fold<double>(0, (s, c) => s + c.durationMinutes);
-    return Card(
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0x2266BB6A),
-          child: Icon(Icons.emoji_events_rounded, color: Color(0xFF66BB6A)),
-        ),
-        title: Text(
-          [
-            if (_todayWorkouts.isNotEmpty) l.homeStrengthSummary(_todayWorkouts.length, _todaySets),
-            if (_todayCardios.isNotEmpty) l.homeCardioSummary(fmtNum(cardioMins)),
-          ].join(' + '),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(l.homeWorkoutBurnSummary(fmtNum(_targets.workoutBurn))),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => widget.onNavigate(3),
+    return SurfaceCard(
+      onTap: () => widget.onNavigate(3),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, successColor),
+              borderRadius: AppRadius.bMd,
+            ),
+            child: Icon(Icons.emoji_events_rounded, color: successColor, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  [
+                    if (_todayWorkouts.isNotEmpty)
+                      l.homeStrengthSummary(_todayWorkouts.length, _todaySets),
+                    if (_todayCardios.isNotEmpty) l.homeCardioSummary(fmtNum(cardioMins)),
+                  ].join(' + '),
+                  style: AppTypography.cardTitle(context),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.homeWorkoutBurnSummary(fmtNum(_targets.workoutBurn)),
+                  style: AppTypography.bodySecondary(context),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary(context)),
+        ],
       ),
     );
   }
@@ -982,53 +1341,104 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _bodyCard() {
     final l = context.l10n;
     final w = _latestWeight?.weight;
-    return Card(
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0x222B5B84),
-          child: Icon(Icons.monitor_weight_rounded, color: Color(0xFF2B5B84)),
-        ),
-        title: Text(
-          w != null ? l.homeWeightLabel(fmtNum(w, digits: 1)) : l.homeWeightNotLogged,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          l.homeBodyTargetSub(
-            L10nHelper.goalLabel(context, _profile.goal),
-            fmtNum(_targets.calories),
-            fmtNum(_targets.protein),
+    final bodyColor = AppColors.moduleBody(context);
+
+    return SurfaceCard(
+      onTap: () => _open(const BodyScreen()),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, bodyColor),
+              borderRadius: AppRadius.bMd,
+            ),
+            child: Icon(Icons.monitor_weight_rounded, color: bodyColor, size: 22),
           ),
-        ),
-        trailing: FilledButton.tonal(onPressed: () => _open(const BodyScreen()), child: Text(l.homeLogBodyBtn)),
-        onTap: () => _open(const BodyScreen()),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  w != null ? l.homeWeightLabel(fmtNum(w, digits: 1)) : l.homeWeightNotLogged,
+                  style: AppTypography.cardTitle(context),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.homeBodyTargetSub(
+                    L10nHelper.goalLabel(context, _profile.goal),
+                    fmtNum(_targets.calories),
+                    fmtNum(_targets.protein),
+                  ),
+                  style: AppTypography.bodySecondary(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          FilledButton.tonal(
+            onPressed: () => _open(const BodyScreen()),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.softBg(
+                context,
+                bodyColor,
+                lightAlpha: 0.12,
+                darkAlpha: 0.20,
+              ),
+              foregroundColor: bodyColor,
+            ),
+            child: Text(l.homeLogBodyBtn),
+          ),
+        ],
       ),
     );
   }
 
   Widget _aiBannerCard() {
     final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.secondaryContainer.withValues(alpha: 0.55),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            'assets/icon/dafeiyu_mascot.png',
-            width: 44,
-            height: 44,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => CircleAvatar(
-              backgroundColor: cs.secondary,
-              foregroundColor: cs.onSecondary,
-              child: const Icon(Icons.smart_toy_rounded),
+    final aiColor = AppColors.moduleAi(context);
+
+    return SurfaceCard(
+      onTap: () => widget.onNavigate(4),
+      backgroundColor: AppColors.softBg(context, aiColor, lightAlpha: 0.08, darkAlpha: 0.14),
+      borderColor: AppColors.softBorder(context, aiColor, lightAlpha: 0.20, darkAlpha: 0.28),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: AppRadius.bMd,
+            child: Image.asset(
+              'assets/icon/dafeiyu_mascot.png',
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, aiColor, lightAlpha: 0.16, darkAlpha: 0.24),
+                  borderRadius: AppRadius.bMd,
+                ),
+                child: Icon(Icons.smart_toy_rounded, color: aiColor),
+              ),
             ),
           ),
-        ),
-        title: Text(l.homeAiCoachBannerTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(l.homeAiCoachBannerSub),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => widget.onNavigate(4),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.homeAiCoachBannerTitle, style: AppTypography.cardTitle(context)),
+                const SizedBox(height: 2),
+                Text(l.homeAiCoachBannerSub, style: AppTypography.bodySecondary(context)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: aiColor),
+        ],
       ),
     );
   }
