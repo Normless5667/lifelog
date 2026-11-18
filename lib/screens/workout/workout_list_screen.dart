@@ -10,7 +10,7 @@ import '../../widgets/common.dart';
 import 'exercise_library_screen.dart';
 import 'workout_session_screen.dart';
 
-/// 训练板块：
+/// 训练板块（v2.0）：
 /// 1) 当前使用的 AI 训练计划卡片（支持选某一天直接一键开练）
 /// 2) 力量训练会话历史 + 容量柱状图
 /// 3) 独立有氧运动记录（按 MET 自动算消耗 kcal）
@@ -88,7 +88,14 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         weightKg: weightKg,
         minutes: mins.clamp(0, 180),
       );
-      out.add(_WorkoutSummary(w, names, primaryCat ?? L10nHelper.cardioOtherCategory, workSets, vol, kcal));
+      out.add(_WorkoutSummary(
+        w,
+        names,
+        primaryCat ?? L10nHelper.cardioOtherCategory,
+        workSets,
+        vol,
+        kcal,
+      ));
     }
     WidgetService.sync(force: true);
     if (!mounted) return;
@@ -147,54 +154,102 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final workoutColor = AppColors.moduleWorkout(context);
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.lg,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF5350).withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.softBg(context, workoutColor, lightAlpha: 0.12, darkAlpha: 0.20),
+                borderRadius: AppRadius.bSm,
+                border: Border.all(color: AppColors.softBorder(context, workoutColor)),
               ),
-              child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFEF5350), size: 20),
+              child: Icon(Icons.fitness_center_rounded, color: workoutColor, size: 18),
             ),
-            const SizedBox(width: 10),
-            Text(l.workoutTitle),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                l.workoutTitle,
+                style: AppTypography.pageTitle(context),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const ExerciseLibraryScreen()));
-              _load();
-            },
-            icon: const Icon(Icons.grid_view_rounded),
-            label: Text(l.workoutExerciseLibBtn),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.surfaceSubtle(context),
+                foregroundColor: AppColors.textPrimary(context),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExerciseLibraryScreen()),
+                );
+                _load();
+              },
+              icon: const Icon(Icons.grid_view_rounded, size: 17),
+              label: Text(l.workoutExerciseLibBtn),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _tab == 0 ? () => _startNew() : () => _addOrEditCardio(),
+        elevation: 2,
+        backgroundColor: workoutColor,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
         icon: Icon(_tab == 0 ? Icons.play_arrow_rounded : Icons.directions_run_rounded),
-        label: Text(_tab == 0 ? l.workoutStartStrengthBtn : l.workoutLogCardioBtn),
+        label: Text(
+          _tab == 0 ? l.workoutStartStrengthBtn : l.workoutLogCardioBtn,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                  ),
                   child: SegmentedButton<int>(
+                    style: SegmentedButton.styleFrom(
+                      backgroundColor: AppColors.surface(context),
+                      selectedBackgroundColor: AppColors.softBg(
+                        context,
+                        workoutColor,
+                        lightAlpha: 0.14,
+                        darkAlpha: 0.22,
+                      ),
+                      selectedForegroundColor: workoutColor,
+                      foregroundColor: AppColors.textSecondary(context),
+                      side: BorderSide(color: AppColors.border(context)),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
+                    ),
                     segments: [
                       ButtonSegment(
                         value: 0,
-                        icon: const Icon(Icons.fitness_center_rounded),
+                        icon: const Icon(Icons.fitness_center_rounded, size: 17),
                         label: Text(l.workoutTabStrength),
                       ),
                       ButtonSegment(
                         value: 1,
-                        icon: const Icon(Icons.directions_run_rounded),
+                        icon: const Icon(Icons.directions_run_rounded, size: 17),
                         label: Text(l.workoutTabCardio),
                       ),
                     ],
@@ -212,71 +267,117 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
 
   Widget _buildStrengthTab() {
     final l = context.l10n;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-      children: [
-        if (_plan != null) _activePlanCard(_plan!),
-        if (_items.isNotEmpty) _volumeBarCard(),
-        SectionTitle(l.workoutHistoryTitle, icon: Icons.history_rounded, iconColor: const Color(0xFFEF5350)),
-        if (_items.isEmpty)
-          EmptyHint(
+    final workoutColor = AppColors.moduleWorkout(context);
+    final headerWidgets = <Widget>[
+      if (_plan != null) ...[
+        _activePlanCard(_plan!),
+        const SizedBox(height: AppSpacing.md),
+      ],
+      if (_items.isNotEmpty) _volumeBarCard(),
+      SectionTitle(
+        l.workoutHistoryTitle,
+        icon: Icons.history_rounded,
+        iconColor: workoutColor,
+      ),
+    ];
+
+    final bodyCount = _items.isEmpty ? 1 : _items.length;
+
+    return ListView.builder(
+      padding: AppSpacing.pagePadding,
+      itemCount: headerWidgets.length + bodyCount,
+      itemBuilder: (_, idx) {
+        if (idx < headerWidgets.length) {
+          return headerWidgets[idx];
+        }
+        if (_items.isEmpty) {
+          return EmptyHint(
             icon: Icons.fitness_center_rounded,
             text: l.workoutEmptyStrengthHint,
             actionLabel: l.workoutEmptyStrengthBtn,
             onAction: () => _startNew(),
-          )
-        else
-          for (final it in _items) _workoutItemCard(it),
-      ],
+          );
+        }
+        final it = _items[idx - headerWidgets.length];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _workoutItemCard(it),
+        );
+      },
     );
   }
 
   Widget _activePlanCard(TrainingPlan plan) {
     final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.primaryContainer.withValues(alpha: 0.4),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.event_note_rounded, color: Colors.teal),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l.workoutActivePlanTitle(plan.planName),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
+    final teal = AppColors.teal(context);
+    return SurfaceCard(
+      backgroundColor: AppColors.softBg(context, teal, lightAlpha: 0.06, darkAlpha: 0.12),
+      borderColor: AppColors.softBorder(context, teal),
+      padding: AppSpacing.cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, teal, lightAlpha: 0.14, darkAlpha: 0.22),
+                  borderRadius: AppRadius.bSm,
                 ),
-                Text(l.workoutTapSplitHint, style: const TextStyle(fontSize: 11, color: Colors.teal)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: plan.days.map((d) {
-                return ActionChip(
-                  avatar: const Icon(Icons.play_circle_fill_rounded, size: 18, color: Colors.teal),
-                  label: Text(l.workoutPlanSplitChip(d.day, d.focus, d.exercises.length)),
-                  onPressed: () => _startNew(
-                    planExercises: d.exercises,
-                    note: '${plan.planName} - ${d.day}(${d.focus})',
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
+                child: Icon(Icons.event_note_rounded, color: teal, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.workoutActivePlanTitle(plan.planName),
+                      style: AppTypography.cardTitle(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      l.workoutTapSplitHint,
+                      style: AppTypography.badge(context, color: teal),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: plan.days.map((d) {
+              return ActionChip(
+                avatar: Icon(Icons.play_circle_fill_rounded, size: 17, color: teal),
+                label: Text(
+                  l.workoutPlanSplitChip(d.day, d.focus, d.exercises.length),
+                  style: AppTypography.badge(context, color: AppColors.textPrimary(context))
+                      .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                backgroundColor: AppColors.surface(context),
+                side: BorderSide(color: AppColors.softBorder(context, teal)),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                onPressed: () => _startNew(
+                  planExercises: d.exercises,
+                  note: '${plan.planName} - ${d.day}(${d.focus})',
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildCardioTab() {
     final l = context.l10n;
+    final cardioColor = AppColors.moduleWorkout(context);
     if (_cardios.isEmpty) {
       return Center(
         child: EmptyHint(
@@ -288,43 +389,65 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+      padding: AppSpacing.pagePadding,
       itemCount: _cardios.length,
       itemBuilder: (_, i) {
         final c = _cardios[i];
         final typeLabel = L10nHelper.cardioTypeLabel(context, c.type);
-        return Card(
-          child: ListTile(
-            leading: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEC407A).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A)),
-            ),
-            title: Text(
-              '${l.workoutCardioItemTitle(typeLabel, fmtNum(c.durationMinutes))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text('${L10nHelper.friendlyDateL10n(context, c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: SurfaceCard(
+            onTap: () => _addOrEditCardio(c),
+            padding: AppSpacing.cardCompactPadding,
+            child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEC407A).withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.softBg(context, cardioColor),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(Icons.directions_run_rounded, color: cardioColor, size: 22),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${l.workoutCardioItemTitle(typeLabel, fmtNum(c.durationMinutes))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
+                        style: AppTypography.cardTitle(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${L10nHelper.friendlyDateL10n(context, c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}',
+                        style: AppTypography.bodySecondary(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, cardioColor),
+                    borderRadius: AppRadius.bSm,
                   ),
                   child: Text(
                     '-${fmtNum(c.calories)} kcal',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEC407A), fontSize: 12),
+                    style: AppTypography.badge(context, color: cardioColor),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 19,
+                    color: AppColors.textTertiary(context),
+                  ),
                   onPressed: () async {
                     if (await confirm(context, l.workoutDeleteCardioConfirm)) {
                       await Repo.deleteCardioRecord(c.id!);
@@ -334,65 +457,103 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 ),
               ],
             ),
-            onTap: () => _addOrEditCardio(c),
           ),
         );
       },
     );
   }
 
-  /// 最近 7 次训练容量柱状可视化卡片
+  /// 最近 7 次训练容量柱状可视化卡片（Strava/Keep 风格）
   Widget _volumeBarCard() {
     final l = context.l10n;
+    final workoutColor = AppColors.moduleWorkout(context);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final recent = _items.take(7).toList().reversed.toList();
     final maxVol = recent.fold<double>(1, (m, e) => e.volume > m ? e.volume : m);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.bar_chart_rounded, color: Color(0xFFEF5350), size: 20),
-                const SizedBox(width: 6),
-                Text(l.workoutVolumeChartTitle, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 110,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: recent.map((it) {
-                  final ratio = (it.volume / maxVol).clamp(0.08, 1.0);
-                  final vis = categoryVisual(it.primaryCategory);
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(fmtNum(it.volume), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Container(
-                            height: 64 * ratio,
+
+    return SurfaceCard(
+      padding: AppSpacing.cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, workoutColor),
+                  borderRadius: AppRadius.bSm,
+                ),
+                child: Icon(Icons.bar_chart_rounded, color: workoutColor, size: 16),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  l.workoutVolumeChartTitle,
+                  style: AppTypography.cardTitle(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 118,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: recent.map((it) {
+                final ratio = (it.volume / maxVol).clamp(0.10, 1.0);
+                final vis = categoryVisual(it.primaryCategory);
+                final barColor = AppColors.adaptForDark(context, vis.color);
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            fmtNum(it.volume),
+                            style: AppTypography.badge(context).copyWith(fontSize: 10),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: 68 * ratio),
+                          duration: reduceMotion
+                              ? Duration.zero
+                              : const Duration(milliseconds: 450),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, h, _) => Container(
+                            height: h,
                             decoration: BoxDecoration(
-                              color: vis.color,
-                              borderRadius: BorderRadius.circular(8),
+                              gradient: LinearGradient(
+                                colors: [barColor, barColor.withValues(alpha: 0.72)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(6),
+                                bottom: Radius.circular(3),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(it.workout.date.substring(5), style: const TextStyle(fontSize: 10)),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          it.workout.date.substring(5),
+                          style: AppTypography.caption(context).copyWith(fontSize: 10),
+                          maxLines: 1,
+                        ),
+                      ],
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -402,50 +563,65 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     final w = it.workout;
     final durMin = w.endTime == null ? null : ((w.endTime! - w.startTime) ~/ 60000);
     final vis = categoryVisual(it.primaryCategory);
-    final displayNames = it.exerciseNames.map((n) => L10nHelper.exerciseDisplayName(context, n)).toList();
-    return Card(
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: vis.color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(vis.icon, color: vis.color, size: 24),
-        ),
-        title: Text(
-          displayNames.isEmpty ? l.workoutEmptySessionTitle : displayNames.join(' · '),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text([
-            L10nHelper.friendlyDateL10n(context, w.date),
-            if (durMin != null && durMin > 0) l.workoutSessionDuration(durMin),
-            l.workoutSessionSets(it.workSets),
-            if (it.volume > 0) l.workoutSessionVolume(fmtNum(it.volume)),
-            if (it.estCalories > 0) l.workoutSessionBurn(fmtNum(it.estCalories)),
-          ].join(' · ')),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: () async {
-                if (await confirm(context, l.workoutDeleteSessionConfirm)) {
-                  await Repo.deleteWorkout(w.id!);
-                  _load();
-                }
-              },
+    final catColor = AppColors.adaptForDark(context, vis.color);
+    final displayNames =
+        it.exerciseNames.map((n) => L10nHelper.exerciseDisplayName(context, n)).toList();
+
+    return SurfaceCard(
+      onTap: () => _openSession(w.id!),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, catColor),
+              borderRadius: AppRadius.bMd,
             ),
-            const Icon(Icons.chevron_right_rounded),
-          ],
-        ),
-        onTap: () => _openSession(w.id!),
+            child: Icon(vis.icon, color: catColor, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayNames.isEmpty ? l.workoutEmptySessionTitle : displayNames.join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.cardTitle(context),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    L10nHelper.friendlyDateL10n(context, w.date),
+                    if (durMin != null && durMin > 0) l.workoutSessionDuration(durMin),
+                    l.workoutSessionSets(it.workSets),
+                    if (it.volume > 0) l.workoutSessionVolume(fmtNum(it.volume)),
+                    if (it.estCalories > 0) l.workoutSessionBurn(fmtNum(it.estCalories)),
+                  ].join(' · '),
+                  style: AppTypography.bodySecondary(context),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 19,
+              color: AppColors.textTertiary(context),
+            ),
+            onPressed: () async {
+              if (await confirm(context, l.workoutDeleteSessionConfirm)) {
+                await Repo.deleteWorkout(w.id!);
+                _load();
+              }
+            },
+          ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary(context)),
+        ],
       ),
     );
   }
@@ -477,7 +653,9 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
     _type = e?.type ?? L10nHelper.cardioDefaultType;
     if (!Nutrition.cardioMets.containsKey(_type)) _type = L10nHelper.cardioDefaultType;
     _mins = TextEditingController(text: e != null ? fmtNum(e.durationMinutes) : '30');
-    _dist = TextEditingController(text: e?.distanceKm != null ? fmtNum(e!.distanceKm!, digits: 2) : '');
+    _dist = TextEditingController(
+      text: e?.distanceKm != null ? fmtNum(e!.distanceKm!, digits: 2) : '',
+    );
     _kcal = TextEditingController(text: e != null ? fmtNum(e.calories) : '');
     if (e == null) _recalc();
   }
@@ -503,19 +681,30 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
     final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     final met = Nutrition.cardioMets[_type] ?? 5.0;
+    final cardioColor = AppColors.moduleWorkout(context);
+    final teal = AppColors.teal(context);
+    final warning = AppColors.warning(context);
+    final info = AppColors.info(context);
+
     return AlertDialog(
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFEC407A).withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.softBg(context, cardioColor),
+              borderRadius: AppRadius.bMd,
             ),
-            child: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A), size: 22),
+            child: Icon(Icons.directions_run_rounded, color: cardioColor, size: 20),
           ),
-          const SizedBox(width: 10),
-          Text(widget.existing == null ? l.cardioDialogAddTitle : l.cardioDialogEditTitle),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              widget.existing == null ? l.cardioDialogAddTitle : l.cardioDialogEditTitle,
+              style: AppTypography.sectionTitle(context),
+            ),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -525,8 +714,11 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event_rounded, color: Colors.teal),
-              title: Text(L10nHelper.friendlyDateL10n(context, _date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: Icon(Icons.event_rounded, color: teal),
+              title: Text(
+                L10nHelper.friendlyDateL10n(context, _date),
+                style: AppTypography.subtitle(context),
+              ),
               trailing: const Icon(Icons.edit_calendar_rounded, size: 18),
               onTap: () async {
                 final d = await showDatePicker(
@@ -540,9 +732,10 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             ),
             DropdownButtonFormField<String>(
               initialValue: _type,
+              isExpanded: true,
               decoration: InputDecoration(
                 labelText: l.cardioTypeLabel,
-                prefixIcon: const Icon(Icons.directions_run_rounded, color: Color(0xFFEC407A)),
+                prefixIcon: Icon(Icons.directions_run_rounded, color: cardioColor),
               ),
               items: Nutrition.cardioMets.entries
                   .map((e) => DropdownMenuItem(
@@ -557,7 +750,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                 });
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
@@ -568,11 +761,11 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                     decoration: InputDecoration(
                       labelText: l.cardioDurationLabel,
                       suffixText: l.cardioMinutesSuffix,
-                      prefixIcon: const Icon(Icons.timer_rounded, color: Color(0xFFFFA726)),
+                      prefixIcon: Icon(Icons.timer_rounded, color: warning),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextField(
                     controller: _dist,
@@ -580,13 +773,13 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                     decoration: InputDecoration(
                       labelText: l.cardioDistanceLabel,
                       suffixText: 'km',
-                      prefixIcon: const Icon(Icons.place_rounded, color: Color(0xFF42A5F5)),
+                      prefixIcon: Icon(Icons.place_rounded, color: info),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _kcal,
               keyboardType: numKb,
@@ -594,7 +787,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
               decoration: InputDecoration(
                 labelText: l.cardioEstBurnLabel(fmtNum(widget.weightKg, digits: 1), '$met'),
                 suffixText: 'kcal',
-                prefixIcon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFEF5350)),
+                prefixIcon: Icon(Icons.local_fire_department_rounded, color: AppColors.danger(context)),
               ),
             ),
           ],
@@ -622,7 +815,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
               ),
             );
           },
-          icon: const Icon(Icons.check_rounded),
+          icon: const Icon(Icons.check_rounded, size: 18),
           label: Text(l.commonSave),
         ),
       ],

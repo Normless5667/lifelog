@@ -9,7 +9,7 @@ import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'profile_screen.dart';
 
-/// 身体数据：体重曲线、记录列表、BMR/TDEE
+/// 身体数据（v2.0）：体重曲线、记录列表、BMR/TDEE 核心数据看板
 class BodyScreen extends StatefulWidget {
   const BodyScreen({super.key});
 
@@ -51,7 +51,9 @@ class _BodyScreenState extends State<BodyScreen> {
     );
     final dur = DateTime.now().millisecondsSinceEpoch - t0;
     if (result != null) {
-      if (existing != null && existing.date != result.date) await Repo.deleteBodyRecord(existing.id!);
+      if (existing != null && existing.date != result.date) {
+        await Repo.deleteBodyRecord(existing.id!);
+      }
       await Repo.saveBodyRecord(result);
       UsageTelemetryService.instance.trackFeature('log_weight', 'success', durationMs: dur);
       _load();
@@ -63,166 +65,322 @@ class _BodyScreenState extends State<BodyScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final bodyColor = AppColors.moduleBody(context);
+    final primary = AppColors.primary(context);
     final latest = _records.where((r) => r.weight != null).toList();
     final w = latest.isEmpty ? null : latest.first.weight;
+
+    final headerWidgets = <Widget>[
+      if (!_hasProfile)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: SurfaceCard(
+            backgroundColor: AppColors.softBg(context, primary, lightAlpha: 0.08, darkAlpha: 0.14),
+            borderColor: AppColors.softBorder(context, primary),
+            padding: AppSpacing.cardCompactPadding,
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+              _load();
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: primary, borderRadius: AppRadius.bMd),
+                  child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.bodyNoProfileTitle, style: AppTypography.cardTitle(context)),
+                      const SizedBox(height: 2),
+                      Text(l.bodyNoProfileSub, style: AppTypography.bodySecondary(context)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary(context)),
+              ],
+            ),
+          ),
+        ),
+      if (w != null) _statsCard(w),
+      SectionTitle(
+        l.bodyWeightTrendTitle,
+        icon: Icons.show_chart_rounded,
+        iconColor: bodyColor,
+      ),
+      SurfaceCard(
+        padding: latest.isEmpty
+            ? AppSpacing.cardPadding
+            : const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
+        child: latest.isEmpty
+            ? EmptyHint(
+                icon: Icons.insights_rounded,
+                text: l.bodyEmptyChartHint,
+                actionLabel: l.bodyEmptyChartBtn,
+                onAction: () => _addRecord(),
+              )
+            : SizedBox(height: 204, child: _weightChart(latest.reversed.toList())),
+      ),
+      SectionTitle(
+        l.bodyHistoryTitle,
+        icon: Icons.history_rounded,
+        iconColor: primary,
+      ),
+    ];
+
+    final bodyCount = _records.isEmpty ? 1 : _records.length;
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.sm,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFF42A5F5).withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.softBg(context, bodyColor, lightAlpha: 0.12, darkAlpha: 0.20),
+                borderRadius: AppRadius.bSm,
+                border: Border.all(color: AppColors.softBorder(context, bodyColor)),
               ),
-              child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5), size: 20),
+              child: Icon(Icons.monitor_weight_rounded, color: bodyColor, size: 18),
             ),
-            const SizedBox(width: 10),
-            Text(l.bodyTitle),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                l.bodyTitle,
+                style: AppTypography.pageTitle(context),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-              _load();
-            },
-            icon: const Icon(Icons.badge_rounded),
-            label: Text(l.bodyProfileBtn),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.surfaceSubtle(context),
+                foregroundColor: AppColors.textPrimary(context),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+                _load();
+              },
+              icon: const Icon(Icons.badge_rounded, size: 17),
+              label: Text(l.bodyProfileBtn),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addRecord(),
+        elevation: 2,
+        backgroundColor: bodyColor,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
         icon: const Icon(Icons.add_rounded),
-        label: Text(l.bodyLogWeightBtn),
+        label: Text(
+          l.bodyLogWeightBtn,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
-              children: [
-                if (!_hasProfile)
-                  Card(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    child: ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person_add_alt_1_rounded)),
-                      title: Text(l.bodyNoProfileTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(l.bodyNoProfileSub),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-                        _load();
-                      },
-                    ),
-                  ),
-                if (w != null) _statsCard(w),
-                SectionTitle(l.bodyWeightTrendTitle, icon: Icons.show_chart_rounded, iconColor: const Color(0xFF26A69A)),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 20, 20, 12),
-                    child: latest.isEmpty
-                        ? EmptyHint(
-                            icon: Icons.insights_rounded,
-                            text: l.bodyEmptyChartHint,
-                            actionLabel: l.bodyEmptyChartBtn,
-                            onAction: () => _addRecord(),
-                          )
-                        : SizedBox(height: 200, child: _weightChart(latest.reversed.toList())),
-                  ),
-                ),
-                SectionTitle(l.bodyHistoryTitle, icon: Icons.history_rounded, iconColor: const Color(0xFF42A5F5)),
-                if (_records.isEmpty)
-                  EmptyHint(
+          : ListView.builder(
+              padding: AppSpacing.pagePadding,
+              itemCount: headerWidgets.length + bodyCount,
+              itemBuilder: (_, idx) {
+                if (idx < headerWidgets.length) {
+                  return headerWidgets[idx];
+                }
+                if (_records.isEmpty) {
+                  return EmptyHint(
                     icon: Icons.monitor_weight_rounded,
                     text: l.bodyEmptyHistoryHint,
                     actionLabel: l.bodyEmptyHistoryBtn,
                     onAction: () => _addRecord(),
-                  )
-                else
-                  Card(
-                    child: Column(
-                      children: _records.map((r) {
-                        final parts = [
-                          if (r.weight != null) '${fmtNum(r.weight!, digits: 1)} kg',
-                          if (r.bodyFat != null) l.bodyFatTag(fmtNum(r.bodyFat!, digits: 1)),
-                          if (r.waist != null) l.bodyWaistTag(fmtNum(r.waist!, digits: 1)),
-                        ];
-                        return ListTile(
-                          leading: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF42A5F5).withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
-                          ),
-                          title: Text(parts.join(' · '), style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(L10nHelper.friendlyDateL10n(context, r.date)),
-                          onTap: () => _addRecord(r),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded),
-                                onPressed: () async {
-                                  if (await confirm(context, l.commonDeleteRecordConfirm)) {
-                                    await Repo.deleteBodyRecord(r.id!);
-                                    _load();
-                                  }
-                                },
-                              ),
-                              const Icon(Icons.chevron_right_rounded),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
+                  );
+                }
+                final r = _records[idx - headerWidgets.length];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: _recordRowCard(r),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _recordRowCard(BodyRecord r) {
+    final l = context.l10n;
+    final bodyColor = AppColors.moduleBody(context);
+    final parts = [
+      if (r.weight != null) '${fmtNum(r.weight!, digits: 1)} kg',
+      if (r.bodyFat != null) l.bodyFatTag(fmtNum(r.bodyFat!, digits: 1)),
+      if (r.waist != null) l.bodyWaistTag(fmtNum(r.waist!, digits: 1)),
+    ];
+
+    return SurfaceCard(
+      onTap: () => _addRecord(r),
+      padding: AppSpacing.cardCompactPadding,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.softBg(context, bodyColor),
+              borderRadius: AppRadius.bMd,
+            ),
+            child: Icon(Icons.monitor_weight_rounded, color: bodyColor, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(parts.join(' · '), style: AppTypography.cardTitle(context)),
+                const SizedBox(height: 2),
+                Text(
+                  L10nHelper.friendlyDateL10n(context, r.date),
+                  style: AppTypography.bodySecondary(context),
+                ),
               ],
             ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 19,
+              color: AppColors.textTertiary(context),
+            ),
+            onPressed: () async {
+              if (await confirm(context, l.commonDeleteRecordConfirm)) {
+                await Repo.deleteBodyRecord(r.id!);
+                _load();
+              }
+            },
+          ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary(context)),
+        ],
+      ),
     );
   }
 
   Widget _statsCard(double w) {
     final l = context.l10n;
     final bmi = Nutrition.bmi(_profile.height, w);
-    Widget stat(IconData icon, Color color, String label, String value) => Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(height: 4),
-                Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11), textAlign: TextAlign.center),
-              ],
-            ),
+
+    Widget stat(IconData icon, Color color, String label, String value) {
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.all(AppSpacing.xs),
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xs + 2,
           ),
-        );
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Row(children: [
-              stat(Icons.monitor_weight_rounded, const Color(0xFF42A5F5), l.bodyStatWeight, fmtNum(w, digits: 1)),
-              stat(Icons.speed_rounded, const Color(0xFF26A69A), 'BMI (${L10nHelper.bmiStatusLabel(context, bmi)})', fmtNum(bmi, digits: 1)),
-              stat(Icons.local_fire_department_rounded, const Color(0xFFFFA726), l.bodyStatBmr, fmtNum(Nutrition.bmr(_profile, w))),
-            ]),
-            Row(children: [
-              stat(Icons.bolt_rounded, const Color(0xFFEF5350), l.bodyStatTdee, fmtNum(Nutrition.tdee(_profile, w))),
-              stat(Icons.restaurant_rounded, const Color(0xFF66BB6A), l.bodyStatTargetKcal, fmtNum(Nutrition.calorieTarget(_profile, w))),
-              stat(Icons.flag_rounded, const Color(0xFFAB47BC), l.bodyStatGoal, L10nHelper.goalLabel(context, _profile.goal)),
-            ]),
-          ],
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSubtle(context),
+            borderRadius: AppRadius.bLg,
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, color),
+                  borderRadius: AppRadius.bSm,
+                ),
+                child: Icon(icon, color: color, size: 15),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value, style: AppTypography.metricMedium(context)),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: AppTypography.caption(context).copyWith(fontSize: 10.5),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
+      );
+    }
+
+    return SurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              stat(
+                Icons.monitor_weight_rounded,
+                AppColors.moduleBody(context),
+                l.bodyStatWeight,
+                fmtNum(w, digits: 1),
+              ),
+              stat(
+                Icons.speed_rounded,
+                AppColors.teal(context),
+                'BMI (${L10nHelper.bmiStatusLabel(context, bmi)})',
+                fmtNum(bmi, digits: 1),
+              ),
+              stat(
+                Icons.local_fire_department_rounded,
+                AppColors.warning(context),
+                l.bodyStatBmr,
+                fmtNum(Nutrition.bmr(_profile, w)),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              stat(
+                Icons.bolt_rounded,
+                AppColors.moduleWorkout(context),
+                l.bodyStatTdee,
+                fmtNum(Nutrition.tdee(_profile, w)),
+              ),
+              stat(
+                Icons.restaurant_rounded,
+                AppColors.moduleDiet(context),
+                l.bodyStatTargetKcal,
+                fmtNum(Nutrition.calorieTarget(_profile, w)),
+              ),
+              stat(
+                Icons.flag_rounded,
+                AppColors.moduleAi(context),
+                l.bodyStatGoal,
+                L10nHelper.goalLabel(context, _profile.goal),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -238,15 +396,26 @@ class _BodyScreenState extends State<BodyScreen> {
       spots.add(FlSpot(1, spots.first.y));
     }
     final targetW = _profile.targetWeight;
-    final ys = [...spots.map((s) => s.y), if (targetW != null) targetW];
+    final ys = [...spots.map((s) => s.y), ?targetW];
     final minY = (ys.reduce((a, b) => a < b ? a : b) - 1).floorToDouble();
     final maxY = (ys.reduce((a, b) => a > b ? a : b) + 1).ceilToDouble();
-    final color = Theme.of(context).colorScheme.primary;
+
+    final lineColor = AppColors.moduleBody(context);
+    final dangerColor = AppColors.danger(context);
+    final borderColor = AppColors.border(context);
+
     return LineChart(
       LineChartData(
         minY: minY,
         maxY: maxY,
-        gridData: const FlGridData(drawVerticalLine: false),
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: borderColor,
+            strokeWidth: 1,
+            dashArray: [4, 4],
+          ),
+        ),
         borderData: FlBorderData(show: false),
         extraLinesData: targetW == null
             ? null
@@ -254,13 +423,14 @@ class _BodyScreenState extends State<BodyScreen> {
                 horizontalLines: [
                   HorizontalLine(
                     y: targetW,
-                    color: const Color(0xFFEF5350),
-                    strokeWidth: 2,
+                    color: dangerColor,
+                    strokeWidth: 1.8,
                     dashArray: [6, 4],
                     label: HorizontalLineLabel(
                       show: true,
                       alignment: Alignment.topRight,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFEF5350)),
+                      style: AppTypography.badge(context, color: dangerColor)
+                          .copyWith(fontSize: 10),
                       labelResolver: (_) => l.bodyChartTargetLine(fmtNum(targetW, digits: 1)),
                     ),
                   ),
@@ -273,7 +443,10 @@ class _BodyScreenState extends State<BodyScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 36,
-              getTitlesWidget: (v, meta) => Text(fmtNum(v), style: const TextStyle(fontSize: 10)),
+              getTitlesWidget: (v, meta) => Text(
+                fmtNum(v),
+                style: AppTypography.caption(context).copyWith(fontSize: 10),
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -285,7 +458,10 @@ class _BodyScreenState extends State<BodyScreen> {
                 final d = first.add(Duration(days: v.toInt()));
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text('${d.month}/${d.day}', style: const TextStyle(fontSize: 10)),
+                  child: Text(
+                    '${d.month}/${d.day}',
+                    style: AppTypography.caption(context).copyWith(fontSize: 10),
+                  ),
                 );
               },
             ),
@@ -296,10 +472,20 @@ class _BodyScreenState extends State<BodyScreen> {
             spots: spots,
             isCurved: true,
             preventCurveOverShooting: true,
-            color: color,
+            color: lineColor,
             barWidth: 3,
             dotData: FlDotData(show: spots.length <= 20),
-            belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.14)),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  lineColor.withValues(alpha: 0.24),
+                  lineColor.withValues(alpha: 0.02),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
           ),
         ],
       ),
@@ -343,19 +529,27 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
+    final bodyColor = AppColors.moduleBody(context);
+    final teal = AppColors.teal(context);
+    final warning = AppColors.warning(context);
+    final aiColor = AppColors.moduleAi(context);
+
     return AlertDialog(
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF42A5F5).withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.softBg(context, bodyColor),
+              borderRadius: AppRadius.bMd,
             ),
-            child: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5), size: 22),
+            child: Icon(Icons.monitor_weight_rounded, color: bodyColor, size: 20),
           ),
-          const SizedBox(width: 10),
-          Text(l.bodyDialogTitle),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(l.bodyDialogTitle, style: AppTypography.sectionTitle(context)),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -364,8 +558,11 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event_rounded, color: Color(0xFF26A69A)),
-              title: Text(L10nHelper.friendlyDateL10n(context, _date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: Icon(Icons.event_rounded, color: teal),
+              title: Text(
+                L10nHelper.friendlyDateL10n(context, _date),
+                style: AppTypography.subtitle(context),
+              ),
               trailing: const Icon(Icons.edit_calendar_rounded, size: 18),
               onTap: () async {
                 final d = await showDatePicker(
@@ -384,27 +581,27 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
               decoration: InputDecoration(
                 labelText: l.bodyWeightLabel,
                 suffixText: 'kg',
-                prefixIcon: const Icon(Icons.monitor_weight_rounded, color: Color(0xFF42A5F5)),
+                prefixIcon: Icon(Icons.monitor_weight_rounded, color: bodyColor),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _fat,
               keyboardType: numKb,
               decoration: InputDecoration(
                 labelText: l.bodyFatLabel,
                 suffixText: '%',
-                prefixIcon: const Icon(Icons.percent_rounded, color: Color(0xFFFFA726)),
+                prefixIcon: Icon(Icons.percent_rounded, color: warning),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _waist,
               keyboardType: numKb,
               decoration: InputDecoration(
                 labelText: l.bodyWaistLabel,
                 suffixText: 'cm',
-                prefixIcon: const Icon(Icons.straighten_rounded, color: Color(0xFFAB47BC)),
+                prefixIcon: Icon(Icons.straighten_rounded, color: aiColor),
               ),
             ),
           ],
@@ -421,9 +618,12 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
               toast(context, l.commonAtLeastOneField);
               return;
             }
-            Navigator.pop(context, BodyRecord(date: _date, weight: w, bodyFat: f, waist: wa));
+            Navigator.pop(
+              context,
+              BodyRecord(date: _date, weight: w, bodyFat: f, waist: wa),
+            );
           },
-          icon: const Icon(Icons.check_rounded),
+          icon: const Icon(Icons.check_rounded, size: 18),
           label: Text(l.commonSave),
         ),
       ],

@@ -12,9 +12,9 @@ import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import 'exercise_library_screen.dart';
 
-/// 单次训练会话：
+/// 单次训练会话（v2.0）：
 /// - 计时采用绝对时间戳差值计算，退后台或被新页面遮挡时自动停止 UI Timer（省电），回前台自动对齐时间
-/// - 顶部秒表拆分为 ValueListenableBuilder 局部刷新，不触发整页 TextField 重建
+/// - 顶部秒表与休息倒计时拆分为 ValueListenableBuilder 局部刷新，不触发整页 TextField 重建
 class WorkoutSessionScreen extends StatefulWidget {
   final int workoutId;
   final bool isNew;
@@ -199,7 +199,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       final lastWork = lastSets.where((s) => !s.isWarmup).toList();
       _blocks.add(_ExerciseBlock(
         ex,
-        entry.value.map((s) => _SetRow(w: s.weight, r: s.reps, warmup: s.isWarmup, done: true)).toList(),
+        entry.value
+            .map((s) => _SetRow(w: s.weight, r: s.reps, warmup: s.isWarmup, done: true))
+            .toList(),
         lastWork,
       ));
     }
@@ -209,7 +211,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
         final ex = await Repo.findOrCreateExercise(pe.name);
         final lastSets = await Repo.lastSetsForExercise(ex.id!, excludeWorkoutId: widget.workoutId);
         final lastWork = lastSets.where((s) => !s.isWarmup).toList();
-        final hintWeight = double.tryParse(RegExp(r'\d+(\.\d+)?').firstMatch(pe.weightHint)?.group(0) ?? '');
+        final hintWeight =
+            double.tryParse(RegExp(r'\d+(\.\d+)?').firstMatch(pe.weightHint)?.group(0) ?? '');
         final hintReps = int.tryParse(RegExp(r'\d+').firstMatch(pe.reps)?.group(0) ?? '') ?? 10;
         final defW = hintWeight ?? (lastWork.isEmpty ? 0.0 : lastWork.first.weight);
         final defR = lastWork.isEmpty ? hintReps : lastWork.first.reps;
@@ -262,7 +265,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     final l = context.l10n;
     if (L10nHelper.isCardioCategory(ex.category)) {
       final recs = work
-          .map((s) => '${fmtNum(s.weight)} ${l.sessionCardioMins}${s.reps > 0 ? ' · ${s.reps} ${l.sessionCardioStepsUnit}' : ''}')
+          .map((s) =>
+              '${fmtNum(s.weight)} ${l.sessionCardioMins}${s.reps > 0 ? ' · ${s.reps} ${l.sessionCardioStepsUnit}' : ''}')
           .join('  ');
       return l.sessionLastCardioHint(recs);
     }
@@ -312,7 +316,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       }
     }
     final mins = (_elapsedNotifier.value / 60.0).clamp(1.0, 180.0);
-    final kcal = Nutrition.calcMetCalories(met: Nutrition.strengthMet, weightKg: _userWeightKg, minutes: mins);
+    final kcal = Nutrition.calcMetCalories(
+      met: Nutrition.strengthMet,
+      weightKg: _userWeightKg,
+      minutes: mins,
+    );
     return (sets: workSets, volume: vol, kcal: kcal);
   }
 
@@ -376,6 +384,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
     final stats = _liveStats();
+    final workoutColor = AppColors.moduleWorkout(context);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -383,57 +393,77 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       },
       child: Scaffold(
         appBar: AppBar(
+          titleSpacing: 0,
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs + 1,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF5350).withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.softBg(context, workoutColor, lightAlpha: 0.12, darkAlpha: 0.20),
+                  borderRadius: AppRadius.bPill,
+                  border: Border.all(color: AppColors.softBorder(context, workoutColor)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.timer_rounded, size: 16, color: Color(0xFFEF5350)),
+                    Icon(Icons.timer_rounded, size: 15, color: workoutColor),
                     const SizedBox(width: 4),
                     ValueListenableBuilder<int>(
                       valueListenable: _elapsedNotifier,
-                      builder: (_, secs, _) => Text(
+                      builder: (ctx, secs, _) => Text(
                         _fmtClock(secs),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFFEF5350),
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
+                        style: AppTypography.metricMedium(ctx, color: workoutColor)
+                            .copyWith(fontSize: 14),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l.sessionHeaderStats(stats.sets, fmtNum(stats.volume)),
-                  style: const TextStyle(fontSize: 13),
+                  style: AppTypography.bodySecondary(context),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           actions: [
-            FilledButton.icon(
-              onPressed: _finish,
-              icon: const Icon(Icons.stop_circle_outlined, size: 18),
-              label: Text(l.sessionFinishBtn),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              child: FilledButton.icon(
+                onPressed: _finish,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary(context),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs + 2,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                ),
+                icon: const Icon(Icons.stop_circle_outlined, size: 17),
+                label: Text(l.sessionFinishBtn),
+              ),
             ),
-            const SizedBox(width: 8),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _addExercise,
+          elevation: 2,
+          backgroundColor: workoutColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.bLg),
           icon: const Icon(Icons.add_rounded),
-          label: Text(l.sessionAddExerciseBtn),
+          label: Text(
+            l.sessionAddExerciseBtn,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -451,7 +481,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+                            padding: AppSpacing.pagePadding,
                             itemCount: _blocks.length,
                             itemBuilder: (_, bi) => _buildExerciseCard(bi, numKb),
                           ),
@@ -465,27 +495,50 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   /// 顶部组间休息计时器横幅（仅用 ValueListenableBuilder 局部更新倒计时，不重绘下方列表）
   Widget _restTimerBanner() {
     final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
+    final primary = AppColors.primary(context);
+    final teal = AppColors.teal(context);
+
     return ValueListenableBuilder<int>(
       valueListenable: _restRemainingNotifier,
       builder: (context, restRem, _) {
         final active = restRem > 0;
         return Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
-            color: active ? cs.primaryContainer : cs.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: active ? cs.primary : cs.outlineVariant.withValues(alpha: 0.4)),
+            color: active
+                ? AppColors.softBg(context, primary, lightAlpha: 0.12, darkAlpha: 0.20)
+                : AppColors.surface(context),
+            borderRadius: AppRadius.bLg,
+            border: Border.all(
+              color: active ? AppColors.softBorder(context, primary) : AppColors.border(context),
+            ),
+            boxShadow: AppShadows.subtle(context),
           ),
           child: Row(
             children: [
-              Icon(
-                active ? Icons.hourglass_top_rounded : Icons.self_improvement_rounded,
-                color: active ? cs.primary : cs.outline,
-                size: 20,
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, active ? primary : teal),
+                  borderRadius: AppRadius.bSm,
+                ),
+                child: Icon(
+                  active ? Icons.hourglass_top_rounded : Icons.self_improvement_rounded,
+                  color: active ? primary : teal,
+                  size: 16,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               if (active) ...[
                 Expanded(
                   child: Text(
@@ -493,13 +546,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                       _fmtClock(restRem),
                       _restPaused ? l.sessionRestPausedTag : '',
                     ),
-                    style: TextStyle(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
+                    style: AppTypography.metricMedium(context, color: primary),
                   ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: _restPaused ? l.sessionRestResume : l.sessionRestPause,
-                  icon: Icon(_restPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+                  icon: Icon(
+                    _restPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    color: primary,
+                  ),
                   onPressed: () {
                     setState(() => _restPaused = !_restPaused);
                     if (_restPaused) {
@@ -520,22 +576,48 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                   child: Text(l.sessionRestSkip),
                 ),
               ] else ...[
-                Text(l.sessionRestDurationLabel, style: const TextStyle(fontSize: 12)),
-                for (final sec in [60, 90, 120, 180])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: ChoiceChip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text('${sec}s', style: const TextStyle(fontSize: 11)),
-                      selected: _restTargetSeconds == sec,
-                      onSelected: (_) => setState(() => _restTargetSeconds = sec),
+                Text(l.sessionRestDurationLabel, style: AppTypography.caption(context)),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final sec in [60, 90, 120, 180])
+                          Padding(
+                            padding: const EdgeInsets.only(right: AppSpacing.xs + 2),
+                            child: ChoiceChip(
+                              visualDensity: VisualDensity.compact,
+                              backgroundColor: AppColors.surfaceSubtle(context),
+                              selectedColor: AppColors.softBg(context, primary),
+                              side: BorderSide(
+                                color: _restTargetSeconds == sec
+                                    ? AppColors.softBorder(context, primary)
+                                    : AppColors.border(context),
+                              ),
+                              shape: RoundedRectangleBorder(borderRadius: AppRadius.bSm),
+                              label: Text(
+                                '${sec}s',
+                                style: AppTypography.badge(
+                                  context,
+                                  color: _restTargetSeconds == sec
+                                      ? primary
+                                      : AppColors.textSecondary(context),
+                                ),
+                              ),
+                              selected: _restTargetSeconds == sec,
+                              onSelected: (_) => setState(() => _restTargetSeconds = sec),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                const Spacer(),
+                ),
+                const SizedBox(width: AppSpacing.xs),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: l.sessionRestStartNow,
-                  icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.teal),
+                  icon: Icon(Icons.play_circle_fill_rounded, color: teal, size: 26),
                   onPressed: () => _startRestTimer(),
                 ),
               ],
@@ -551,6 +633,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     final b = _blocks[bi];
     final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
     final vis = categoryVisual(b.exercise.category);
+    final catColor = AppColors.adaptForDark(context, vis.color);
+    final teal = AppColors.teal(context);
+    final warning = AppColors.warning(context);
+    final workoutColor = AppColors.moduleWorkout(context);
+    final info = AppColors.info(context);
+    final success = AppColors.success(context);
+
     final lastHint = _formatLast(context, b.exercise, b.lastWorkSets);
     final pe = b.planExercise;
     final planHint = pe == null
@@ -561,10 +650,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
             pe.weightHint.isNotEmpty ? ' (${pe.weightHint})' : '',
           );
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: SurfaceCard(
+        padding: AppSpacing.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -574,120 +663,139 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: vis.color.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.softBg(context, catColor),
+                    borderRadius: AppRadius.bMd,
                   ),
-                  child: Icon(vis.icon, color: vis.color, size: 20),
+                  child: Icon(vis.icon, color: catColor, size: 19),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     L10nHelper.exerciseDisplayName(context, b.exercise.name),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: AppTypography.cardTitle(context),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.xs),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
                   decoration: BoxDecoration(
-                    color: vis.color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.softBg(context, catColor),
+                    borderRadius: AppRadius.bPill,
                   ),
                   child: Text(
                     L10nHelper.exerciseCategoryLabel(context, b.exercise.category),
-                    style: TextStyle(fontSize: 11, color: vis.color, fontWeight: FontWeight.bold),
+                    style: AppTypography.badge(context, color: catColor),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.close_rounded, size: 19, color: AppColors.textTertiary(context)),
                   onPressed: () => setState(() => _blocks.removeAt(bi)),
                 ),
               ],
             ),
             if (planHint != null)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(planHint, style: const TextStyle(fontSize: 12, color: Colors.teal, fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.only(top: AppSpacing.xs + 2),
+                child: Text(
+                  planHint,
+                  style: AppTypography.badge(context, color: teal).copyWith(fontSize: 12),
+                ),
               ),
             if (lastHint.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                padding: const EdgeInsets.only(top: AppSpacing.xs + 2, bottom: AppSpacing.sm),
                 child: Row(
                   children: [
-                    const Icon(Icons.history_rounded, size: 15, color: Colors.teal),
+                    Icon(Icons.history_rounded, size: 14, color: teal),
                     const SizedBox(width: 4),
-                    Expanded(child: Text(lastHint, style: Theme.of(context).textTheme.bodySmall)),
+                    Expanded(
+                      child: Text(lastHint, style: AppTypography.caption(context)),
+                    ),
                   ],
                 ),
               ),
+            const SizedBox(height: AppSpacing.xs),
             for (var si = 0; si < b.sets.length; si++)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
                     if (!isCardio) ...[
                       InkWell(
                         onTap: () => setState(() => b.sets[si].warmup = !b.sets[si].warmup),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppRadius.bSm,
                         child: Container(
                           width: 36,
                           height: 36,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: b.sets[si].warmup
-                                ? Colors.orange.withValues(alpha: 0.2)
-                                : Theme.of(context).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(8),
+                                ? AppColors.softBg(context, warning, lightAlpha: 0.16, darkAlpha: 0.24)
+                                : AppColors.surfaceSubtle(context),
+                            borderRadius: AppRadius.bSm,
+                            border: Border.all(
+                              color: b.sets[si].warmup
+                                  ? AppColors.softBorder(context, warning)
+                                  : AppColors.border(context),
+                            ),
                           ),
                           child: Text(
                             b.sets[si].warmup ? l.sessionWarmupTag : '${si + 1}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: b.sets[si].warmup ? Colors.orange : null,
+                            style: AppTypography.badge(
+                              context,
+                              color: b.sets[si].warmup ? warning : AppColors.textPrimary(context),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.xs + 2),
                     ],
                     Expanded(
                       child: TextField(
                         controller: b.sets[si].weight,
                         keyboardType: numKb,
+                        style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
                           suffixText: isCardio ? l.sessionCardioMins : 'kg',
                           prefixIcon: Icon(
                             isCardio ? Icons.timer_rounded : Icons.fitness_center_rounded,
-                            size: 17,
-                            color: isCardio ? const Color(0xFFEC407A) : const Color(0xFFEF5350),
+                            size: 16,
+                            color: workoutColor,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AppSpacing.xs + 2),
                     Expanded(
                       child: TextField(
                         controller: b.sets[si].reps,
                         keyboardType: TextInputType.number,
+                        style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
-                          suffixText: isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,
+                          suffixText:
+                              isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,
                           prefixIcon: Icon(
                             isCardio ? Icons.directions_walk_rounded : Icons.repeat_rounded,
-                            size: 17,
-                            color: const Color(0xFF42A5F5),
+                            size: 16,
+                            color: info,
                           ),
                         ),
                       ),
                     ),
                     if (!isCardio)
                       IconButton(
+                        visualDensity: VisualDensity.compact,
                         tooltip: l.sessionCompleteSetTooltip,
                         icon: Icon(
-                          b.sets[si].done ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
-                          color: b.sets[si].done ? Colors.green : null,
+                          b.sets[si].done
+                              ? Icons.check_circle_rounded
+                              : Icons.check_circle_outline_rounded,
+                          color: b.sets[si].done ? success : AppColors.textTertiary(context),
                         ),
                         onPressed: () {
                           setState(() {
@@ -695,7 +803,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                             if (b.sets[si].done) {
                               b.sets[si].completedAtMs = DateTime.now().millisecondsSinceEpoch;
                               _startRestTimer(
-                                exerciseName: L10nHelper.exerciseDisplayName(context, b.exercise.name),
+                                exerciseName: L10nHelper.exerciseDisplayName(
+                                  context,
+                                  b.exercise.name,
+                                ),
                               );
                             }
                           });
@@ -703,17 +814,22 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                       ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.remove_circle_outline_rounded, size: 19),
+                      icon: Icon(
+                        Icons.remove_circle_outline_rounded,
+                        size: 18,
+                        color: AppColors.textTertiary(context),
+                      ),
                       onPressed: () => setState(() => b.sets.removeAt(si)),
                     ),
                   ],
                 ),
               ),
+            const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => _addSet(b),
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 17),
                 label: Text(isCardio ? l.sessionAddCardioRow : l.sessionAddStrengthRow),
               ),
             ),

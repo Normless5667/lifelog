@@ -15,7 +15,7 @@ import '../settings/settings_screen.dart';
 import 'food_confirm_sheet.dart';
 import 'meal_edit_dialog.dart';
 
-/// 饮食记录页：按日查看、按餐分组、拍照估算热量、文字描述估算、手动添加
+/// 饮食记录页（v2.0）：按日查看、按餐分组、拍照估算热量、文字描述估算、手动添加
 class DietScreen extends StatefulWidget {
   const DietScreen({super.key});
 
@@ -132,16 +132,16 @@ class _DietScreenState extends State<DietScreen> {
     final res = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.dietPhotoHintTitle),
+        title: Text(l.dietPhotoHintTitle, style: AppTypography.sectionTitle(ctx)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.bMd,
                 child: Image.file(img, height: 180, fit: BoxFit.cover),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: ctrl,
                 decoration: InputDecoration(
@@ -156,7 +156,7 @@ class _DietScreenState extends State<DietScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton.icon(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            icon: const Icon(Icons.auto_awesome),
+            icon: const Icon(Icons.auto_awesome_rounded, size: 17),
             label: Text(l.dietStartAnalyze),
           ),
         ],
@@ -173,7 +173,7 @@ class _DietScreenState extends State<DietScreen> {
     final desc = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.dietTextEstimateTitle),
+        title: Text(l.dietTextEstimateTitle, style: AppTypography.sectionTitle(ctx)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -247,32 +247,67 @@ class _DietScreenState extends State<DietScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final totals = DayTotals.of(_meals);
+    final dietColor = AppColors.moduleDiet(context);
+
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _shiftDay(-1)),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.chevron_left_rounded, color: AppColors.textPrimary(context)),
+              onPressed: () => _shiftDay(-1),
+            ),
             InkWell(
               onTap: _pickDate,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Text(L10nHelper.friendlyDateL10n(context, _date)),
+              borderRadius: AppRadius.bMd,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs + 1,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, dietColor, lightAlpha: 0.10, darkAlpha: 0.16),
+                  borderRadius: AppRadius.bPill,
+                  border: Border.all(color: AppColors.softBorder(context, dietColor)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today_rounded, size: 13, color: dietColor),
+                    const SizedBox(width: AppSpacing.xs + 2),
+                    Text(
+                      L10nHelper.friendlyDateL10n(context, _date),
+                      style: AppTypography.subtitle(context, color: dietColor),
+                    ),
+                  ],
+                ),
               ),
             ),
-            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _shiftDay(1)),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary(context)),
+              onPressed: () => _shiftDay(1),
+            ),
           ],
         ),
-        centerTitle: true,
         actions: [
           if (_date != today())
-            TextButton(
-              onPressed: () {
-                setState(() => _date = today());
-                _load();
-              },
-              child: Text(l.commonToday),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.surfaceSubtle(context),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                ),
+                onPressed: () {
+                  setState(() => _date = today());
+                  _load();
+                },
+                child: Text(l.commonToday),
+              ),
             ),
         ],
       ),
@@ -281,30 +316,38 @@ class _DietScreenState extends State<DietScreen> {
           if (_loading)
             const Center(child: CircularProgressIndicator())
           else
-            ListView(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
-              children: [
-                CalorieSummaryCard(totals: totals, targets: _targets),
-                const SizedBox(height: 8),
-                _quickActionRow(),
-                for (var t = 0; t < 4; t++) _mealSection(t),
-              ],
+            ListView.builder(
+              padding: AppSpacing.pagePadding,
+              itemCount: 6, // 0: summary, 1: quick actions, 2..5: 4 meal sections
+              itemBuilder: (_, idx) {
+                if (idx == 0) {
+                  return CalorieSummaryCard(totals: totals, targets: _targets);
+                }
+                if (idx == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: _quickActionRow(),
+                  );
+                }
+                return _mealSection(idx - 2);
+              },
             ),
           if (_busyAi)
             Container(
-              color: Colors.black45,
+              color: Colors.black.withValues(alpha: 0.45),
               child: Center(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        Text(l.dietAiAnalyzing),
-                      ],
-                    ),
+                child: SurfaceCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xxl,
+                    vertical: AppSpacing.xl,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: dietColor),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(l.dietAiAnalyzing, style: AppTypography.subtitle(context)),
+                    ],
                   ),
                 ),
               ),
@@ -314,32 +357,83 @@ class _DietScreenState extends State<DietScreen> {
     );
   }
 
+  /// 三栏等宽快捷估算入口（统一圆角与低饱和色底，适配 360dp 英文不溢出）
   Widget _quickActionRow() {
     final l = context.l10n;
+    final dietColor = AppColors.moduleDiet(context);
+    final scheduleColor = AppColors.moduleSchedule(context);
+    final aiColor = AppColors.moduleAi(context);
+
+    Widget tile({
+      required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: ScaleTap(
+          onTap: onTap,
+          borderRadius: AppRadius.bLg,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.md,
+              horizontal: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface(context),
+              borderRadius: AppRadius.bLg,
+              border: Border.all(color: AppColors.border(context)),
+              boxShadow: AppShadows.subtle(context),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, color, lightAlpha: 0.12, darkAlpha: 0.18),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(height: AppSpacing.xs + 2),
+                Text(
+                  label,
+                  style: AppTypography.badge(context, color: AppColors.textPrimary(context))
+                      .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Row(
       children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: () => _photoEstimate(ImageSource.camera),
-            icon: const Icon(Icons.camera_alt_outlined),
-            label: Text(l.dietScanFood),
-          ),
+        tile(
+          icon: Icons.camera_alt_rounded,
+          label: l.dietScanFood,
+          color: dietColor,
+          onTap: () => _photoEstimate(ImageSource.camera),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: FilledButton.tonalIcon(
-            onPressed: () => _photoEstimate(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library_outlined),
-            label: Text(l.dietPickGallery),
-          ),
+        const SizedBox(width: AppSpacing.sm),
+        tile(
+          icon: Icons.photo_library_rounded,
+          label: l.dietPickGallery,
+          color: scheduleColor,
+          onTap: () => _photoEstimate(ImageSource.gallery),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _textEstimate,
-            icon: const Icon(Icons.auto_awesome_outlined),
-            label: Text(l.dietAiTextEstimate),
-          ),
+        const SizedBox(width: AppSpacing.sm),
+        tile(
+          icon: Icons.auto_awesome_rounded,
+          label: l.dietAiTextEstimate,
+          color: aiColor,
+          onTap: _textEstimate,
         ),
       ],
     );
@@ -352,19 +446,26 @@ class _DietScreenState extends State<DietScreen> {
     Icons.icecream_rounded,
   ];
 
-  static const _mealColors = <Color>[
-    Color(0xFFFFA726),
-    Color(0xFFEF5350),
-    Color(0xFF5C6BC0),
-    Color(0xFF26A69A),
-  ];
+  Color _mealColor(BuildContext context, int mealType) {
+    switch (mealType) {
+      case 0:
+        return AppColors.warning(context);
+      case 1:
+        return AppColors.moduleDiet(context);
+      case 2:
+        return AppColors.primary(context);
+      default:
+        return AppColors.teal(context);
+    }
+  }
 
   Widget _mealSection(int mealType) {
     final l = context.l10n;
     final items = _meals.where((m) => m.mealType == mealType).toList();
     final subKcal = items.fold<double>(0, (s, m) => s + m.calories);
-    final mealColor = _mealColors[mealType];
+    final mealColor = _mealColor(context, mealType);
     final mealLabel = L10nHelper.mealTypeLabel(context, mealType);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -374,85 +475,141 @@ class _DietScreenState extends State<DietScreen> {
           iconColor: mealColor,
           trailing: TextButton.icon(
             onPressed: () => _manualEdit(defaultMealType: mealType),
-            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 17),
             label: Text(l.dietManualAdd),
           ),
         ),
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        SurfaceCard(
+          padding: EdgeInsets.zero,
           child: items.isEmpty
-              ? ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: mealColor.withValues(alpha: 0.14),
-                    child: Icon(_mealIcons[mealType], color: mealColor, size: 20),
-                  ),
-                  title: Text(
-                    l.dietEmptyMealHint(mealLabel),
-                    style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13),
-                  ),
+              ? InkWell(
                   onTap: () => _manualEdit(defaultMealType: mealType),
+                  borderRadius: AppRadius.bXl,
+                  child: Padding(
+                    padding: AppSpacing.cardCompactPadding,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.softBg(context, mealColor),
+                            borderRadius: AppRadius.bMd,
+                          ),
+                          child: Icon(_mealIcons[mealType], color: mealColor, size: 19),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            l.dietEmptyMealHint(mealLabel),
+                            style: AppTypography.bodySecondary(context),
+                          ),
+                        ),
+                        Icon(
+                          Icons.add_rounded,
+                          size: 20,
+                          color: AppColors.textTertiary(context),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
               : Column(
-                  children: items.map((m) {
-                    final hasPhoto = m.photoPath != null && File(m.photoPath!).existsSync();
-                    return ListTile(
-                      leading: hasPhoto
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.file(File(m.photoPath!), width: 48, height: 48, fit: BoxFit.cover),
-                            )
-                          : Container(
-                              width: 46,
-                              height: 46,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: mealColor.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(foodEmoji(m.name), style: const TextStyle(fontSize: 22)),
-                            ),
-                      title: Text(
-                        '${m.name}${m.amount?.isNotEmpty == true ? ' · ${m.amount}' : ''}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: Text(
-                          'P ${fmtNum(m.protein)}g  ·  C ${fmtNum(m.carbs)}g  ·  F ${fmtNum(m.fat)}g',
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: mealColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${fmtNum(m.calories)} kcal',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: mealColor, fontSize: 12),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () async {
-                              if (await confirm(context, l.dietDeleteMealConfirm(m.name))) {
-                                await Repo.deleteMeal(m.id!);
-                                _load();
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      onTap: () => _manualEdit(existing: m),
-                    );
-                  }).toList(),
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0) const Divider(height: 1),
+                      _mealRow(items[i], mealColor),
+                    ],
+                  ],
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _mealRow(Meal m, Color mealColor) {
+    final l = context.l10n;
+    final hasPhoto = m.photoPath != null && File(m.photoPath!).existsSync();
+    return InkWell(
+      onTap: () => _manualEdit(existing: m),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            if (hasPhoto)
+              ClipRRect(
+                borderRadius: AppRadius.bMd,
+                child: Image.file(
+                  File(m.photoPath!),
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, mealColor),
+                  borderRadius: AppRadius.bMd,
+                ),
+                child: Text(foodEmoji(m.name), style: const TextStyle(fontSize: 21)),
+              ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${m.name}${m.amount?.isNotEmpty == true ? ' · ${m.amount}' : ''}',
+                    style: AppTypography.subtitle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'P ${fmtNum(m.protein)}g · C ${fmtNum(m.carbs)}g · F ${fmtNum(m.fat)}g',
+                    style: AppTypography.caption(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, mealColor),
+                borderRadius: AppRadius.bSm,
+              ),
+              child: Text(
+                '${fmtNum(m.calories)} kcal',
+                style: AppTypography.badge(context, color: mealColor),
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                size: 19,
+                color: AppColors.textTertiary(context),
+              ),
+              onPressed: () async {
+                if (await confirm(context, l.dietDeleteMealConfirm(m.name))) {
+                  await Repo.deleteMeal(m.id!);
+                  _load();
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
