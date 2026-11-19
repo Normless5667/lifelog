@@ -2016,4 +2016,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get weatherTomorrowTag => '明天';
+
+  @override
+  String busHomeNextAbsolute(String dir, String time) {
+    return '$dir · 下一班 $time';
+  }
+
+  @override
+  String busNextTripWaiting(String time, int mins) {
+    return '下一班 $time · 还有 $mins 分钟';
+  }
+
+  @override
+  String busNextTripAbsolute(String time) {
+    return '下一班 $time';
+  }
+
+  @override
+  String busTomorrowTimeTag(String time) {
+    return '明日 $time';
+  }
+
+  @override
+  String get busWeekendShortTag => '周末停运';
+
+  @override
+  String busReverseOrderError(String origin, String dest) {
+    return '当前方向行车顺序为「$dest → $origin」，不包含「$origin → $dest」。';
+  }
+
+  @override
+  String get busSwapBtnShort => '对调起终点';
 }

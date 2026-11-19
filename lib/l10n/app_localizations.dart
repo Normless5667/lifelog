@@ -3702,6 +3702,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tomorrow'**
   String get weatherTomorrowTag;
+
+  /// No description provided for @busHomeNextAbsolute.
+  ///
+  /// In en, this message translates to:
+  /// **'{dir} · Next {time}'**
+  String busHomeNextAbsolute(String dir, String time);
+
+  /// No description provided for @busNextTripWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Next {time} · in {mins} min'**
+  String busNextTripWaiting(String time, int mins);
+
+  /// No description provided for @busNextTripAbsolute.
+  ///
+  /// In en, this message translates to:
+  /// **'Next {time}'**
+  String busNextTripAbsolute(String time);
+
+  /// No description provided for @busTomorrowTimeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Tmr {time}'**
+  String busTomorrowTimeTag(String time);
+
+  /// No description provided for @busWeekendShortTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend'**
+  String get busWeekendShortTag;
+
+  /// No description provided for @busReverseOrderError.
+  ///
+  /// In en, this message translates to:
+  /// **'This direction runs {dest} → {origin}, not {origin} → {dest}.'**
+  String busReverseOrderError(String origin, String dest);
+
+  /// No description provided for @busSwapBtnShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get busSwapBtnShort;
 }
 
 class _AppLocalizationsDelegate

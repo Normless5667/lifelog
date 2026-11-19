@@ -630,5 +630,13 @@
   "weatherSystemNotFound": "未检测到手机内置天气应用",
   "weatherForecastEmpty": "暂未获取到未来 15 天预报，请点击刷新重试",
   "weatherTodayTag": "今天",
-  "weatherTomorrowTag": "明天"
+  "weatherTomorrowTag": "明天",
+
+  "busHomeNextAbsolute": "{dir} · 下一班 {time}",
+  "busNextTripWaiting": "下一班 {time} · 还有 {mins} 分钟",
+  "busNextTripAbsolute": "下一班 {time}",
+  "busTomorrowTimeTag": "明日 {time}",
+  "busWeekendShortTag": "周末停运",
+  "busReverseOrderError": "当前方向行车顺序为「{dest} → {origin}」，不包含「{origin} → {dest}」。",
+  "busSwapBtnShort": "对调起终点"
 }

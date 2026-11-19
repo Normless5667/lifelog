@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/bus_service.dart';
 import '../services/weather_service.dart';
 import 'date_utils.dart';
 
@@ -349,6 +350,9 @@ class L10nHelper {
         rawDirection.contains('回程') ||
         rawDirection.toLowerCase().contains('drop');
     final dirLabel = isInbound ? l.busInboundSegment : l.busOutboundSegment;
+    if (minutesUntil > BusService.maxCountdownMinutes) {
+      return l.busHomeNextAbsolute(dirLabel, nextTime);
+    }
     return l.busHomeNextCountdown(dirLabel, nextTime, minutesUntil);
   }
 

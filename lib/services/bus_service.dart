@@ -7,6 +7,46 @@ import 'package:path_provider/path_provider.dart';
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
 
+/// 单趟独立校车班次（每个 Slot 一趟独立行程，按行进站点顺序排列，时间单调不减）
+class BusTrip {
+  final int slotIndex;
+  final String slotName;
+  final List<BusStopSchedule> stops;
+  final List<DateTime> times;
+
+  const BusTrip({
+    required this.slotIndex,
+    required this.slotName,
+    required this.stops,
+    required this.times,
+  });
+
+  DateTime get firstTime => times.first;
+  DateTime get lastTime => times.last;
+
+  bool isEnRoute(DateTime now) =>
+      times.length >= 2 && !now.isBefore(firstTime) && now.isBefore(lastTime);
+}
+
+/// 单趟班次在某一时刻的时间轴计算结果（未发车/两趟之间/已结束/周末时 activeSegIdx 恒为 null）
+class BusTimelineEvaluation {
+  final BusTrip trip;
+  final int? activeSegIdx;
+  final double segProgress;
+  final double tripProgress;
+  final int? currentStopIdx;
+
+  const BusTimelineEvaluation({
+    required this.trip,
+    required this.activeSegIdx,
+    required this.segProgress,
+    required this.tripProgress,
+    required this.currentStopIdx,
+  });
+
+  bool get isEnRoute => activeSegIdx != null;
+}
+
 class BusStopSchedule {
   final String name;
   final List<String> times;
@@ -446,8 +486,208 @@ class BusService {
     return (hour: h, minute: m);
   }
 
-  /// 获取当前路线、常用站点在当前时刻之后的下一班车信息
-  static Future<({
+  /// 倒计时超过该分钟阈值（3 小时）时不显示「还有 N 分」，改为绝对时刻
+  static const int maxCountdownMinutes = 180;
+
+  /// 计算 [now] 在相邻两站发车/到达时间 [t1]..[t2] 间的插值进度 (0.0 ~ 1.0)
+  static double calcSegmentProgress(DateTime now, DateTime t1, DateTime t2) {
+    final totalMs = t2.difference(t1).inMilliseconds;
+    if (totalMs <= 0) {
+      return now.isBefore(t1) ? 0.0 : 1.0;
+    }
+    final elapsedMs = now.difference(t1).inMilliseconds;
+    return (elapsedMs / totalMs).clamp(0.0, 1.0);
+  }
+
+  /// 严格按行进顺序过滤区间站点；优先匹配起点之后的终点（解决环线同名站点如 BUV CAMPUS），
+  /// 绝不反转站点列表以免出现时间倒流。
+  static List<BusStopSchedule> filterForwardSegmentStops(
+    List<BusStopSchedule> dirStops,
+    String originStop,
+    String destStop,
+  ) {
+    if (dirStops.isEmpty || originStop.isEmpty || originStop == destStop) {
+      return const [];
+    }
+    final origIdx = dirStops.indexWhere((s) => _cleanName(s.name) == originStop);
+    if (origIdx < 0) return const [];
+
+    final destIdx = dirStops.lastIndexWhere(
+      (s) => _cleanName(s.name) == destStop,
+    );
+    if (destIdx > origIdx) {
+      return dirStops.sublist(origIdx, destIdx + 1);
+    }
+    return const [];
+  }
+
+  /// 解析参考日期当天的站点 HH:mm（仅真实跨午夜如 23:50 → 00:10 才 +1 天，绝不把倒序站点变成明天 +1440 分）
+  static DateTime parseStopDateTime(String hhmm, DateTime refDay, {DateTime? notBefore}) {
+    final hm = _parseTime(hhmm);
+    var dt = hm == null
+        ? refDay
+        : DateTime(refDay.year, refDay.month, refDay.day, hm.hour, hm.minute);
+    if (notBefore != null && dt.isBefore(notBefore)) {
+      if (notBefore.hour >= 20 && dt.hour <= 5) {
+        dt = dt.add(const Duration(days: 1));
+      } else {
+        dt = notBefore;
+      }
+    }
+    return dt;
+  }
+
+  /// 将当前方向和起终点区间按班次（Slot）拆分成独立的 [BusTrip] 列表；
+  /// 每个 Trip 内的 times 严格按站点顺序单调不减。
+  static List<BusTrip> buildTripsForSegment(
+    List<BusStopSchedule> segmentStops,
+    DateTime refDay,
+  ) {
+    if (segmentStops.isEmpty || segmentStops.first.times.isEmpty) return const [];
+    final slotCount = segmentStops.first.times.length;
+    final trips = <BusTrip>[];
+    for (var slotIdx = 0; slotIdx < slotCount; slotIdx++) {
+      final times = <DateTime>[];
+      DateTime? prevDt;
+      for (final s in segmentStops) {
+        final tStr = slotIdx < s.times.length ? s.times[slotIdx] : s.times.last;
+        final dt = parseStopDateTime(tStr, refDay, notBefore: prevDt);
+        times.add(dt);
+        prevDt = dt;
+      }
+      trips.add(BusTrip(
+        slotIndex: slotIdx,
+        slotName: 'Slot ${slotIdx + 1}',
+        stops: segmentStops,
+        times: times,
+      ));
+    }
+    return trips;
+  }
+
+  /// 计算单个 [trip] 在 [now] 的状态：
+  /// 只有当 `!isWeekend && !allEndedToday` 且 `now` 严格落在该趟车的 `[first, last)` 内时才绘制车辆并算进度；
+  /// 在两趟之间、未发车、已发完、周末时，`activeSegIdx` 恒为 `null`。
+  static BusTimelineEvaluation evaluateTripAt(
+    BusTrip trip,
+    DateTime now, {
+    required bool isWeekend,
+    required bool allEndedToday,
+  }) {
+    if (isWeekend || allEndedToday || !trip.isEnRoute(now)) {
+      return BusTimelineEvaluation(
+        trip: trip,
+        activeSegIdx: null,
+        segProgress: 0.0,
+        tripProgress: 0.0,
+        currentStopIdx: null,
+      );
+    }
+
+    int? activeSegIdx;
+    var segProgress = 0.0;
+    int? currentStopIdx;
+
+    for (var k = 0; k < trip.times.length - 1; k++) {
+      final t1 = trip.times[k];
+      final t2 = trip.times[k + 1];
+      if (!now.isBefore(t1) && now.isBefore(t2)) {
+        activeSegIdx = k;
+        segProgress = calcSegmentProgress(now, t1, t2);
+        if (segProgress < 0.18) {
+          currentStopIdx = k;
+        } else if (segProgress > 0.88) {
+          currentStopIdx = k + 1;
+        }
+        break;
+      }
+    }
+
+    final totalMs = trip.lastTime.difference(trip.firstTime).inMilliseconds;
+    final tripProgress = totalMs > 0
+        ? (now.difference(trip.firstTime).inMilliseconds / totalMs).clamp(0.0, 1.0)
+        : 0.0;
+
+    return BusTimelineEvaluation(
+      trip: trip,
+      activeSegIdx: activeSegIdx,
+      segProgress: segProgress,
+      tripProgress: tripProgress,
+      currentStopIdx: currentStopIdx,
+    );
+  }
+
+  static Future<bool?> savedDirectionIsInbound(String routeId) async {
+    final saved = await Repo.getKv('bus_dir_$routeId');
+    if (saved == 'inbound') return true;
+    if (saved == 'outbound') return false;
+    return null;
+  }
+
+  static Future<void> setPreferredIsInbound(String routeId, bool isInbound) =>
+      Repo.setKv('bus_dir_$routeId', isInbound ? 'inbound' : 'outbound');
+
+  /// 若用户曾经手动选择过方向则记住该选择；否则结合最近已发车或剩余班次方向推断，不再硬编码 >=14 点。
+  static Future<bool> preferredIsInbound(
+    BusRouteData data, {
+    DateTime? nowOverride,
+  }) async {
+    final saved = await savedDirectionIsInbound(data.id);
+    if (saved != null) return saved;
+    final fav = await favoriteStop();
+    return inferDefaultIsInbound(data, fav, nowOverride ?? DateTime.now());
+  }
+
+  static bool inferDefaultIsInbound(
+    BusRouteData data,
+    String fav,
+    DateTime now,
+  ) {
+    final outStop = data.outboundStops.firstWhere(
+      (s) => _cleanName(s.name) == fav,
+      orElse: () => data.outboundStops.first,
+    );
+    final inStop = data.inboundStops.firstWhere(
+      (s) => _cleanName(s.name) == fav,
+      orElse: () => data.inboundStops.first,
+    );
+    final nowMins = now.hour * 60 + now.minute;
+
+    int? latestPastOut;
+    bool hasUpcomingOut = false;
+    for (final t in outStop.times) {
+      final hm = _parseTime(t);
+      if (hm == null) continue;
+      final m = hm.hour * 60 + hm.minute;
+      if (m <= nowMins) {
+        if (latestPastOut == null || m > latestPastOut) latestPastOut = m;
+      } else {
+        hasUpcomingOut = true;
+      }
+    }
+
+    int? latestPastIn;
+    bool hasUpcomingIn = false;
+    for (final t in inStop.times) {
+      final hm = _parseTime(t);
+      if (hm == null) continue;
+      final m = hm.hour * 60 + hm.minute;
+      if (m <= nowMins) {
+        if (latestPastIn == null || m > latestPastIn) latestPastIn = m;
+      } else {
+        hasUpcomingIn = true;
+      }
+    }
+
+    if (!hasUpcomingOut && hasUpcomingIn) return true;
+    if (latestPastIn != null && (latestPastOut == null || latestPastIn >= latestPastOut)) {
+      return true;
+    }
+    return false;
+  }
+
+  /// 纯函数版首页校车摘要计算：按单一方向过滤，今日全部结束时回退到当前方向的首班时刻。
+  static ({
     String routeName,
     String stopName,
     String direction,
@@ -456,10 +696,12 @@ class BusService {
     bool isWeekend,
     List<String> outboundTimes,
     List<String> inboundTimes,
-  })> nextBusSummary() async {
-    final data = await load();
-    final fav = await favoriteStop();
-    final now = DateTime.now();
+  }) computeNextBusSummary(
+    BusRouteData data,
+    String fav,
+    DateTime now, {
+    required bool isInbound,
+  }) {
     final isWeekend = data.weekdaysOnly &&
         (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
 
@@ -472,12 +714,17 @@ class BusService {
       orElse: () => data.inboundStops.first,
     );
 
+    final targetStop = isInbound ? inStop : outStop;
+    final targetDir = isInbound ? data.inboundTitle : data.outboundTitle;
+    final firstTimeForDir =
+        targetStop.times.isNotEmpty ? targetStop.times.first : '08:00';
+
     if (isWeekend) {
       return (
         routeName: data.name,
         stopName: fav,
-        direction: '周末停运（仅周一至周五运行）',
-        nextTime: outStop.times.first,
+        direction: '$targetDir · 周末停运（仅周一至周五运行）',
+        nextTime: firstTimeForDir,
         minutesUntil: -1,
         isWeekend: true,
         outboundTimes: outStop.times,
@@ -487,27 +734,15 @@ class BusService {
 
     final nowMins = now.hour * 60 + now.minute;
     String? bestTime;
-    String bestDir = data.outboundTitle;
-    int bestDiff = 999999;
+    var bestDiff = 999999;
 
-    for (final t in outStop.times) {
+    for (final t in targetStop.times) {
       final hm = _parseTime(t);
       if (hm == null) continue;
       final diff = hm.hour * 60 + hm.minute - nowMins;
       if (diff >= 0 && diff < bestDiff) {
         bestDiff = diff;
         bestTime = t;
-        bestDir = data.outboundTitle;
-      }
-    }
-    for (final t in inStop.times) {
-      final hm = _parseTime(t);
-      if (hm == null) continue;
-      final diff = hm.hour * 60 + hm.minute - nowMins;
-      if (diff >= 0 && diff < bestDiff) {
-        bestDiff = diff;
-        bestTime = t;
-        bestDir = data.inboundTitle;
       }
     }
 
@@ -515,8 +750,8 @@ class BusService {
       return (
         routeName: data.name,
         stopName: fav,
-        direction: '今日班次已结束（明日首班 ${outStop.times.first}）',
-        nextTime: outStop.times.first,
+        direction: '$targetDir · 今日班次已结束（明日首班 $firstTimeForDir）',
+        nextTime: firstTimeForDir,
         minutesUntil: -1,
         isWeekend: false,
         outboundTimes: outStop.times,
@@ -527,13 +762,32 @@ class BusService {
     return (
       routeName: data.name,
       stopName: fav,
-      direction: bestDir,
+      direction: targetDir,
       nextTime: bestTime,
       minutesUntil: bestDiff,
       isWeekend: false,
       outboundTimes: outStop.times,
       inboundTimes: inStop.times,
     );
+  }
+
+  /// 获取当前路线、常用站点在当前时刻之后的下一班车信息（按首选/推断方向过滤）
+  static Future<({
+    String routeName,
+    String stopName,
+    String direction,
+    String nextTime,
+    int minutesUntil,
+    bool isWeekend,
+    List<String> outboundTimes,
+    List<String> inboundTimes,
+  })> nextBusSummary({DateTime? nowOverride, bool? isInboundOverride}) async {
+    final data = await load();
+    final fav = await favoriteStop();
+    final now = nowOverride ?? DateTime.now();
+    final isInbound =
+        isInboundOverride ?? await preferredIsInbound(data, nowOverride: now);
+    return computeNextBusSummary(data, fav, now, isInbound: isInbound);
   }
 
   /// 生成未来 5 天常用站点的到站前提醒闹钟列表

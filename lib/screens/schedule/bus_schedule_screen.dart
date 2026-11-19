@@ -13,14 +13,8 @@ import '../../services/reminder_service.dart';
 import '../../widgets/common.dart';
 
 /// 纯函数：计算当前时刻 [now] 在上一站发车时间 [t1] 与下一站到达时间 [t2] 之间的位置进度 (0.0 ~ 1.0)
-double calcBusSegmentProgress(DateTime now, DateTime t1, DateTime t2) {
-  final totalMs = t2.difference(t1).inMilliseconds;
-  if (totalMs <= 0) {
-    return now.isBefore(t1) ? 0.0 : 1.0;
-  }
-  final elapsedMs = now.difference(t1).inMilliseconds;
-  return (elapsedMs / totalMs).clamp(0.0, 1.0);
-}
+double calcBusSegmentProgress(DateTime now, DateTime t1, DateTime t2) =>
+    BusService.calcSegmentProgress(now, t1, t2);
 
 enum _SlotState {
   imminent, // ≤ 5 分钟：红/橙 + 呼吸
@@ -75,7 +69,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
   int _remMins = 10;
   bool _loading = true;
 
-  late bool _isInbound;
+  bool _isInbound = false;
   int? _selectedSlotIndex; // null 表示自动跟随下一班或正在行驶的班次
   bool _showSettingsPanel = false;
 
@@ -90,7 +84,6 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _isInbound = DateTime.now().hour >= 14;
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -182,11 +175,12 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
     final fav = await BusService.favoriteStop();
     final en = await BusService.reminderEnabled();
     final mins = await BusService.reminderMinutesBefore();
+    final prefInbound = await BusService.preferredIsInbound(data);
 
     final savedOrig = await Repo.getKv('bus_orig_${data.id}');
     final savedDest = await Repo.getKv('bus_dest_${data.id}');
 
-    final dirStops = (_isInbound ? data.inboundStops : data.outboundStops)
+    final dirStops = (prefInbound ? data.inboundStops : data.outboundStops)
         .map((s) => L10nHelper.cleanBusStopName(s.name))
         .toList();
 
@@ -200,13 +194,8 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
       orig = savedOrig;
       dest = savedDest;
     } else if (dirStops.length >= 2) {
-      if (!_isInbound) {
-        orig = dirStops.contains(fav) && fav != dirStops.last ? fav : dirStops.first;
-        dest = dirStops.last;
-      } else {
-        orig = dirStops.first;
-        dest = dirStops.contains(fav) && fav != dirStops.first ? fav : dirStops.last;
-      }
+      orig = dirStops.contains(fav) && fav != dirStops.last ? fav : dirStops.first;
+      dest = dirStops.last;
     } else {
       orig = stops.isNotEmpty ? stops.first : '';
       dest = stops.length > 1 ? stops.last : orig;
@@ -217,6 +206,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
       _allRoutes = all;
       _data = data;
       _stops = stops;
+      _isInbound = prefInbound;
       _originStop = orig;
       _destStop = dest;
       _remEnabled = en;
@@ -228,32 +218,32 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
     _startLiveClockIfVisible();
   }
 
-  /// 检查当前所选起点和终点的先后顺序；若在当前方向反了而在相反方向顺向，则自动切换去程/回程
+  /// 检查当前所选起点和终点在当前方向是否构成顺向行程（支持同名终点如 BUV CAMPUS）；
+  /// 若当前方向不顺向而另一方向顺向，自动切换去程/回程并记住方向。
   void _ensureDirectionMatchesStops({bool silent = false}) {
     final d = _data;
     if (d == null || _originStop.isEmpty || _destStop.isEmpty || _originStop == _destStop) return;
 
-    final curList = (_isInbound ? d.inboundStops : d.outboundStops)
-        .map((s) => L10nHelper.cleanBusStopName(s.name))
-        .toList();
-    final curOrigIdx = curList.indexOf(_originStop);
-    final curDestIdx = curList.indexOf(_destStop);
-
-    if (curOrigIdx >= 0 && curDestIdx >= 0 && curOrigIdx < curDestIdx) {
-      return; // 当前方向顺序正确
+    final curForward = BusService.filterForwardSegmentStops(
+      _isInbound ? d.inboundStops : d.outboundStops,
+      _originStop,
+      _destStop,
+    );
+    if (curForward.isNotEmpty) {
+      return;
     }
 
-    final otherList = (!_isInbound ? d.inboundStops : d.outboundStops)
-        .map((s) => L10nHelper.cleanBusStopName(s.name))
-        .toList();
-    final otherOrigIdx = otherList.indexOf(_originStop);
-    final otherDestIdx = otherList.indexOf(_destStop);
-
-    if (otherOrigIdx >= 0 && otherDestIdx >= 0 && otherOrigIdx < otherDestIdx) {
+    final otherForward = BusService.filterForwardSegmentStops(
+      !_isInbound ? d.inboundStops : d.outboundStops,
+      _originStop,
+      _destStop,
+    );
+    if (otherForward.isNotEmpty) {
       setState(() {
         _isInbound = !_isInbound;
         _selectedSlotIndex = null;
       });
+      BusService.setPreferredIsInbound(d.id, _isInbound);
       if (!silent && mounted) {
         toast(context, context.l10n.busAutoSwitchedDirToast(_originStop, _destStop));
       }
@@ -265,6 +255,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
     if (d != null) {
       await Repo.setKv('bus_orig_${d.id}', _originStop);
       await Repo.setKv('bus_dest_${d.id}', _destStop);
+      await BusService.setPreferredIsInbound(d.id, _isInbound);
     }
     if (_originStop.isNotEmpty) {
       await BusService.setFavoriteStop(_originStop);
@@ -362,41 +353,16 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
     );
   }
 
-  /// 解析 HH:mm 为当日 DateTime；若 [notBefore] 存在且解析结果早于 [notBefore]（跨午夜），自动 +1 天避免算出负数
-  static DateTime parseStopDateTime(String hhmm, DateTime refDay, {DateTime? notBefore}) {
-    final parts = hhmm.split(':');
-    var dt = refDay;
-    if (parts.length == 2) {
-      final h = int.tryParse(parts[0]) ?? 0;
-      final m = int.tryParse(parts[1]) ?? 0;
-      dt = DateTime(refDay.year, refDay.month, refDay.day, h, m);
-    }
-    if (notBefore != null && dt.isBefore(notBefore)) {
-      dt = dt.add(const Duration(days: 1));
-    }
-    return dt;
-  }
-
-  /// 获取经过起终点过滤后的站点子列表（若起点=终点则返回空列表并提示错误）
-  List<BusStopSchedule> _filteredSegmentStops(List<BusStopSchedule> dirStops) {
-    if (dirStops.isEmpty || _originStop == _destStop) return const [];
-    final origIdx = dirStops.indexWhere((s) => L10nHelper.cleanBusStopName(s.name) == _originStop);
-    final destIdx = dirStops.indexWhere((s) => L10nHelper.cleanBusStopName(s.name) == _destStop);
-    if (origIdx >= 0 && destIdx >= 0) {
-      if (origIdx < destIdx) {
-        return dirStops.sublist(origIdx, destIdx + 1);
-      } else {
-        return dirStops.sublist(destIdx, origIdx + 1).reversed.toList();
-      }
-    }
-    return dirStops;
-  }
+  /// 严格按行进顺序过滤区间站点（绝不倒转时间轴）
+  List<BusStopSchedule> _filteredSegmentStops(List<BusStopSchedule> dirStops) =>
+      BusService.filterForwardSegmentStops(dirStops, _originStop, _destStop);
 
   List<_SlotBoardItem> _buildSortedSlotItems(List<BusStopSchedule> segmentStops, DateTime now) {
-    if (segmentStops.isEmpty || segmentStops.first.times.isEmpty) return const [];
-    final origStop = segmentStops.first;
-    final destStop = segmentStops.last;
-    final slotCount = origStop.times.length;
+    final trips = BusService.buildTripsForSegment(segmentStops, now);
+    if (trips.isEmpty) return const [];
+
+    String hhmm(DateTime dt) =>
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     final rawItems = <({
       int slotIndex,
@@ -408,21 +374,22 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
       bool enRouteSegment,
     })>[];
 
-    for (var i = 0; i < slotCount; i++) {
-      final origStr = i < origStop.times.length ? origStop.times[i] : origStop.times.last;
-      final destStr = i < destStop.times.length ? destStop.times[i] : origStr;
-
-      final origDt = parseStopDateTime(origStr, now);
-      final destDt = parseStopDateTime(destStr, now, notBefore: origDt);
-      final remain = origDt.difference(now);
-      final enRoute = !now.isBefore(origDt) && now.isBefore(destDt);
+    for (final trip in trips) {
+      final origStr = trip.slotIndex < trip.stops.first.times.length
+          ? trip.stops.first.times[trip.slotIndex]
+          : hhmm(trip.firstTime);
+      final destStr = trip.slotIndex < trip.stops.last.times.length
+          ? trip.stops.last.times[trip.slotIndex]
+          : hhmm(trip.lastTime);
+      final remain = trip.firstTime.difference(now);
+      final enRoute = trip.isEnRoute(now);
 
       rawItems.add((
-        slotIndex: i,
+        slotIndex: trip.slotIndex,
         originTimeStr: origStr,
         destTimeStr: destStr,
-        originTargetTime: origDt,
-        destTargetTime: destDt,
+        originTargetTime: trip.firstTime,
+        destTargetTime: trip.lastTime,
         remainToOrigin: remain,
         enRouteSegment: enRoute,
       ));
@@ -648,7 +615,33 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                 ),
               ),
             )
-          else if (segmentStops.isNotEmpty)
+          else if (segmentStops.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: SurfaceCard(
+                backgroundColor: AppColors.softBg(context, AppColors.warning(context)),
+                borderColor: AppColors.softBorder(context, AppColors.warning(context)),
+                padding: AppSpacing.cardCompactPadding,
+                child: Row(
+                  children: [
+                    Icon(Icons.swap_vert_circle_rounded, color: AppColors.warning(context), size: 22),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        l.busReverseOrderError(_originStop, _destStop),
+                        style: AppTypography.bodySecondary(context, color: AppColors.textPrimary(context)),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    FilledButton.tonal(
+                      onPressed: _swapOriginDest,
+                      child: Text(l.busSwapBtnShort),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
             // 核心动态区域：由 ValueListenableBuilder<DateTime> 驱动，仅重绘时间轴与班次状态
             ValueListenableBuilder<DateTime>(
               valueListenable: _nowNotifier,
@@ -744,6 +737,7 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
                       item: activeItem,
                       segmentStops: segmentStops,
                       now: now,
+                      isWeekend: isWeekend,
                       allEndedToday: allEnded,
                       pulseAnimation: _pulseCtrl,
                     ),
@@ -963,19 +957,18 @@ class _BusScheduleScreenState extends State<BusScheduleScreen>
           onSelectionChanged: (sel) {
             if (sel.isEmpty) return;
             final nextIn = sel.first;
-            final nextStops = (nextIn ? d.inboundStops : d.outboundStops)
+            final nextRawStops = nextIn ? d.inboundStops : d.outboundStops;
+            final nextStops = nextRawStops
                 .map((s) => L10nHelper.cleanBusStopName(s.name))
                 .toList();
             setState(() {
               _isInbound = nextIn;
               _selectedSlotIndex = null;
-              if (nextStops.length >= 2) {
-                final oIdx = nextStops.indexOf(_originStop);
-                final dIdx = nextStops.indexOf(_destStop);
-                if (oIdx < 0 || dIdx < 0 || oIdx > dIdx) {
-                  _originStop = nextStops.first;
-                  _destStop = nextStops.last;
-                }
+              if (nextStops.length >= 2 &&
+                  BusService.filterForwardSegmentStops(nextRawStops, _originStop, _destStop)
+                      .isEmpty) {
+                _originStop = nextStops.first;
+                _destStop = nextStops.last;
               }
             });
             _saveOriginDestAndPrefs();
@@ -1329,6 +1322,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
   final _SlotBoardItem item;
   final List<BusStopSchedule> segmentStops;
   final DateTime now;
+  final bool isWeekend;
   final bool allEndedToday;
   final Animation<double> pulseAnimation;
 
@@ -1336,6 +1330,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
     required this.item,
     required this.segmentStops,
     required this.now,
+    required this.isWeekend,
     required this.allEndedToday,
     required this.pulseAnimation,
   });
@@ -1358,7 +1353,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final isImminent = item.state == _SlotState.imminent;
+    final isImminent = !isWeekend && !allEndedToday && item.state == _SlotState.imminent;
     final isDeparted = item.state == _SlotState.departed || item.state == _SlotState.endedToday;
     final teal = AppColors.teal(context);
     final danger = AppColors.danger(context);
@@ -1368,65 +1363,81 @@ class _LiveRouteTimelineCard extends StatelessWidget {
 
     final Color statusColor;
     final String statusBadgeText;
-    switch (item.state) {
-      case _SlotState.imminent:
-        statusColor = danger;
-        statusBadgeText = l.busStatusImminent;
-      case _SlotState.soon:
-        statusColor = warning;
-        statusBadgeText = l.busStatusSoon;
-      case _SlotState.upcoming:
-        statusColor = primary;
-        statusBadgeText = l.busStatusUpcoming;
-      case _SlotState.departed:
-        statusColor = tertiary;
-        statusBadgeText = l.busStatusDeparted;
-      case _SlotState.endedToday:
-        statusColor = tertiary;
-        statusBadgeText = l.busStatusEnded;
-    }
-
-    // 解析该区间内每一站的时刻（处理跨午夜）
-    final stopTimes = <DateTime>[];
-    DateTime? prevDt;
-    for (final s in segmentStops) {
-      final tStr = item.slotIndex < s.times.length ? s.times[item.slotIndex] : s.times.last;
-      final dt = _BusScheduleScreenState.parseStopDateTime(tStr, now, notBefore: prevDt);
-      stopTimes.add(dt);
-      prevDt = dt;
-    }
-
-    // 计算巴士当前所在的区间 (activeSegIdx) 和区间内插值进度 (segProgress: 0.0~1.0)
-    int? activeSegIdx;
-    double segProgress = 0.0;
-    int? currentStopIdx;
-
-    if (!allEndedToday && stopTimes.length >= 2) {
-      if (!now.isBefore(stopTimes.first) && now.isBefore(stopTimes.last)) {
-        for (var k = 0; k < stopTimes.length - 1; k++) {
-          final t1 = stopTimes[k];
-          final t2 = stopTimes[k + 1];
-          if (!now.isBefore(t1) && now.isBefore(t2)) {
-            activeSegIdx = k;
-            segProgress = calcBusSegmentProgress(now, t1, t2);
-            if (segProgress < 0.18) {
-              currentStopIdx = k;
-            } else if (segProgress > 0.88) {
-              currentStopIdx = k + 1;
-            }
-            break;
-          }
-        }
-      } else if (now.difference(stopTimes.first).inSeconds.abs() <= 45) {
-        currentStopIdx = 0;
-        activeSegIdx = 0;
-        segProgress = 0.0;
+    if (isWeekend) {
+      statusColor = warning;
+      statusBadgeText = l.busWeekendShortTag;
+    } else if (allEndedToday) {
+      statusColor = tertiary;
+      statusBadgeText = l.busStatusEnded;
+    } else {
+      switch (item.state) {
+        case _SlotState.imminent:
+          statusColor = danger;
+          statusBadgeText = l.busStatusImminent;
+        case _SlotState.soon:
+          statusColor = warning;
+          statusBadgeText = l.busStatusSoon;
+        case _SlotState.upcoming:
+          statusColor = primary;
+          statusBadgeText = l.busStatusUpcoming;
+        case _SlotState.departed:
+          statusColor = tertiary;
+          statusBadgeText = l.busStatusDeparted;
+        case _SlotState.endedToday:
+          statusColor = tertiary;
+          statusBadgeText = l.busStatusEnded;
       }
     }
 
-    final busCenterY = activeSegIdx != null
+    // 按当前所选单趟班次（独立 Trip）计算各站时间与行驶区间；
+    // 只有当 now 严格落在本趟车的 [first, last) 区间内时才绘制巴士图标与进度。
+    final trips = BusService.buildTripsForSegment(segmentStops, now);
+    final BusTrip? activeDisplayTrip =
+        (item.slotIndex >= 0 && item.slotIndex < trips.length) ? trips[item.slotIndex] : null;
+    final eval = activeDisplayTrip == null
+        ? null
+        : BusService.evaluateTripAt(
+            activeDisplayTrip,
+            now,
+            isWeekend: isWeekend,
+            allEndedToday: allEndedToday,
+          );
+
+    final stopTimes = activeDisplayTrip?.times ?? const <DateTime>[];
+    final isEnRoute = eval?.isEnRoute ?? false;
+    final activeSegIdx = eval?.activeSegIdx;
+    final segProgress = eval?.segProgress ?? 0.0;
+    final tripProgress = eval?.tripProgress ?? 0.0;
+    final currentStopIdx = eval?.currentStopIdx;
+
+    final busCenterY = (isEnRoute && activeSegIdx != null)
         ? (activeSegIdx + segProgress) * _rowHeight + (_rowHeight / 2)
         : null;
+
+    // 顶部主标题文案严格覆盖四种边界态，且绝不展示超过 3 小时的分钟倒计时
+    final String headlineText;
+    if (isWeekend) {
+      headlineText = l.busHomeWeekend;
+    } else if (allEndedToday) {
+      headlineText = l.busNoMoreTripsToday;
+    } else if (isEnRoute) {
+      headlineText = l.busBusHereLabel((tripProgress * 100).round());
+    } else if (isDeparted) {
+      headlineText = l.busDepartedAtStop(
+        L10nHelper.cleanBusStopName(segmentStops.first.name),
+        item.originTimeStr,
+      );
+    } else {
+      final mins = item.remainToOrigin.inMinutes;
+      if (mins > BusService.maxCountdownMinutes) {
+        headlineText = l.busNextTripAbsolute(item.originTimeStr);
+      } else if (mins >= 5) {
+        headlineText = l.busNextTripWaiting(item.originTimeStr, mins);
+      } else {
+        headlineText =
+            '${l.busNextTripAbsolute(item.originTimeStr)} · ${_formatCountdown(context, item.remainToOrigin)}';
+      }
+    }
 
     return AnimatedBuilder(
       animation: pulseAnimation,
@@ -1442,7 +1453,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                   : AppColors.softBorder(context, statusColor, lightAlpha: 0.28, darkAlpha: 0.35),
               width: isImminent ? 1.5 : 1.0,
             ),
-            boxShadow: isDeparted ? AppShadows.card(context) : AppShadows.hero(context),
+            boxShadow: (isDeparted || isWeekend) ? AppShadows.card(context) : AppShadows.hero(context),
           ),
           child: child,
         );
@@ -1506,28 +1517,22 @@ class _LiveRouteTimelineCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    allEndedToday
-                        ? l.busNoMoreTripsToday
-                        : (isDeparted
-                            ? l.busDepartedAtStop(
-                                L10nHelper.cleanBusStopName(segmentStops.first.name),
-                                item.originTimeStr,
-                              )
-                            : (item.enRouteSegment
-                                ? l.busBusHereLabel((segProgress * 100).round())
-                                : _formatCountdown(context, item.remainToOrigin))),
-                    style: (isDeparted || allEndedToday)
-                        ? AppTypography.subtitle(context, color: tertiary)
-                        : AppTypography.metricLarge(context, color: statusColor),
+                    headlineText,
+                    style: (isDeparted || allEndedToday || isWeekend)
+                        ? AppTypography.subtitle(context, color: isWeekend ? warning : tertiary)
+                        : AppTypography.metricLarge(
+                            context,
+                            color: isEnRoute ? teal : statusColor,
+                          ).copyWith(fontSize: isEnRoute ? 18 : 17),
                   ),
                 ),
-                if (!isDeparted && !allEndedToday)
+                if (!isDeparted && !allEndedToday && !isWeekend)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.softBg(
                         context,
-                        item.enRouteSegment ? teal : statusColor,
+                        isEnRoute ? teal : statusColor,
                       ),
                       borderRadius: AppRadius.bPill,
                     ),
@@ -1537,14 +1542,14 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                         Icon(
                           Icons.circle,
                           size: 8,
-                          color: item.enRouteSegment ? teal : statusColor,
+                          color: isEnRoute ? teal : statusColor,
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          item.enRouteSegment ? l.busEnRoute : l.busWaitingDepart,
+                          isEnRoute ? l.busEnRoute : l.busWaitingDepart,
                           style: AppTypography.badge(
                             context,
-                            color: item.enRouteSegment ? teal : statusColor,
+                            color: isEnRoute ? teal : statusColor,
                           ),
                         ),
                       ],
@@ -1555,13 +1560,12 @@ class _LiveRouteTimelineCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             const Divider(height: 1),
             const SizedBox(height: AppSpacing.sm),
-            // 垂直时间轴 + 连续插值平滑移动的巴士图标
+            // 垂直时间轴 + 连续插值平滑移动的巴士图标（仅 isEnRoute 时绘制车辆）
             SizedBox(
               height: segmentStops.length * _rowHeight,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // 1. 底层：各站点圆点、连接线（已过实心青绿、未走虚线灰）与站点信息
                   Column(
                     children: [
                       for (var k = 0; k < segmentStops.length; k++)
@@ -1570,18 +1574,19 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                           index: k,
                           totalStops: segmentStops.length,
                           stop: segmentStops[k],
-                          stopTime: stopTimes[k],
-                          isCurrent: currentStopIdx == k,
-                          isPassed: !allEndedToday &&
+                          stopTime: k < stopTimes.length ? stopTimes[k] : now,
+                          isEnRoute: isEnRoute,
+                          isDepartedSlot: isDeparted,
+                          isCurrent: isEnRoute && currentStopIdx == k,
+                          isPassed: isEnRoute &&
                               currentStopIdx != k &&
+                              k < stopTimes.length &&
                               now.isAfter(stopTimes[k]),
                           activeSegIdx: activeSegIdx,
-                          segProgress: segProgress,
                           statusColor: statusColor,
                         ),
                     ],
                   ),
-                  // 2. 顶层：平滑移动的巴士图标（AnimatedPositioned 1 秒线性补间，连续滑动不跳格）
                   if (busCenterY != null)
                     AnimatedPositioned(
                       duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 980),
@@ -1618,10 +1623,11 @@ class _LiveRouteTimelineCard extends StatelessWidget {
     required int totalStops,
     required BusStopSchedule stop,
     required DateTime stopTime,
+    required bool isEnRoute,
+    required bool isDepartedSlot,
     required bool isCurrent,
     required bool isPassed,
     required int? activeSegIdx,
-    required double segProgress,
     required Color statusColor,
   }) {
     final l = context.l10n;
@@ -1637,39 +1643,46 @@ class _LiveRouteTimelineCard extends StatelessWidget {
     final tertiary = AppColors.textTertiary(context);
     final borderColor = AppColors.border(context);
 
-    // 计算距该站的剩余分钟数（跨午夜及已过站安全处理，绝不显示负数）
     final diffSecs = stopTime.difference(now).inSeconds;
     final minsUntil = (diffSecs / 60).ceil();
 
-    // 上半段连接线是否已走过
-    final topLinePassed = index > 0 &&
-        !allEndedToday &&
+    // 上半段 / 下半段连接线：仅当前正在跑这一趟时才将已走过区间标成青绿实线
+    final topLinePassed = isEnRoute &&
+        index > 0 &&
         (isPassed || isCurrent || (activeSegIdx != null && activeSegIdx >= index - 1));
-    // 下半段连接线是否已走过
-    final bottomLinePassed = !isLast &&
-        !allEndedToday &&
+    final bottomLinePassed = isEnRoute &&
+        !isLast &&
         (isPassed || (activeSegIdx != null && activeSegIdx >= index));
 
     String rightStatusText = '';
     Color rightStatusColor = tertiary;
-    if (allEndedToday) {
-      rightStatusText = l.busNoMoreTripsToday;
+    if (isWeekend) {
+      rightStatusText = l.busWeekendShortTag;
+      rightStatusColor = tertiary;
+    } else if (allEndedToday) {
+      rightStatusText = l.busTomorrowTimeTag(tStr);
       rightStatusColor = tertiary;
     } else if (isCurrent) {
       rightStatusText = l.busStopCurrentTag;
       rightStatusColor = teal;
-    } else if (isPassed || diffSecs < 0) {
+    } else if (isPassed || isDepartedSlot || diffSecs < 0) {
       rightStatusText = l.busStopPassedTag;
       rightStatusColor = tertiary;
     } else if (diffSecs <= 60) {
       rightStatusText = l.busStopArrivingNowTag;
       rightStatusColor = danger;
+    } else if (minsUntil > BusService.maxCountdownMinutes) {
+      // 超过 3 小时绝不显示「还有 N 分」，只显示绝对时刻
+      rightStatusText = stopTime.day != now.day ? l.busTomorrowTimeTag(tStr) : tStr;
+      rightStatusColor = primary;
     } else {
       rightStatusText = l.busStopInMinutesTag(minsUntil);
       rightStatusColor = minsUntil <= 5
           ? danger
           : (minsUntil <= 15 ? warning : primary);
     }
+
+    final stopInactive = isWeekend || allEndedToday || isDepartedSlot || isPassed;
 
     return SizedBox(
       height: _rowHeight,
@@ -1709,10 +1722,8 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: isCurrent
                           ? teal
-                          : (isPassed || allEndedToday
-                              ? tertiary
-                              : AppColors.surface(context)),
-                      border: (!isCurrent && !isPassed && !allEndedToday)
+                          : (stopInactive ? tertiary : AppColors.surface(context)),
+                      border: (!isCurrent && !stopInactive)
                           ? Border.all(color: statusColor, width: 2.2)
                           : null,
                     ),
@@ -1773,7 +1784,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                         context,
                         color: isCurrent
                             ? teal
-                            : (isPassed ? tertiary : AppColors.textPrimary(context)),
+                            : (stopInactive ? tertiary : AppColors.textPrimary(context)),
                       ).copyWith(
                         fontSize: 13.5,
                         fontWeight: isCurrent || isFirst || isLast ? FontWeight.w700 : FontWeight.w500,
@@ -1791,7 +1802,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                         tStr,
                         style: AppTypography.metricMedium(
                           context,
-                          color: isPassed ? tertiary : AppColors.textPrimary(context),
+                          color: stopInactive ? tertiary : AppColors.textPrimary(context),
                         ).copyWith(fontSize: 13.5),
                       ),
                       const SizedBox(height: 1),
@@ -1800,7 +1811,7 @@ class _LiveRouteTimelineCard extends StatelessWidget {
                         style: AppTypography.badge(context, color: rightStatusColor)
                             .copyWith(
                               fontSize: 10.5,
-                              fontWeight: isCurrent || (!isPassed && minsUntil <= 15)
+                              fontWeight: isCurrent || (!stopInactive && diffSecs >= 0 && minsUntil <= 15)
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                             ),

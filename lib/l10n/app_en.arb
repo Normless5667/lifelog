@@ -1090,5 +1090,41 @@
   "weatherSystemNotFound": "No built-in weather app found on this device",
   "weatherForecastEmpty": "15-day forecast unavailable — tap refresh",
   "weatherTodayTag": "Today",
-  "weatherTomorrowTag": "Tomorrow"
+  "weatherTomorrowTag": "Tomorrow",
+
+  "busHomeNextAbsolute": "{dir} · Next {time}",
+  "@busHomeNextAbsolute": {
+    "placeholders": {
+      "dir": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "busNextTripWaiting": "Next {time} · in {mins} min",
+  "@busNextTripWaiting": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "mins": { "type": "int" }
+    }
+  },
+  "busNextTripAbsolute": "Next {time}",
+  "@busNextTripAbsolute": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busTomorrowTimeTag": "Tmr {time}",
+  "@busTomorrowTimeTag": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "busWeekendShortTag": "Weekend",
+  "busReverseOrderError": "This direction runs {dest} → {origin}, not {origin} → {dest}.",
+  "@busReverseOrderError": {
+    "placeholders": {
+      "origin": { "type": "String" },
+      "dest": { "type": "String" }
+    }
+  },
+  "busSwapBtnShort": "Swap"
 }

@@ -2087,4 +2087,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get weatherTomorrowTag => 'Tomorrow';
+
+  @override
+  String busHomeNextAbsolute(String dir, String time) {
+    return '$dir · Next $time';
+  }
+
+  @override
+  String busNextTripWaiting(String time, int mins) {
+    return 'Next $time · in $mins min';
+  }
+
+  @override
+  String busNextTripAbsolute(String time) {
+    return 'Next $time';
+  }
+
+  @override
+  String busTomorrowTimeTag(String time) {
+    return 'Tmr $time';
+  }
+
+  @override
+  String get busWeekendShortTag => 'Weekend';
+
+  @override
+  String busReverseOrderError(String origin, String dest) {
+    return 'This direction runs $dest → $origin, not $origin → $dest.';
+  }
+
+  @override
+  String get busSwapBtnShort => 'Swap';
 }
