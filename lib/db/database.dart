@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'lifelog.db';
-  static const _dbVersion = 4;
+  static const _dbVersion = 5;
 
   Database? _db;
 
@@ -80,7 +80,9 @@ class AppDatabase {
         date TEXT NOT NULL,
         start_time INTEGER NOT NULL,
         end_time INTEGER,
-        note TEXT
+        note TEXT,
+        manual_duration_min INTEGER,
+        manual_burn_kcal REAL
       )''');
     b.execute('''
       CREATE TABLE workout_sets (
@@ -109,6 +111,8 @@ class AppDatabase {
         duration_minutes REAL NOT NULL DEFAULT 0,
         distance_km REAL,
         calories REAL NOT NULL DEFAULT 0,
+        manual_duration_min REAL,
+        manual_burn_kcal REAL,
         created_at INTEGER NOT NULL
       )''');
     b.execute('CREATE INDEX idx_cardio_date ON cardio_records(date)');
@@ -179,6 +183,25 @@ class AppDatabase {
         )''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts)');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_usage_cat ON usage_events(category, name)');
+    }
+    if (oldVersion < 5) {
+      await _addColumnIfMissing(db, 'workouts', 'manual_duration_min', 'INTEGER');
+      await _addColumnIfMissing(db, 'workouts', 'manual_burn_kcal', 'REAL');
+      await _addColumnIfMissing(db, 'cardio_records', 'manual_duration_min', 'REAL');
+      await _addColumnIfMissing(db, 'cardio_records', 'manual_burn_kcal', 'REAL');
+    }
+  }
+
+  Future<void> _addColumnIfMissing(
+    Database db,
+    String table,
+    String column,
+    String definition,
+  ) async {
+    final cols = await db.rawQuery('PRAGMA table_info($table)');
+    final exists = cols.any((c) => c['name'] == column);
+    if (!exists) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
     }
   }
 

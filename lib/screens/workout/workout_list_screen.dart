@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
@@ -12,8 +13,8 @@ import 'workout_session_screen.dart';
 
 /// 训练板块（v2.0）：
 /// 1) 当前使用的 AI 训练计划卡片（支持选某一天直接一键开练）
-/// 2) 力量训练会话历史 + 容量柱状图
-/// 3) 独立有氧运动记录（按 MET 自动算消耗 kcal）
+/// 2) 力量训练会话历史 + 容量柱状图 + 手动修正 + 快速补录
+/// 3) 独立有氧运动记录（按 MET 自动算消耗 kcal，支持手动修正）
 class WorkoutListScreen extends StatefulWidget {
   const WorkoutListScreen({super.key});
 
@@ -28,6 +29,7 @@ class _WorkoutSummary {
   final int workSets;
   final double volume;
   final double estCalories;
+  final double autoCalories;
 
   _WorkoutSummary(
     this.workout,
@@ -36,12 +38,14 @@ class _WorkoutSummary {
     this.workSets,
     this.volume,
     this.estCalories,
+    this.autoCalories,
   );
 }
 
 class _WorkoutListScreenState extends State<WorkoutListScreen> {
   List<_WorkoutSummary> _items = [];
   List<CardioRecord> _cardios = [];
+  List<Exercise> _exercises = [];
   TrainingPlan? _plan;
   double _userWeightKg = 65;
   int _tab = 0; // 0=力量训练, 1=独立有氧
@@ -50,12 +54,23 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   @override
   void initState() {
     super.initState();
+    Repo.dataVersion.addListener(_onRepoDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    Repo.dataVersion.removeListener(_onRepoDataChanged);
+    super.dispose();
+  }
+
+  void _onRepoDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
     final rec = await Repo.latestBodyRecordWithWeight();
-    final weightKg = rec?.weight ?? 65;
+    final weightKg = Nutrition.sanitizeWeightKg(rec?.weight) ?? 65;
     final workouts = await Repo.getWorkouts(limit: 60);
     final cardios = await Repo.getCardioRecords(limit: 60);
     final plan = await Repo.getTrainingPlan();
@@ -78,15 +93,21 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       final strengthStats = Nutrition.calcStrengthStats(strengthRows);
       final workSets = strengthStats.sets;
       final vol = strengthStats.volume;
-      double mins = 0;
+      double elapsedMins = 0;
       if (w.endTime != null && w.endTime! > w.startTime) {
-        mins = (w.endTime! - w.startTime) / 60000.0;
+        elapsedMins = (w.endTime! - w.startTime) / 60000.0;
       }
-      if (mins <= 1 && workSets > 0) mins = workSets * 2.5;
-      final kcal = Nutrition.calcMetCalories(
-        met: Nutrition.strengthMet,
+      final autoKcal = Nutrition.estimateStrengthBurnKcal(
+        totalVolumeKg: vol,
+        workSets: workSets,
         weightKg: weightKg,
-        minutes: mins.clamp(0, 180),
+        elapsedMinutes: elapsedMins,
+      );
+      final effectiveKcal = Nutrition.burnForWorkout(
+        workout: w,
+        totalVolumeKg: vol,
+        workSets: workSets,
+        weightKg: weightKg,
       );
       out.add(_WorkoutSummary(
         w,
@@ -94,7 +115,8 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         primaryCat ?? L10nHelper.cardioOtherCategory,
         workSets,
         vol,
-        kcal,
+        effectiveKcal,
+        autoKcal,
       ));
     }
     WidgetService.sync(force: true);
@@ -103,6 +125,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       _userWeightKg = weightKg;
       _items = out;
       _cardios = cardios;
+      _exercises = exercises;
       _plan = plan;
       _loading = false;
     });
@@ -146,9 +169,92 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     if (res != null) {
       await Repo.saveCardioRecord(res);
       if (!mounted) return;
-      toast(context, context.l10n.workoutCardioSavedToast(fmtNum(res.calories)));
+      final burn = Nutrition.burnForCardio(res, weightKg: _userWeightKg);
+      toast(context, context.l10n.workoutCardioSavedToast(fmtNum(burn)));
       _load();
     }
+  }
+
+  /// 底部弹窗：手动修正某次力量训练的实际时长与消耗热量
+  Future<void> _showAdjustWorkoutSheet(_WorkoutSummary it) async {
+    final res = await showModalBottomSheet<({int? durationMin, double? burnKcal, bool reset})>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _AdjustWorkoutSheet(
+        summary: it,
+        weightKg: _userWeightKg,
+      ),
+    );
+    if (res == null) return;
+    final w = it.workout;
+    if (res.reset) {
+      w.manualDurationMin = null;
+      w.manualBurnKcal = null;
+    } else {
+      w.manualDurationMin = res.durationMin;
+      w.manualBurnKcal = res.burnKcal;
+    }
+    await Repo.updateWorkout(w);
+    if (!mounted) return;
+    final updatedBurn = Nutrition.burnForWorkout(
+      workout: w,
+      totalVolumeKg: it.volume,
+      workSets: it.workSets,
+      weightKg: _userWeightKg,
+    );
+    toast(context, context.l10n.workoutAdjustSavedToast(fmtNum(updatedBurn)));
+    _load();
+  }
+
+  /// 底部弹窗：快速补录一次训练（直接填日期/时长/消耗，不进入计时会话）
+  Future<void> _showQuickLogWorkoutSheet() async {
+    final res = await showModalBottomSheet<
+        ({String date, String note, int durationMin, double burnKcal, Exercise? exercise, int sets})>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _QuickLogWorkoutSheet(
+        weightKg: _userWeightKg,
+        exercises: _exercises,
+      ),
+    );
+    if (res == null) return;
+    final d = parseDate(res.date);
+    final now = DateTime.now();
+    final startDt = DateTime(d.year, d.month, d.day, now.hour, now.minute);
+    final startMs = startDt.millisecondsSinceEpoch;
+    final endMs = startMs + res.durationMin * 60000;
+    final wid = await Repo.createWorkout(Workout(
+      date: dateOnlyStr(res.date),
+      startTime: startMs,
+      endTime: endMs,
+      note: res.note.trim().isEmpty ? null : res.note.trim(),
+      manualDurationMin: res.durationMin,
+      manualBurnKcal: res.burnKcal,
+    ));
+    if (res.exercise != null && res.exercise!.id != null && res.sets > 0) {
+      final rows = [
+        for (var i = 1; i <= res.sets.clamp(1, 30); i++)
+          WorkoutSet(
+            workoutId: wid,
+            exerciseId: res.exercise!.id!,
+            setIndex: i,
+            weight: 0,
+            reps: 0,
+            isWarmup: false,
+          ),
+      ];
+      await Repo.replaceSets(wid, rows);
+    }
+    if (!mounted) return;
+    toast(
+      context,
+      context.l10n.workoutQuickLogSavedToast(res.durationMin, fmtNum(res.burnKcal)),
+    );
+    _load();
   }
 
   @override
@@ -278,6 +384,11 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         l.workoutHistoryTitle,
         icon: Icons.history_rounded,
         iconColor: workoutColor,
+        trailing: TextButton.icon(
+          onPressed: _showQuickLogWorkoutSheet,
+          icon: const Icon(Icons.edit_note_rounded, size: 18),
+          label: Text(l.workoutQuickLogBtn),
+        ),
       ),
     ];
 
@@ -394,6 +505,9 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       itemBuilder: (_, i) {
         final c = _cardios[i];
         final typeLabel = L10nHelper.cardioTypeLabel(context, c.type);
+        final effDur = c.effectiveDurationMinutes;
+        final effBurn = Nutrition.burnForCardio(c, weightKg: _userWeightKg);
+        final warning = AppColors.warning(context);
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: SurfaceCard(
@@ -415,11 +529,32 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${l.workoutCardioItemTitle(typeLabel, fmtNum(c.durationMinutes))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
-                        style: AppTypography.cardTitle(context),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${l.workoutCardioItemTitle(typeLabel, fmtNum(effDur))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
+                              style: AppTypography.cardTitle(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (c.isManuallyAdjusted) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.softBg(context, warning),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Text(
+                                l.workoutAdjustedBadge,
+                                style: AppTypography.badge(context, color: warning)
+                                    .copyWith(fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -437,9 +572,19 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                     borderRadius: AppRadius.bSm,
                   ),
                   child: Text(
-                    '-${fmtNum(c.calories)} kcal',
+                    '-${fmtNum(effBurn)} kcal',
                     style: AppTypography.badge(context, color: cardioColor),
                   ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: l.workoutAdjustTooltip,
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary(context),
+                  ),
+                  onPressed: () => _addOrEditCardio(c),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
@@ -463,13 +608,69 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     );
   }
 
-  /// 最近 7 次训练容量柱状可视化卡片（Strava/Keep 风格）
+  /// 最近 7 次训练容量柱状可视化卡片（单条记录自动切换居中单柱，避免铺满整行）
   Widget _volumeBarCard() {
     final l = context.l10n;
     final workoutColor = AppColors.moduleWorkout(context);
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final recent = _items.take(7).toList().reversed.toList();
+    final recent = _items.where((e) => e.volume > 0).take(7).toList().reversed.toList();
+    if (recent.isEmpty) return const SizedBox.shrink();
     final maxVol = recent.fold<double>(1, (m, e) => e.volume > m ? e.volume : m);
+
+    Widget buildBar(
+      _WorkoutSummary it, {
+      double? fixedWidth,
+    }) {
+      final ratio = (it.volume / maxVol).clamp(0.10, 1.0);
+      final vis = categoryVisual(it.primaryCategory);
+      final barColor = AppColors.adaptForDark(context, vis.color);
+      final dateShort =
+          it.workout.date.length >= 10 ? it.workout.date.substring(5, 10) : it.workout.date;
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              fmtNum(it.volume),
+              style: AppTypography.badge(context).copyWith(fontSize: 10),
+            ),
+          ),
+          const SizedBox(height: 5),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 68 * ratio),
+            duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+            builder: (_, h, _) => ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: fixedWidth ?? 48,
+                minWidth: fixedWidth ?? 0,
+              ),
+              child: Container(
+                height: h,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [barColor, barColor.withValues(alpha: 0.72)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                    bottom: Radius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            dateShort,
+            style: AppTypography.caption(context).copyWith(fontSize: 10),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
 
     return SurfaceCard(
       padding: AppSpacing.cardPadding,
@@ -497,62 +698,52 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            height: 118,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: recent.map((it) {
-                final ratio = (it.volume / maxVol).clamp(0.10, 1.0);
-                final vis = categoryVisual(it.primaryCategory);
-                final barColor = AppColors.adaptForDark(context, vis.color);
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            fmtNum(it.volume),
-                            style: AppTypography.badge(context).copyWith(fontSize: 10),
-                          ),
+          if (recent.length == 1)
+            SizedBox(
+              height: 118,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  buildBar(recent.first, fixedWidth: 52),
+                  const SizedBox(width: AppSpacing.xl),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${fmtNum(recent.first.volume)} kg',
+                        style: AppTypography.metricLarge(context, color: workoutColor),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l.workoutSingleDayVolumeSub(
+                          L10nHelper.friendlyDateL10n(context, recent.first.workout.date),
                         ),
-                        const SizedBox(height: 5),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0, end: 68 * ratio),
-                          duration: reduceMotion
-                              ? Duration.zero
-                              : const Duration(milliseconds: 450),
-                          curve: Curves.easeOutCubic,
-                          builder: (_, h, _) => Container(
-                            height: h,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [barColor, barColor.withValues(alpha: 0.72)],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(6),
-                                bottom: Radius.circular(3),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          it.workout.date.substring(5),
-                          style: AppTypography.caption(context).copyWith(fontSize: 10),
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
+                        style: AppTypography.caption(context),
+                      ),
+                    ],
                   ),
-                );
-              }).toList(),
+                ],
+              ),
+            )
+          else
+            SizedBox(
+              height: 118,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: recent
+                    .map(
+                      (it) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                          child: Center(child: buildBar(it)),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -561,11 +752,30 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   Widget _workoutItemCard(_WorkoutSummary it) {
     final l = context.l10n;
     final w = it.workout;
-    final durMin = w.endTime == null ? null : ((w.endTime! - w.startTime) ~/ 60000);
+    final durMin = w.effectiveDurationMinutes;
     final vis = categoryVisual(it.primaryCategory);
     final catColor = AppColors.adaptForDark(context, vis.color);
+    final warning = AppColors.warning(context);
     final displayNames =
         it.exerciseNames.map((n) => L10nHelper.exerciseDisplayName(context, n)).toList();
+    final titleText = displayNames.isNotEmpty
+        ? displayNames.join(' · ')
+        : ((w.note != null && w.note!.trim().isNotEmpty)
+            ? w.note!.trim()
+            : l.workoutEmptySessionTitle);
+
+    final line1Parts = <String>[
+      L10nHelper.friendlyDateL10n(context, w.date),
+      if (it.workSets > 0) l.workoutCompactSets(it.workSets),
+      if (it.volume > 0) '${fmtNum(it.volume)} kg',
+    ];
+    final line2Parts = <String>[
+      if (durMin != null && durMin > 0) l.workoutCompactDuration(durMin),
+      if (it.estCalories > 0)
+        w.isManuallyAdjusted
+            ? l.workoutCompactBurnExact(fmtNum(it.estCalories))
+            : l.workoutCompactBurnEst(fmtNum(it.estCalories)),
+    ];
 
     return SurfaceCard(
       onTap: () => _openSession(w.id!),
@@ -587,24 +797,60 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  displayNames.isEmpty ? l.workoutEmptySessionTitle : displayNames.join(' · '),
-                  maxLines: 2,
+                  titleText,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.cardTitle(context),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  [
-                    L10nHelper.friendlyDateL10n(context, w.date),
-                    if (durMin != null && durMin > 0) l.workoutSessionDuration(durMin),
-                    l.workoutSessionSets(it.workSets),
-                    if (it.volume > 0) l.workoutSessionVolume(fmtNum(it.volume)),
-                    if (it.estCalories > 0) l.workoutSessionBurn(fmtNum(it.estCalories)),
-                  ].join(' · '),
-                  style: AppTypography.bodySecondary(context),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        line1Parts.join(' · '),
+                        style: AppTypography.bodySecondary(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (w.isManuallyAdjusted) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.softBg(context, warning),
+                          borderRadius: AppRadius.bSm,
+                        ),
+                        child: Text(
+                          l.workoutAdjustedBadge,
+                          style: AppTypography.badge(context, color: warning)
+                              .copyWith(fontSize: 10),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
+                if (line2Parts.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    line2Parts.join(' · '),
+                    style: AppTypography.caption(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: l.workoutAdjustTooltip,
+            icon: Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: AppColors.textSecondary(context),
+            ),
+            onPressed: () => _showAdjustWorkoutSheet(it),
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -620,7 +866,6 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               }
             },
           ),
-          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary(context)),
         ],
       ),
     );
@@ -652,11 +897,18 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
     _date = e?.date ?? today();
     _type = e?.type ?? L10nHelper.cardioDefaultType;
     if (!Nutrition.cardioMets.containsKey(_type)) _type = L10nHelper.cardioDefaultType;
-    _mins = TextEditingController(text: e != null ? fmtNum(e.durationMinutes) : '30');
+    _mins = TextEditingController(
+      text: e != null ? fmtNum(e.effectiveDurationMinutes) : '30',
+    );
     _dist = TextEditingController(
       text: e?.distanceKm != null ? fmtNum(e!.distanceKm!, digits: 2) : '',
     );
-    _kcal = TextEditingController(text: e != null ? fmtNum(e.calories) : '');
+    _kcal = TextEditingController(
+      text: e != null ? fmtNum(Nutrition.burnForCardio(e, weightKg: widget.weightKg)) : '',
+    );
+    if (e?.manualBurnKcal != null && e!.manualBurnKcal! > 0) {
+      _manualKcal = true;
+    }
     if (e == null) _recalc();
   }
 
@@ -805,23 +1057,33 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
             final mins = rawMins.clamp(0.5, 1440.0).toDouble();
             final rawDist = Nutrition.parsePlainDouble(_dist.text);
             final dist = rawDist == null ? null : rawDist.clamp(0.0, 500.0).toDouble();
-            final rawKcal = Nutrition.parsePlainDouble(_kcal.text) ??
-                Nutrition.calcMetCalories(
-                  met: Nutrition.cardioMets[_type] ?? 5.0,
-                  weightKg: widget.weightKg,
-                  minutes: mins,
-                );
+            final metVal = Nutrition.cardioMets[_type] ?? 5.0;
+            final autoKcal = Nutrition.calcMetCalories(
+              met: metVal,
+              weightKg: widget.weightKg,
+              minutes: mins,
+            );
+            final rawKcal = Nutrition.parsePlainDouble(_kcal.text) ?? autoKcal;
             final kcal = rawKcal.clamp(0.0, Nutrition.maxSingleActivityBurnKcal).toDouble();
+            final e = widget.existing;
+            final manualBurn = _manualKcal
+                ? kcal.clamp(0.0, Nutrition.maxManualWorkoutBurnKcal).toDouble()
+                : e?.manualBurnKcal;
+            final manualDur = (e != null && (mins - e.durationMinutes).abs() > 0.01)
+                ? mins
+                : e?.manualDurationMin;
             Navigator.pop(
               context,
               CardioRecord(
-                id: widget.existing?.id,
-                date: _date,
+                id: e?.id,
+                date: dateOnlyStr(_date),
                 type: _type,
-                durationMinutes: mins,
+                durationMinutes: e?.durationMinutes ?? mins,
                 distanceKm: dist,
                 calories: kcal,
-                createdAt: widget.existing?.createdAt,
+                manualDurationMin: manualDur,
+                manualBurnKcal: manualBurn,
+                createdAt: e?.createdAt,
               ),
             );
           },
@@ -829,6 +1091,435 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
           label: Text(l.commonSave),
         ),
       ],
+    );
+  }
+}
+
+/// 底部弹窗：手动修正力量训练实际时长与消耗热量
+class _AdjustWorkoutSheet extends StatefulWidget {
+  final _WorkoutSummary summary;
+  final double weightKg;
+
+  const _AdjustWorkoutSheet({
+    required this.summary,
+    required this.weightKg,
+  });
+
+  @override
+  State<_AdjustWorkoutSheet> createState() => _AdjustWorkoutSheetState();
+}
+
+class _AdjustWorkoutSheetState extends State<_AdjustWorkoutSheet> {
+  late final TextEditingController _durCtrl;
+  late final TextEditingController _kcalCtrl;
+  bool _manualBurnEdited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final w = widget.summary.workout;
+    final initDur = w.effectiveDurationMinutes;
+    _durCtrl = TextEditingController(text: (initDur != null && initDur > 0) ? '$initDur' : '');
+    _kcalCtrl = TextEditingController(
+      text: widget.summary.estCalories > 0 ? fmtNum(widget.summary.estCalories) : '',
+    );
+    _manualBurnEdited = w.manualBurnKcal != null && w.manualBurnKcal! > 0;
+  }
+
+  @override
+  void dispose() {
+    _durCtrl.dispose();
+    _kcalCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onDurationChanged(String _) {
+    if (_manualBurnEdited) return;
+    final dur = Nutrition.parsePlainInt(_durCtrl.text);
+    if (dur != null && dur > 0) {
+      final est = Nutrition.calcMetCalories(
+        met: Nutrition.strengthMet,
+        weightKg: widget.weightKg,
+        minutes: dur.toDouble().clamp(1.0, 600.0),
+      ).clamp(0.0, Nutrition.maxManualWorkoutBurnKcal);
+      _kcalCtrl.text = fmtNum(est);
+    } else {
+      _kcalCtrl.text = fmtNum(widget.summary.autoCalories);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final workoutColor = AppColors.moduleWorkout(context);
+    final info = AppColors.info(context);
+    final danger = AppColors.danger(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.sm,
+        AppSpacing.xl,
+        bottomInset + AppSpacing.xl,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, workoutColor),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(Icons.edit_rounded, color: workoutColor, size: 19),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(l.workoutAdjustTitle, style: AppTypography.sectionTitle(context)),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _durCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(3),
+              ],
+              onChanged: _onDurationChanged,
+              decoration: InputDecoration(
+                labelText: l.workoutAdjustDurationLabel,
+                suffixText: l.workoutAdjustDurationUnit,
+                prefixIcon: Icon(Icons.timer_rounded, color: workoutColor),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _kcalCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                LengthLimitingTextInputFormatter(6),
+              ],
+              onChanged: (_) => _manualBurnEdited = true,
+              decoration: InputDecoration(
+                labelText: l.workoutAdjustBurnLabel,
+                suffixText: 'kcal',
+                prefixIcon: Icon(Icons.local_fire_department_rounded, color: danger),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 15, color: info),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    l.workoutAdjustHint(fmtNum(widget.summary.autoCalories)),
+                    style: AppTypography.caption(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                if (widget.summary.workout.isManuallyAdjusted)
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      (durationMin: null, burnKcal: null, reset: true),
+                    ),
+                    child: Text(l.workoutAdjustResetBtn),
+                  ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l.commonCancel),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton.icon(
+                  onPressed: () {
+                    final parsedDur = Nutrition.parsePlainInt(_durCtrl.text);
+                    final safeDur = (parsedDur != null && parsedDur > 0)
+                        ? parsedDur.clamp(1, 600)
+                        : null;
+                    final parsedKcal = Nutrition.parsePlainDouble(_kcalCtrl.text);
+                    final safeKcal = (_manualBurnEdited && parsedKcal != null && parsedKcal > 0)
+                        ? parsedKcal.clamp(1.0, Nutrition.maxManualWorkoutBurnKcal).toDouble()
+                        : null;
+                    Navigator.pop(
+                      context,
+                      (durationMin: safeDur, burnKcal: safeKcal, reset: false),
+                    );
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: Text(l.commonSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 底部弹窗：快速补录一次训练（选日期、填时长、填消耗、可选备注与关联动作组数）
+class _QuickLogWorkoutSheet extends StatefulWidget {
+  final double weightKg;
+  final List<Exercise> exercises;
+
+  const _QuickLogWorkoutSheet({
+    required this.weightKg,
+    required this.exercises,
+  });
+
+  @override
+  State<_QuickLogWorkoutSheet> createState() => _QuickLogWorkoutSheetState();
+}
+
+class _QuickLogWorkoutSheetState extends State<_QuickLogWorkoutSheet> {
+  String _date = today();
+  final TextEditingController _noteCtrl = TextEditingController();
+  final TextEditingController _durCtrl = TextEditingController(text: '45');
+  final TextEditingController _kcalCtrl = TextEditingController();
+  final TextEditingController _setsCtrl = TextEditingController();
+  Exercise? _selectedExercise;
+  bool _manualKcal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _recalc();
+  }
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    _durCtrl.dispose();
+    _kcalCtrl.dispose();
+    _setsCtrl.dispose();
+    super.dispose();
+  }
+
+  void _recalc() {
+    if (_manualKcal) return;
+    final mins = Nutrition.parsePlainInt(_durCtrl.text) ?? 0;
+    final kcal = Nutrition.calcMetCalories(
+      met: Nutrition.strengthMet,
+      weightKg: widget.weightKg,
+      minutes: mins.toDouble().clamp(0.0, 600.0),
+    ).clamp(0.0, Nutrition.maxManualWorkoutBurnKcal);
+    _kcalCtrl.text = mins > 0 ? fmtNum(kcal) : '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final workoutColor = AppColors.moduleWorkout(context);
+    final teal = AppColors.teal(context);
+    final danger = AppColors.danger(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.sm,
+        AppSpacing.xl,
+        bottomInset + AppSpacing.xl,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.softBg(context, workoutColor),
+                    borderRadius: AppRadius.bMd,
+                  ),
+                  child: Icon(Icons.edit_note_rounded, color: workoutColor, size: 20),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(l.workoutQuickLogTitle, style: AppTypography.sectionTitle(context)),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.event_rounded, color: teal),
+              title: Text(
+                L10nHelper.friendlyDateL10n(context, _date),
+                style: AppTypography.subtitle(context),
+              ),
+              trailing: const Icon(Icons.edit_calendar_rounded, size: 18),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: parseDate(_date),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (d != null) setState(() => _date = fmtDate(d));
+              },
+            ),
+            TextField(
+              controller: _noteCtrl,
+              decoration: InputDecoration(
+                labelText: l.workoutQuickLogNoteLabel,
+                prefixIcon: Icon(Icons.notes_rounded, color: workoutColor),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _durCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(3),
+                    ],
+                    onChanged: (_) => setState(_recalc),
+                    decoration: InputDecoration(
+                      labelText: l.workoutAdjustDurationLabel,
+                      suffixText: l.workoutAdjustDurationUnit,
+                      prefixIcon: Icon(Icons.timer_rounded, color: workoutColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: TextField(
+                    controller: _kcalCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      LengthLimitingTextInputFormatter(6),
+                    ],
+                    onChanged: (_) => _manualKcal = true,
+                    decoration: InputDecoration(
+                      labelText: l.workoutAdjustBurnLabel,
+                      suffixText: 'kcal',
+                      prefixIcon: Icon(Icons.local_fire_department_rounded, color: danger),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.exercises.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: DropdownButtonFormField<Exercise?>(
+                      initialValue: _selectedExercise,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l.workoutQuickLogExerciseLabel,
+                      ),
+                      items: [
+                        DropdownMenuItem<Exercise?>(
+                          value: null,
+                          child: Text(l.workoutQuickLogNone),
+                        ),
+                        ...widget.exercises.map(
+                          (ex) => DropdownMenuItem<Exercise?>(
+                            value: ex,
+                            child: Text(
+                              L10nHelper.exerciseDisplayName(context, ex.name),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedExercise = v),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _setsCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(2),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: l.workoutQuickLogSetsLabel,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l.commonCancel),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton.icon(
+                  onPressed: () {
+                    final dur = Nutrition.parsePlainInt(_durCtrl.text) ?? 0;
+                    if (dur <= 0) {
+                      toast(context, l.workoutQuickLogDurationRequired);
+                      return;
+                    }
+                    final safeDur = dur.clamp(1, 600);
+                    final autoKcal = Nutrition.calcMetCalories(
+                      met: Nutrition.strengthMet,
+                      weightKg: widget.weightKg,
+                      minutes: safeDur.toDouble(),
+                    );
+                    final parsedKcal = Nutrition.parsePlainDouble(_kcalCtrl.text) ?? autoKcal;
+                    final safeKcal =
+                        parsedKcal.clamp(1.0, Nutrition.maxManualWorkoutBurnKcal).toDouble();
+                    final setsCount = (Nutrition.parsePlainInt(_setsCtrl.text) ?? 0).clamp(0, 30);
+                    final noteText = _noteCtrl.text.trim().isNotEmpty
+                        ? _noteCtrl.text.trim()
+                        : (_selectedExercise == null ? l.workoutQuickLogNoteDefault : '');
+                    Navigator.pop(
+                      context,
+                      (
+                        date: _date,
+                        note: noteText,
+                        durationMin: safeDur,
+                        burnKcal: safeKcal,
+                        exercise: _selectedExercise,
+                        sets: setsCount,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: Text(l.commonSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

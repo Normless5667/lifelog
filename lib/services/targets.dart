@@ -1,6 +1,7 @@
 import '../db/repo.dart';
 import '../models/models.dart';
 import '../utils/date_utils.dart';
+import '../utils/l10n_ext.dart';
 import 'nutrition.dart';
 import 'step_service.dart';
 
@@ -27,37 +28,37 @@ class DailyTargets {
 
   /// 根据资料、最新体重以及指定日期（默认今天）的训练与有氧消耗，动态计算每日目标。
   static Future<DailyTargets> load({String? date}) async {
-    final targetDate = date ?? today();
+    final targetDate = dateOnlyStr(date ?? today());
     final p = await Repo.getProfile();
     final rec = await Repo.latestBodyRecordWithWeight();
     final w = Nutrition.sanitizeWeightKg(rec?.weight) ?? 60.0;
 
-    // 1) 当日有氧消耗（单条合理性钳制）
+    // 1) 当日有氧消耗（遵循 manualBurnKcal > manualDurationMin > calories/MET）
     final cardios = await Repo.getCardioRecords(date: targetDate);
     var burn = cardios.fold<double>(
       0,
-      (s, c) =>
-          s +
-          (c.calories.isFinite && c.calories > 0
-              ? c.calories.clamp(0.0, Nutrition.maxSingleActivityBurnKcal)
-              : 0.0),
+      (s, c) => s + Nutrition.burnForCardio(c, weightKg: w),
     );
 
-    // 2) 当日力量训练消耗（按 MET 5.0 估算；如果没有结束时间，按每正式组 2.5 分钟估算）
-    final workouts = (await Repo.getWorkouts(from: targetDate)).where((wk) => wk.date == targetDate);
+    // 2) 当日力量训练消耗（遵循 manualBurnKcal > manualDurationMin > 容量法/计时法取大）
+    final exercises = await Repo.getExercises();
+    final exMap = {for (final e in exercises) e.id: e};
+    final workouts = await Repo.getWorkouts(date: targetDate);
     for (final wk in workouts) {
       final sets = await Repo.getSets(wk.id!);
-      final workSets = sets
-          .where((s) => !s.isWarmup && Nutrition.isValidStrengthSet(s.weight, s.reps))
-          .length;
-      double mins = 0;
-      if (wk.endTime != null && wk.endTime! > wk.startTime) {
-        mins = (wk.endTime! - wk.startTime) / 60000.0;
+      final strengthRows = <({double weight, int reps, bool isWarmup})>[];
+      for (final s in sets) {
+        final ex = exMap[s.exerciseId];
+        if (ex != null && L10nHelper.isCardioCategory(ex.category)) continue;
+        strengthRows.add((weight: s.weight, reps: s.reps, isWarmup: s.isWarmup));
       }
-      if (mins <= 1 && workSets > 0) {
-        mins = workSets * 2.5;
-      }
-      burn += Nutrition.calcMetCalories(met: Nutrition.strengthMet, weightKg: w, minutes: mins.clamp(0, 180));
+      final st = Nutrition.calcStrengthStats(strengthRows);
+      burn += Nutrition.burnForWorkout(
+        workout: wk,
+        totalVolumeKg: st.volume,
+        workSets: st.sets,
+        weightKg: w,
+      );
     }
 
     // 3) 当日计步传感器步数折算消耗

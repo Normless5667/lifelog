@@ -1808,6 +1808,144 @@ abstract class AppLocalizations {
   /// **'Cardio logged: ~{kcal} kcal burned (added to today\'s calorie budget)'**
   String workoutCardioSavedToast(String kcal);
 
+  /// No description provided for @workoutAdjustedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted'**
+  String get workoutAdjustedBadge;
+
+  /// No description provided for @workoutAdjustTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust duration & burn'**
+  String get workoutAdjustTooltip;
+
+  /// No description provided for @workoutAdjustTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust Workout'**
+  String get workoutAdjustTitle;
+
+  /// No description provided for @workoutAdjustDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual Duration'**
+  String get workoutAdjustDurationLabel;
+
+  /// No description provided for @workoutAdjustDurationUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get workoutAdjustDurationUnit;
+
+  /// No description provided for @workoutAdjustBurnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories Burned'**
+  String get workoutAdjustBurnLabel;
+
+  /// No description provided for @workoutAdjustHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated {kcal} kcal · editable'**
+  String workoutAdjustHint(String kcal);
+
+  /// No description provided for @workoutAdjustResetBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to Auto'**
+  String get workoutAdjustResetBtn;
+
+  /// No description provided for @workoutAdjustSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment saved ({kcal} kcal)'**
+  String workoutAdjustSavedToast(String kcal);
+
+  /// No description provided for @workoutQuickLogBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Log'**
+  String get workoutQuickLogBtn;
+
+  /// No description provided for @workoutQuickLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Log Workout'**
+  String get workoutQuickLogTitle;
+
+  /// No description provided for @workoutQuickLogNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout note (optional)'**
+  String get workoutQuickLogNoteLabel;
+
+  /// No description provided for @workoutQuickLogNoteDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick-logged workout'**
+  String get workoutQuickLogNoteDefault;
+
+  /// No description provided for @workoutQuickLogExerciseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise (optional)'**
+  String get workoutQuickLogExerciseLabel;
+
+  /// No description provided for @workoutQuickLogNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get workoutQuickLogNone;
+
+  /// No description provided for @workoutQuickLogSetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets (optional)'**
+  String get workoutQuickLogSetsLabel;
+
+  /// No description provided for @workoutQuickLogDurationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a duration greater than 0 min'**
+  String get workoutQuickLogDurationRequired;
+
+  /// No description provided for @workoutQuickLogSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged ({mins} min · {kcal} kcal)'**
+  String workoutQuickLogSavedToast(int mins, String kcal);
+
+  /// No description provided for @workoutCompactSets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} sets'**
+  String workoutCompactSets(int count);
+
+  /// No description provided for @workoutCompactDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{mins} min'**
+  String workoutCompactDuration(int mins);
+
+  /// No description provided for @workoutCompactBurnEst.
+  ///
+  /// In en, this message translates to:
+  /// **'~{kcal} kcal'**
+  String workoutCompactBurnEst(String kcal);
+
+  /// No description provided for @workoutCompactBurnExact.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal'**
+  String workoutCompactBurnExact(String kcal);
+
+  /// No description provided for @workoutSingleDayVolumeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · Latest strength session'**
+  String workoutSingleDayVolumeSub(String date);
+
   /// No description provided for @cardioDialogAddTitle.
   ///
   /// In en, this message translates to:
@@ -3029,7 +3167,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.6 · Co-developed with DaFeiYu'**
+  /// **'Version v2.1.7 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3315,7 +3453,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.6 (Build 12)'**
+  /// **'Version v2.1.7 (Build 13)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.

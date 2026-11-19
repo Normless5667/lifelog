@@ -994,6 +994,91 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get workoutAdjustedBadge => '已修正';
+
+  @override
+  String get workoutAdjustTooltip => '修正时长与消耗';
+
+  @override
+  String get workoutAdjustTitle => '修正训练记录';
+
+  @override
+  String get workoutAdjustDurationLabel => '实际训练时长';
+
+  @override
+  String get workoutAdjustDurationUnit => '分钟';
+
+  @override
+  String get workoutAdjustBurnLabel => '消耗热量';
+
+  @override
+  String workoutAdjustHint(String kcal) {
+    return '估算值 $kcal kcal，可手动改';
+  }
+
+  @override
+  String get workoutAdjustResetBtn => '恢复自动估算';
+
+  @override
+  String workoutAdjustSavedToast(String kcal) {
+    return '已保存修正（$kcal kcal）';
+  }
+
+  @override
+  String get workoutQuickLogBtn => '快速补录';
+
+  @override
+  String get workoutQuickLogTitle => '快速补录训练';
+
+  @override
+  String get workoutQuickLogNoteLabel => '训练内容（可选，如壶铃/胸背）';
+
+  @override
+  String get workoutQuickLogNoteDefault => '快速补录训练';
+
+  @override
+  String get workoutQuickLogExerciseLabel => '关联动作（可选）';
+
+  @override
+  String get workoutQuickLogNone => '不关联具体动作';
+
+  @override
+  String get workoutQuickLogSetsLabel => '组数（可选）';
+
+  @override
+  String get workoutQuickLogDurationRequired => '请填写大于 0 的训练时长';
+
+  @override
+  String workoutQuickLogSavedToast(int mins, String kcal) {
+    return '已补录训练（$mins 分钟 · $kcal kcal）';
+  }
+
+  @override
+  String workoutCompactSets(int count) {
+    return '$count 组';
+  }
+
+  @override
+  String workoutCompactDuration(int mins) {
+    return '$mins 分钟';
+  }
+
+  @override
+  String workoutCompactBurnEst(String kcal) {
+    return '约 $kcal kcal';
+  }
+
+  @override
+  String workoutCompactBurnExact(String kcal) {
+    return '$kcal kcal';
+  }
+
+  @override
+  String workoutSingleDayVolumeSub(String date) {
+    return '$date · 最近 1 次力量训练';
+  }
+
+  @override
   String get cardioDialogAddTitle => '记录有氧运动';
 
   @override
@@ -1648,7 +1733,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v2.1.6 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v2.1.7 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -1800,7 +1885,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v2.1.6 (Build 12)';
+  String get aboutVersion => '版本 v2.1.7 (Build 13)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';

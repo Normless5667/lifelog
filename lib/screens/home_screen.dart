@@ -70,11 +70,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       duration: const Duration(milliseconds: 650),
     );
     WidgetService.init();
+    Repo.dataVersion.addListener(_onRepoDataChanged);
     _load(checkOnboarding: true);
+  }
+
+  void _onRepoDataChanged() {
+    if (mounted) _load();
   }
 
   @override
   void dispose() {
+    Repo.dataVersion.removeListener(_onRepoDataChanged);
     _weatherSpinCtrl.dispose();
     _quickFoodCtrl.dispose();
     super.dispose();
@@ -99,11 +105,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final todayCourses =
         courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
           ..sort((a, b) => a.startSection.compareTo(b.startSection));
-    final workouts = (await Repo.getWorkouts(from: t)).where((w) => w.date == t).toList();
+    final workouts = await Repo.getWorkouts(date: t);
     final cardios = await Repo.getCardioRecords(date: t);
     var sets = 0;
     for (final w in workouts) {
-      sets += (await Repo.getSets(w.id!)).where((s) => !s.isWarmup).length;
+      sets += (await Repo.getSets(w.id!))
+          .where((s) => !s.isWarmup && s.weight > 0 && s.reps > 0)
+          .length;
     }
 
     final bus = await BusService.nextBusSummary();

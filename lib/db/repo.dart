@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
@@ -11,6 +12,13 @@ import 'database.dart';
 /// 所有数据库读写集中在这里。页面只调用 Repo，不直接写 SQL。
 class Repo {
   Repo._();
+
+  /// 全局数据变更版本号（训练/有氧/饮食/身体数据写库后自增，供饮食页/首页即时刷新）
+  static final ValueNotifier<int> dataVersion = ValueNotifier<int>(0);
+
+  static void notifyDataChanged() {
+    dataVersion.value++;
+  }
 
   static Future<Database> get _db => AppDatabase.instance.db;
 
@@ -152,13 +160,16 @@ class Repo {
   /// 同一天只保留一条记录（覆盖）
   static Future<void> saveBodyRecord(BodyRecord r) async {
     BatteryProbeService.instance.recordDbWrite();
+    r.date = dateOnlyStr(r.date);
     await (await _db).insert('body_records', r.toMap()..remove('id'),
         conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   static Future<void> deleteBodyRecord(int id) async {
     BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('body_records', where: 'id = ?', whereArgs: [id]);
+    notifyDataChanged();
   }
 
   // ---------------- 动作库 ----------------
@@ -180,14 +191,18 @@ class Repo {
   // ---------------- 训练 ----------------
   static Future<int> createWorkout(Workout w) async {
     BatteryProbeService.instance.recordDbWrite();
+    w.date = dateOnlyStr(w.date);
     final id = await (await _db).insert('workouts', w.toMap()..remove('id'));
+    notifyDataChanged();
     WidgetService.sync(force: true);
     return id;
   }
 
   static Future<void> updateWorkout(Workout w) async {
     BatteryProbeService.instance.recordDbWrite();
+    w.date = dateOnlyStr(w.date);
     await (await _db).update('workouts', w.toMap(), where: 'id = ?', whereArgs: [w.id]);
+    notifyDataChanged();
     WidgetService.sync(force: true);
   }
 
@@ -198,15 +213,27 @@ class Repo {
       await txn.delete('workout_sets', where: 'workout_id = ?', whereArgs: [id]);
       await txn.delete('workouts', where: 'id = ?', whereArgs: [id]);
     });
+    notifyDataChanged();
     WidgetService.sync(force: true);
   }
 
-  static Future<List<Workout>> getWorkouts({int? limit, String? from}) async {
-    final rows = await (await _db).query('workouts',
-        where: from == null ? null : 'date >= ?',
-        whereArgs: from == null ? null : [from],
-        orderBy: 'start_time DESC',
-        limit: limit);
+  static Future<List<Workout>> getWorkouts({int? limit, String? from, String? date}) async {
+    String? where;
+    List<Object?>? args;
+    if (date != null) {
+      where = 'substr(date, 1, 10) = ?';
+      args = [dateOnlyStr(date)];
+    } else if (from != null) {
+      where = 'substr(date, 1, 10) >= ?';
+      args = [dateOnlyStr(from)];
+    }
+    final rows = await (await _db).query(
+      'workouts',
+      where: where,
+      whereArgs: args,
+      orderBy: 'start_time DESC',
+      limit: limit,
+    );
     return rows.map(Workout.fromMap).toList();
   }
 
@@ -232,6 +259,7 @@ class Repo {
         await txn.insert('workout_sets', s.toMap()..remove('id'));
       }
     });
+    notifyDataChanged();
     WidgetService.sync(force: true);
   }
 
@@ -256,11 +284,11 @@ class Repo {
     String? where;
     List<Object?>? args;
     if (date != null) {
-      where = 'date = ?';
-      args = [date];
+      where = 'substr(date, 1, 10) = ?';
+      args = [dateOnlyStr(date)];
     } else if (from != null) {
-      where = 'date >= ?';
-      args = [from];
+      where = 'substr(date, 1, 10) >= ?';
+      args = [dateOnlyStr(from)];
     }
     final rows = await (await _db).query(
       'cardio_records',
@@ -274,6 +302,7 @@ class Repo {
 
   static Future<int> saveCardioRecord(CardioRecord r) async {
     BatteryProbeService.instance.recordDbWrite();
+    r.date = dateOnlyStr(r.date);
     final db = await _db;
     final int res;
     if (r.id == null) {
@@ -282,6 +311,7 @@ class Repo {
       await db.update('cardio_records', r.toMap(), where: 'id = ?', whereArgs: [r.id]);
       res = r.id!;
     }
+    notifyDataChanged();
     WidgetService.sync(force: true);
     return res;
   }
@@ -289,6 +319,7 @@ class Repo {
   static Future<void> deleteCardioRecord(int id) async {
     BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('cardio_records', where: 'id = ?', whereArgs: [id]);
+    notifyDataChanged();
     WidgetService.sync(force: true);
   }
 

@@ -389,12 +389,22 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       }
     }
     final strength = Nutrition.calcStrengthStats(rows);
-    final mins = (_elapsedNotifier.value / 60.0).clamp(1.0, 180.0);
-    final kcal = Nutrition.calcMetCalories(
-      met: Nutrition.strengthMet,
-      weightKg: _userWeightKg,
-      minutes: mins,
-    );
+    final elapsedMins = (_elapsedNotifier.value / 60.0).clamp(0.0, 180.0);
+    final wk = _workout;
+    final kcal = wk != null
+        ? Nutrition.burnForWorkout(
+            workout: wk,
+            totalVolumeKg: strength.volume,
+            workSets: strength.sets,
+            weightKg: _userWeightKg,
+            overrideElapsedMinutes: elapsedMins,
+          )
+        : Nutrition.estimateStrengthBurnKcal(
+            totalVolumeKg: strength.volume,
+            workSets: strength.sets,
+            weightKg: _userWeightKg,
+            elapsedMinutes: elapsedMins,
+          );
     return (sets: strength.sets, volume: strength.volume, kcal: kcal);
   }
 
@@ -447,6 +457,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       'success',
       durationMs: elapsedSecs * 1000,
     );
+    w.date = dateOnlyStr(w.date);
     w.endTime = w.startTime + (elapsedSecs * 1000);
     await Repo.updateWorkout(w);
     await Repo.replaceSets(w.id!, allSets);

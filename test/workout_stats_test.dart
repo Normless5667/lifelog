@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lifelog/db/repo.dart';
 import 'package:lifelog/l10n/app_localizations.dart';
 import 'package:lifelog/models/models.dart';
 import 'package:lifelog/screens/workout/workout_session_screen.dart';
 import 'package:lifelog/services/nutrition.dart';
 import 'package:lifelog/services/targets.dart';
+import 'package:lifelog/utils/date_utils.dart';
 
 void main() {
   group('Nutrition numeric parsing & sanity clamping', () {
@@ -105,6 +107,122 @@ void main() {
         Nutrition.calcStepCalories(steps: 10000, weightKg: 65),
         closeTo(357.5, 0.01),
       );
+    });
+
+    test('Strength burn two-stage estimator & manual adjustment priority', () {
+      // Boss real-world case: 17 sets, 9004 kg, 2.78 min batch logging -> ~106 kcal (not 14!)
+      final bossBurn = Nutrition.estimateStrengthBurnKcal(
+        totalVolumeKg: 9004,
+        workSets: 17,
+        weightKg: 70,
+        elapsedMinutes: 2.78,
+      );
+      expect(bossBurn, closeTo(106.032, 0.05));
+      expect(bossBurn, greaterThanOrEqualTo(100));
+      expect(bossBurn, lessThanOrEqualTo(150));
+
+      // Continuous real-time workout (60 min, light volume) -> time MET wins (350 kcal)
+      final continuousBurn = Nutrition.estimateStrengthBurnKcal(
+        totalVolumeKg: 600,
+        workSets: 3,
+        weightKg: 70,
+        elapsedMinutes: 60,
+      );
+      expect(continuousBurn, closeTo(350.0, 0.01));
+
+      // Auto estimate cap at 800 kcal
+      final cappedAuto = Nutrition.estimateStrengthBurnKcal(
+        totalVolumeKg: 95000,
+        workSets: 100,
+        weightKg: 80,
+        elapsedMinutes: 120,
+      );
+      expect(cappedAuto, 800.0);
+
+      final startMs = DateTime(2026, 11, 19, 12, 0).millisecondsSinceEpoch;
+      final endMs = startMs + 167000; // ~2.78 min
+
+      // Priority 3: auto estimate when manual fields are null
+      final autoWk = Workout(id: 1, date: '2026-11-19', startTime: startMs, endTime: endMs);
+      expect(autoWk.isManuallyAdjusted, isFalse);
+      expect(
+        Nutrition.burnForWorkout(
+          workout: autoWk,
+          totalVolumeKg: 9004,
+          workSets: 17,
+          weightKg: 70,
+        ),
+        closeTo(106.032, 0.05),
+      );
+
+      // Priority 2: manualDurationMin (45 min -> 5.0 * 70 * 0.75 = 262.5 kcal)
+      final durWk = Workout(
+        id: 2,
+        date: '2026-11-19',
+        startTime: startMs,
+        endTime: endMs,
+        manualDurationMin: 45,
+      );
+      expect(durWk.isManuallyAdjusted, isTrue);
+      expect(durWk.effectiveDurationMinutes, 45);
+      expect(
+        Nutrition.burnForWorkout(
+          workout: durWk,
+          totalVolumeKg: 9004,
+          workSets: 17,
+          weightKg: 70,
+        ),
+        closeTo(262.5, 0.01),
+      );
+
+      // Priority 1: manualBurnKcal (320 kcal) overrides both manualDurationMin and auto formula
+      final burnWk = Workout(
+        id: 3,
+        date: '2026-11-19',
+        startTime: startMs,
+        endTime: endMs,
+        manualDurationMin: 45,
+        manualBurnKcal: 320,
+      );
+      expect(
+        Nutrition.burnForWorkout(
+          workout: burnWk,
+          totalVolumeKg: 9004,
+          workSets: 17,
+          weightKg: 70,
+        ),
+        320.0,
+      );
+
+      // Serialization roundtrip preserves manual fields
+      final restoredWk = Workout.fromMap(burnWk.toMap());
+      expect(restoredWk.manualDurationMin, 45);
+      expect(restoredWk.manualBurnKcal, 320.0);
+      expect(restoredWk.isManuallyAdjusted, isTrue);
+
+      // Cardio manual adjustment priority & roundtrip
+      final cardio = CardioRecord(
+        id: 5,
+        date: '2026-11-19',
+        type: '慢跑',
+        durationMinutes: 20,
+        calories: 163,
+        manualDurationMin: 40,
+        manualBurnKcal: 380,
+      );
+      expect(cardio.isManuallyAdjusted, isTrue);
+      expect(cardio.effectiveDurationMinutes, 40);
+      expect(Nutrition.burnForCardio(cardio, weightKg: 70), 380.0);
+      final restoredCardio = CardioRecord.fromMap(cardio.toMap());
+      expect(restoredCardio.manualDurationMin, 40);
+      expect(restoredCardio.manualBurnKcal, 380.0);
+
+      // Date normalization & reactive dataVersion tick
+      expect(dateOnlyStr('2026-11-19T00:00:00.000'), '2026-11-19');
+      expect(dateOnlyStr(' 2026-11-19 '), '2026-11-19');
+      final beforeTick = Repo.dataVersion.value;
+      Repo.notifyDataChanged();
+      expect(Repo.dataVersion.value, beforeTick + 1);
     });
   });
 

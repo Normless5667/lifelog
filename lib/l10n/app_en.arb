@@ -600,6 +600,70 @@
       "kcal": { "type": "String" }
     }
   },
+  "workoutAdjustedBadge": "Adjusted",
+  "workoutAdjustTooltip": "Adjust duration & burn",
+  "workoutAdjustTitle": "Adjust Workout",
+  "workoutAdjustDurationLabel": "Actual Duration",
+  "workoutAdjustDurationUnit": "min",
+  "workoutAdjustBurnLabel": "Calories Burned",
+  "workoutAdjustHint": "Estimated {kcal} kcal · editable",
+  "@workoutAdjustHint": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutAdjustResetBtn": "Reset to Auto",
+  "workoutAdjustSavedToast": "Adjustment saved ({kcal} kcal)",
+  "@workoutAdjustSavedToast": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutQuickLogBtn": "Quick Log",
+  "workoutQuickLogTitle": "Quick Log Workout",
+  "workoutQuickLogNoteLabel": "Workout note (optional)",
+  "workoutQuickLogNoteDefault": "Quick-logged workout",
+  "workoutQuickLogExerciseLabel": "Exercise (optional)",
+  "workoutQuickLogNone": "None",
+  "workoutQuickLogSetsLabel": "Sets (optional)",
+  "workoutQuickLogDurationRequired": "Enter a duration greater than 0 min",
+  "workoutQuickLogSavedToast": "Logged ({mins} min · {kcal} kcal)",
+  "@workoutQuickLogSavedToast": {
+    "placeholders": {
+      "mins": { "type": "int" },
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutCompactSets": "{count} sets",
+  "@workoutCompactSets": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "workoutCompactDuration": "{mins} min",
+  "@workoutCompactDuration": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "workoutCompactBurnEst": "~{kcal} kcal",
+  "@workoutCompactBurnEst": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutCompactBurnExact": "{kcal} kcal",
+  "@workoutCompactBurnExact": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "workoutSingleDayVolumeSub": "{date} · Latest strength session",
+  "@workoutSingleDayVolumeSub": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
 
   "cardioDialogAddTitle": "Log Cardio",
   "cardioDialogEditTitle": "Edit Cardio",
@@ -923,7 +987,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v2.1.6 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v2.1.7 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -988,7 +1052,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v2.1.6 (Build 12)",
+  "aboutVersion": "Version v2.1.7 (Build 13)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
 

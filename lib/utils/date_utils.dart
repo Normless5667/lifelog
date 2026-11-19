@@ -10,6 +10,16 @@ String today() => fmtDate(DateTime.now());
 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// 将任意日期字符串归一化为 yyyy-MM-dd（兼容 ISO 时间戳如 2026-11-19T00:00:00）
+String dateOnlyStr(String raw) {
+  final t = raw.trim();
+  if (t.length >= 10 && RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(t)) {
+    return t.substring(0, 10);
+  }
+  final parsed = DateTime.tryParse(t);
+  return parsed != null ? fmtDate(parsed) : t;
+}
+
 DateTime mondayOf(DateTime d) {
   final day = dateOnly(d);
   return day.subtract(Duration(days: day.weekday - 1));

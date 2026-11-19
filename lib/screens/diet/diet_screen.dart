@@ -33,7 +33,18 @@ class _DietScreenState extends State<DietScreen> {
   @override
   void initState() {
     super.initState();
+    Repo.dataVersion.addListener(_onRepoDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    Repo.dataVersion.removeListener(_onRepoDataChanged);
+    super.dispose();
+  }
+
+  void _onRepoDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {

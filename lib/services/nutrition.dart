@@ -16,6 +16,15 @@ class Nutrition {
   static const double maxSingleActivityBurnKcal = 10000.0;
   static const double maxDailyWorkoutBurnKcal = 15000.0;
 
+  /// 力量训练两段式消耗估算系数：
+  /// - 0.008 kcal/kg：抗阻训练每完成 1 kg 容量净消耗约 0.007–0.010 kcal
+  /// - 2.0 kcal/组：准备、调器械、组间走动等每组固定开销
+  /// - 单次自动估算上限 800 kcal；用户手动修正单次上限 3000 kcal
+  static const double strengthVolumeKcalPerKg = 0.008;
+  static const double strengthPerSetOverheadKcal = 2.0;
+  static const double maxAutoStrengthBurnKcal = 800.0;
+  static const double maxManualWorkoutBurnKcal = 3000.0;
+
   static final RegExp _plainDecimalRe = RegExp(r'^\d+(\.\d+)?$');
   static final RegExp _plainIntRe = RegExp(r'^\d+$');
 
@@ -61,6 +70,98 @@ class Nutrition {
       vol = 0;
     }
     return (sets: workSets, volume: vol);
+  }
+
+  /// 两段式力量训练消耗估算：
+  /// 1) 容量法（主依据，适合批量补录）：totalVolumeKg × 0.008 + workSets × 2.0
+  /// 2) 计时法（辅助，适合真实连续训练）：MET × weightKg × (elapsedMinutes / 60)
+  /// 取二者较大值，并封顶于 800 kcal/次。
+  static double estimateStrengthBurnKcal({
+    required double totalVolumeKg,
+    required int workSets,
+    required double weightKg,
+    required double elapsedMinutes,
+  }) {
+    final safeVol = (totalVolumeKg.isFinite && totalVolumeKg > 0)
+        ? totalVolumeKg.clamp(0.0, maxSessionVolumeKg).toDouble()
+        : 0.0;
+    final safeSets = workSets > 0 ? workSets.clamp(0, 500) : 0;
+    final byVolume =
+        safeVol * strengthVolumeKcalPerKg + safeSets * strengthPerSetOverheadKcal;
+    final safeMins = (elapsedMinutes.isFinite && elapsedMinutes > 0)
+        ? elapsedMinutes.clamp(0.0, 180.0).toDouble()
+        : 0.0;
+    final byTime = calcMetCalories(
+      met: strengthMet,
+      weightKg: weightKg,
+      minutes: safeMins,
+    );
+    final result = byVolume > byTime ? byVolume : byTime;
+    return result.clamp(0.0, maxAutoStrengthBurnKcal).toDouble();
+  }
+
+  /// 统一计算某次力量训练消耗（严格优先级，算法调整绝不覆盖用户手改值）：
+  /// 1) manualBurnKcal（用户手动填写热量，最高优先）
+  /// 2) manualDurationMin（用户手动填写时长，按力量 MET 重算）
+  /// 3) 自动估算（容量法与计时法取大）
+  static double burnForWorkout({
+    required Workout workout,
+    required double totalVolumeKg,
+    required int workSets,
+    required double weightKg,
+    double? overrideElapsedMinutes,
+  }) {
+    if (workout.manualBurnKcal != null &&
+        workout.manualBurnKcal!.isFinite &&
+        workout.manualBurnKcal! > 0) {
+      return workout.manualBurnKcal!.clamp(0.0, maxManualWorkoutBurnKcal).toDouble();
+    }
+    if (workout.manualDurationMin != null && workout.manualDurationMin! > 0) {
+      return calcMetCalories(
+        met: strengthMet,
+        weightKg: weightKg,
+        minutes: workout.manualDurationMin!.toDouble().clamp(1.0, 600.0),
+      ).clamp(0.0, maxManualWorkoutBurnKcal).toDouble();
+    }
+    double elapsedMins = overrideElapsedMinutes ?? 0;
+    if (overrideElapsedMinutes == null &&
+        workout.endTime != null &&
+        workout.endTime! > workout.startTime) {
+      elapsedMins = (workout.endTime! - workout.startTime) / 60000.0;
+    }
+    if (elapsedMins <= 0 && workSets <= 0 && totalVolumeKg <= 0) return 0;
+    return estimateStrengthBurnKcal(
+      totalVolumeKg: totalVolumeKg,
+      workSets: workSets,
+      weightKg: weightKg,
+      elapsedMinutes: elapsedMins,
+    );
+  }
+
+  /// 统一计算有氧记录消耗（支持 manual_burn_kcal > manual_duration_min > calories/MET 优先级）
+  static double burnForCardio(CardioRecord c, {required double weightKg}) {
+    if (c.manualBurnKcal != null && c.manualBurnKcal!.isFinite && c.manualBurnKcal! > 0) {
+      return c.manualBurnKcal!.clamp(0.0, maxManualWorkoutBurnKcal).toDouble();
+    }
+    if (c.manualDurationMin != null &&
+        c.manualDurationMin!.isFinite &&
+        c.manualDurationMin! > 0) {
+      final met = cardioMets[c.type] ?? 5.0;
+      return calcMetCalories(
+        met: met,
+        weightKg: weightKg,
+        minutes: c.manualDurationMin!,
+      );
+    }
+    if (c.calories.isFinite && c.calories > 0) {
+      return c.calories.clamp(0.0, maxSingleActivityBurnKcal).toDouble();
+    }
+    final met = cardioMets[c.type] ?? 5.0;
+    return calcMetCalories(
+      met: met,
+      weightKg: weightKg,
+      minutes: c.durationMinutes,
+    );
   }
 
   /// 步数折算消耗（kcal）：步数钳制 [0, 200000]，体重钳制 [20, 300] kg，结果上限 10000 kcal。

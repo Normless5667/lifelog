@@ -217,8 +217,32 @@ class Workout {
   int startTime;
   int? endTime;
   String? note;
+  int? manualDurationMin;
+  double? manualBurnKcal;
 
-  Workout({this.id, required this.date, required this.startTime, this.endTime, this.note});
+  Workout({
+    this.id,
+    required this.date,
+    required this.startTime,
+    this.endTime,
+    this.note,
+    this.manualDurationMin,
+    this.manualBurnKcal,
+  });
+
+  bool get isManuallyAdjusted =>
+      (manualDurationMin != null && manualDurationMin! > 0) ||
+      (manualBurnKcal != null && manualBurnKcal! > 0);
+
+  int? get effectiveDurationMinutes {
+    if (manualDurationMin != null && manualDurationMin! > 0) {
+      return manualDurationMin;
+    }
+    if (endTime != null && endTime! > startTime) {
+      return (endTime! - startTime) ~/ 60000;
+    }
+    return null;
+  }
 
   Map<String, Object?> toMap() => {
         'id': id,
@@ -226,6 +250,8 @@ class Workout {
         'start_time': startTime,
         'end_time': endTime,
         'note': note,
+        'manual_duration_min': manualDurationMin,
+        'manual_burn_kcal': manualBurnKcal,
       };
 
   factory Workout.fromMap(Map<String, Object?> m) => Workout(
@@ -234,6 +260,8 @@ class Workout {
         startTime: m['start_time'] as int,
         endTime: m['end_time'] as int?,
         note: m['note'] as String?,
+        manualDurationMin: (m['manual_duration_min'] as num?)?.toInt(),
+        manualBurnKcal: (m['manual_burn_kcal'] as num?)?.toDouble(),
       );
 }
 
@@ -366,6 +394,8 @@ class CardioRecord {
   double durationMinutes;
   double? distanceKm;
   double calories;
+  double? manualDurationMin;
+  double? manualBurnKcal;
   int createdAt;
 
   CardioRecord({
@@ -375,8 +405,19 @@ class CardioRecord {
     required this.durationMinutes,
     this.distanceKm,
     required this.calories,
+    this.manualDurationMin,
+    this.manualBurnKcal,
     int? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
+
+  bool get isManuallyAdjusted =>
+      (manualDurationMin != null && manualDurationMin! > 0) ||
+      (manualBurnKcal != null && manualBurnKcal! > 0);
+
+  double get effectiveDurationMinutes =>
+      (manualDurationMin != null && manualDurationMin! > 0)
+          ? manualDurationMin!
+          : durationMinutes;
 
   Map<String, Object?> toMap() => {
         'id': id,
@@ -385,6 +426,8 @@ class CardioRecord {
         'duration_minutes': durationMinutes,
         'distance_km': distanceKm,
         'calories': calories,
+        'manual_duration_min': manualDurationMin,
+        'manual_burn_kcal': manualBurnKcal,
         'created_at': createdAt,
       };
 
@@ -395,6 +438,8 @@ class CardioRecord {
         durationMinutes: (m['duration_minutes'] as num).toDouble(),
         distanceKm: (m['distance_km'] as num?)?.toDouble(),
         calories: (m['calories'] as num).toDouble(),
+        manualDurationMin: (m['manual_duration_min'] as num?)?.toDouble(),
+        manualBurnKcal: (m['manual_burn_kcal'] as num?)?.toDouble(),
         createdAt: m['created_at'] as int,
       );
 }

@@ -1025,6 +1025,92 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get workoutAdjustedBadge => 'Adjusted';
+
+  @override
+  String get workoutAdjustTooltip => 'Adjust duration & burn';
+
+  @override
+  String get workoutAdjustTitle => 'Adjust Workout';
+
+  @override
+  String get workoutAdjustDurationLabel => 'Actual Duration';
+
+  @override
+  String get workoutAdjustDurationUnit => 'min';
+
+  @override
+  String get workoutAdjustBurnLabel => 'Calories Burned';
+
+  @override
+  String workoutAdjustHint(String kcal) {
+    return 'Estimated $kcal kcal · editable';
+  }
+
+  @override
+  String get workoutAdjustResetBtn => 'Reset to Auto';
+
+  @override
+  String workoutAdjustSavedToast(String kcal) {
+    return 'Adjustment saved ($kcal kcal)';
+  }
+
+  @override
+  String get workoutQuickLogBtn => 'Quick Log';
+
+  @override
+  String get workoutQuickLogTitle => 'Quick Log Workout';
+
+  @override
+  String get workoutQuickLogNoteLabel => 'Workout note (optional)';
+
+  @override
+  String get workoutQuickLogNoteDefault => 'Quick-logged workout';
+
+  @override
+  String get workoutQuickLogExerciseLabel => 'Exercise (optional)';
+
+  @override
+  String get workoutQuickLogNone => 'None';
+
+  @override
+  String get workoutQuickLogSetsLabel => 'Sets (optional)';
+
+  @override
+  String get workoutQuickLogDurationRequired =>
+      'Enter a duration greater than 0 min';
+
+  @override
+  String workoutQuickLogSavedToast(int mins, String kcal) {
+    return 'Logged ($mins min · $kcal kcal)';
+  }
+
+  @override
+  String workoutCompactSets(int count) {
+    return '$count sets';
+  }
+
+  @override
+  String workoutCompactDuration(int mins) {
+    return '$mins min';
+  }
+
+  @override
+  String workoutCompactBurnEst(String kcal) {
+    return '~$kcal kcal';
+  }
+
+  @override
+  String workoutCompactBurnExact(String kcal) {
+    return '$kcal kcal';
+  }
+
+  @override
+  String workoutSingleDayVolumeSub(String date) {
+    return '$date · Latest strength session';
+  }
+
+  @override
   String get cardioDialogAddTitle => 'Log Cardio';
 
   @override
@@ -1701,7 +1787,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v2.1.6 · Co-developed with DaFeiYu';
+      'Version v2.1.7 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -1857,7 +1943,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v2.1.6 (Build 12)';
+  String get aboutVersion => 'Version v2.1.7 (Build 13)';
 
   @override
   String get aboutBadge =>
