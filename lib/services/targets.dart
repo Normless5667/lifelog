@@ -30,17 +30,26 @@ class DailyTargets {
     final targetDate = date ?? today();
     final p = await Repo.getProfile();
     final rec = await Repo.latestBodyRecordWithWeight();
-    final w = rec?.weight ?? 60;
+    final w = Nutrition.sanitizeWeightKg(rec?.weight) ?? 60.0;
 
-    // 1) 当日有氧消耗
+    // 1) 当日有氧消耗（单条合理性钳制）
     final cardios = await Repo.getCardioRecords(date: targetDate);
-    var burn = cardios.fold<double>(0, (s, c) => s + c.calories);
+    var burn = cardios.fold<double>(
+      0,
+      (s, c) =>
+          s +
+          (c.calories.isFinite && c.calories > 0
+              ? c.calories.clamp(0.0, Nutrition.maxSingleActivityBurnKcal)
+              : 0.0),
+    );
 
     // 2) 当日力量训练消耗（按 MET 5.0 估算；如果没有结束时间，按每正式组 2.5 分钟估算）
     final workouts = (await Repo.getWorkouts(from: targetDate)).where((wk) => wk.date == targetDate);
     for (final wk in workouts) {
       final sets = await Repo.getSets(wk.id!);
-      final workSets = sets.where((s) => !s.isWarmup).length;
+      final workSets = sets
+          .where((s) => !s.isWarmup && Nutrition.isValidStrengthSet(s.weight, s.reps))
+          .length;
       double mins = 0;
       if (wk.endTime != null && wk.endTime! > wk.startTime) {
         mins = (wk.endTime! - wk.startTime) / 60000.0;
@@ -57,8 +66,9 @@ class DailyTargets {
       burn += stepState.burnedKcal;
     } else {
       final savedSteps = int.tryParse(await Repo.getKv('steps_val_$targetDate') ?? '') ?? 0;
-      burn += (savedSteps / 1000.0) * (w * 0.55);
+      burn += Nutrition.calcStepCalories(steps: savedSteps, weightKg: w);
     }
+    burn = burn.clamp(0.0, Nutrition.maxDailyWorkoutBurnKcal).toDouble();
 
     final bmrVal = Nutrition.bmr(p, w);
     final baseTdeeVal = Nutrition.tdee(p, w);
@@ -81,10 +91,14 @@ class DayTotals {
 
   DayTotals.of(Iterable<Meal> meals) {
     for (final m in meals) {
-      calories += m.calories;
-      protein += m.protein;
-      carbs += m.carbs;
-      fat += m.fat;
+      calories += Nutrition.clampMealCalories(m.calories);
+      protein += Nutrition.clampMealMacro(m.protein);
+      carbs += Nutrition.clampMealMacro(m.carbs);
+      fat += Nutrition.clampMealMacro(m.fat);
     }
+    calories = calories.clamp(0.0, Nutrition.maxDailyCalories).toDouble();
+    protein = protein.clamp(0.0, Nutrition.maxDailyMacroG).toDouble();
+    carbs = carbs.clamp(0.0, Nutrition.maxDailyMacroG).toDouble();
+    fat = fat.clamp(0.0, Nutrition.maxDailyMacroG).toDouble();
   }
 }

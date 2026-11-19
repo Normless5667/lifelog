@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'nutrition.dart';
 import 'usage_telemetry_service.dart';
 import 'widget_service.dart';
 
@@ -40,7 +41,8 @@ class StepService {
   })> getTodaySteps({double weightKg = 65, bool syncWidget = true}) async {
     final goal = await stepGoal();
     final t = today();
-    final savedToday = int.tryParse(await Repo.getKv('steps_val_$t') ?? '') ?? 0;
+    final savedToday =
+        (int.tryParse(await Repo.getKv('steps_val_$t') ?? '') ?? 0).clamp(0, 200000);
 
     try {
       final res = await _ch.invokeMethod<Map>('getStepSensorState');
@@ -76,7 +78,7 @@ class StepService {
           if (syncWidget && currentSteps != savedToday) {
             WidgetService.sync(fromStepUpdate: true);
           }
-          final kcal = (currentSteps / 1000.0) * (weightKg * 0.55);
+          final kcal = Nutrition.calcStepCalories(steps: currentSteps, weightKg: weightKg);
           return (
             supported: true,
             granted: granted,
@@ -90,7 +92,7 @@ class StepService {
           granted: granted,
           todaySteps: savedToday,
           goal: goal,
-          burnedKcal: (savedToday / 1000.0) * (weightKg * 0.55),
+          burnedKcal: Nutrition.calcStepCalories(steps: savedToday, weightKg: weightKg),
         );
       }
     } catch (_) {}
@@ -100,7 +102,7 @@ class StepService {
       granted: false,
       todaySteps: savedToday,
       goal: goal,
-      burnedKcal: (savedToday / 1000.0) * (weightKg * 0.55),
+      burnedKcal: Nutrition.calcStepCalories(steps: savedToday, weightKg: weightKg),
     );
   }
 }

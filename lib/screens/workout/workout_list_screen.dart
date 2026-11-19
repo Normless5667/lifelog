@@ -66,18 +66,18 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       final sets = await Repo.getSets(w.id!);
       final names = <String>[];
       String? primaryCat;
-      var workSets = 0;
-      var vol = 0.0;
+      final strengthRows = <({double weight, int reps, bool isWarmup})>[];
       for (final s in sets) {
         final ex = exMap[s.exerciseId];
         final n = ex?.name ?? '';
         primaryCat ??= ex?.category;
         if (n.isNotEmpty && !names.contains(n)) names.add(n);
-        if (!s.isWarmup) {
-          workSets++;
-          vol += s.weight * s.reps;
-        }
+        if (ex != null && L10nHelper.isCardioCategory(ex.category)) continue;
+        strengthRows.add((weight: s.weight, reps: s.reps, isWarmup: s.isWarmup));
       }
+      final strengthStats = Nutrition.calcStrengthStats(strengthRows);
+      final workSets = strengthStats.sets;
+      final vol = strengthStats.volume;
       double mins = 0;
       if (w.endTime != null && w.endTime! > w.startTime) {
         mins = (w.endTime! - w.startTime) / 60000.0;
@@ -670,7 +670,7 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
 
   void _recalc() {
     if (_manualKcal) return;
-    final m = double.tryParse(_mins.text) ?? 0;
+    final m = Nutrition.parsePlainDouble(_mins.text) ?? 0;
     final met = Nutrition.cardioMets[_type] ?? 5.0;
     final c = Nutrition.calcMetCalories(met: met, weightKg: widget.weightKg, minutes: m);
     _kcal.text = fmtNum(c);
@@ -797,11 +797,21 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
-            final mins = double.tryParse(_mins.text) ?? 0;
-            if (mins <= 0) {
+            final rawMins = Nutrition.parsePlainDouble(_mins.text) ?? 0;
+            if (rawMins <= 0) {
               toast(context, l.cardioDurationRequired);
               return;
             }
+            final mins = rawMins.clamp(0.5, 1440.0).toDouble();
+            final rawDist = Nutrition.parsePlainDouble(_dist.text);
+            final dist = rawDist == null ? null : rawDist.clamp(0.0, 500.0).toDouble();
+            final rawKcal = Nutrition.parsePlainDouble(_kcal.text) ??
+                Nutrition.calcMetCalories(
+                  met: Nutrition.cardioMets[_type] ?? 5.0,
+                  weightKg: widget.weightKg,
+                  minutes: mins,
+                );
+            final kcal = rawKcal.clamp(0.0, Nutrition.maxSingleActivityBurnKcal).toDouble();
             Navigator.pop(
               context,
               CardioRecord(
@@ -809,8 +819,8 @@ class _CardioEditDialogState extends State<_CardioEditDialog> {
                 date: _date,
                 type: _type,
                 durationMinutes: mins,
-                distanceKm: double.tryParse(_dist.text),
-                calories: double.tryParse(_kcal.text) ?? 0,
+                distanceKm: dist,
+                calories: kcal,
                 createdAt: widget.existing?.createdAt,
               ),
             );

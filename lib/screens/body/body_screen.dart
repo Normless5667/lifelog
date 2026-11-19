@@ -390,7 +390,10 @@ class _BodyScreenState extends State<BodyScreen> {
     final data = asc.length > 60 ? asc.sublist(asc.length - 60) : asc;
     final first = parseDate(data.first.date);
     final spots = data
-        .map((r) => FlSpot(parseDate(r.date).difference(first).inDays.toDouble(), r.weight!))
+        .map((r) => FlSpot(
+              parseDate(r.date).difference(first).inDays.toDouble(),
+              Nutrition.sanitizeWeightKg(r.weight) ?? 60.0,
+            ))
         .toList();
     if (spots.length == 1) {
       spots.add(FlSpot(1, spots.first.y));
@@ -611,9 +614,9 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
-            final w = double.tryParse(_weight.text);
-            final f = double.tryParse(_fat.text);
-            final wa = double.tryParse(_waist.text);
+            final w = Nutrition.sanitizeWeightKg(Nutrition.parsePlainDouble(_weight.text));
+            final f = Nutrition.sanitizeBodyFat(Nutrition.parsePlainDouble(_fat.text));
+            final wa = Nutrition.sanitizeWaistCm(Nutrition.parsePlainDouble(_waist.text));
             if (w == null && f == null && wa == null) {
               toast(context, l.commonAtLeastOneField);
               return;

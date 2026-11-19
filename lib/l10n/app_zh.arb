@@ -315,7 +315,7 @@
   "cardioTypeJumpRope": "跳绳",
   "cardioTypeOther": "其他",
 
-  "sessionHeaderStats": "{sets}组 · {volume}kg",
+  "sessionHeaderStats": "{sets} 组 · {volume} kg",
   "sessionFinishBtn": "结束训练",
   "sessionAddExerciseBtn": "添加动作",
   "sessionEmptyHint": "训练计时已开始！\n点击下方按钮选择动作，每完成一组点右侧 ✓ 自动开启组间休息倒计时",
@@ -512,7 +512,7 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v2.1.5 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v2.1.6 · 由大肥鱼协助开发",
 
   "usageSectionTitle": "使用数据与性能分析",
   "usageSwitchTitle": "记录使用情况与性能探针",
@@ -562,7 +562,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v2.1.5 (Build 11)",
+  "aboutVersion": "版本 v2.1.6 (Build 12)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
 

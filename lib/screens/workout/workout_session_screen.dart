@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../db/repo.dart';
 import '../../models/models.dart';
@@ -14,17 +15,25 @@ import 'exercise_library_screen.dart';
 
 /// 单次训练会话（v2.0）：
 /// - 计时采用绝对时间戳差值计算，退后台或被新页面遮挡时自动停止 UI Timer（省电），回前台自动对齐时间
-/// - 顶部秒表与休息倒计时拆分为 ValueListenableBuilder 局部刷新，不触发整页 TextField 重建
+/// - 顶部秒表、训练统计与休息倒计时均拆分为 ValueListenableBuilder 局部刷新，输入数字时不触发整页重建
 class WorkoutSessionScreen extends StatefulWidget {
   final int workoutId;
   final bool isNew;
   final List<TrainingPlanExercise>? initialPlanExercises;
+
+  @visibleForTesting
+  final Workout? initialWorkoutForTest;
+
+  @visibleForTesting
+  final List<({Exercise exercise, List<WorkoutSet> sets})>? initialBlocksForTest;
 
   const WorkoutSessionScreen({
     super.key,
     required this.workoutId,
     this.isNew = false,
     this.initialPlanExercises,
+    this.initialWorkoutForTest,
+    this.initialBlocksForTest,
   });
 
   @override
@@ -32,19 +41,24 @@ class WorkoutSessionScreen extends StatefulWidget {
 }
 
 class _SetRow {
+  final Key rowKey = UniqueKey();
   final TextEditingController weight;
   final TextEditingController reps;
+  final FocusNode weightFocus = FocusNode();
+  final FocusNode repsFocus = FocusNode();
   bool warmup;
   bool done;
   int? completedAtMs;
 
   _SetRow({double w = 0, int r = 0, this.warmup = false, this.done = false})
-      : weight = TextEditingController(text: w == 0 ? '' : fmtNum(w, digits: 1)),
-        reps = TextEditingController(text: r == 0 ? '' : '$r');
+      : weight = TextEditingController(text: w <= 0 ? '' : fmtNum(w, digits: 1)),
+        reps = TextEditingController(text: r <= 0 ? '' : '$r');
 
   void dispose() {
     weight.dispose();
     reps.dispose();
+    weightFocus.dispose();
+    repsFocus.dispose();
   }
 }
 
@@ -75,6 +89,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   bool _appInForeground = true;
   final ValueNotifier<int> _elapsedNotifier = ValueNotifier<int>(0);
   final ValueNotifier<int> _restRemainingNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<({int sets, double volume, double kcal})> _statsNotifier =
+      ValueNotifier((sets: 0, volume: 0.0, kcal: 0.0));
   int _restTargetSeconds = 90;
   int? _restEndAtMs;
   bool _restPaused = false;
@@ -103,6 +119,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     _stopTicker();
     _elapsedNotifier.dispose();
     _restRemainingNotifier.dispose();
+    _statsNotifier.dispose();
     ReminderService.cancelRestAlarm();
     ReminderService.setKeepScreenOn(false);
     for (final b in _blocks) {
@@ -183,9 +200,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   }
 
   Future<void> _load() async {
+    if (widget.initialWorkoutForTest != null) {
+      _workout = widget.initialWorkoutForTest;
+      for (final item in widget.initialBlocksForTest ?? const <({Exercise exercise, List<WorkoutSet> sets})>[]) {
+        _blocks.add(_ExerciseBlock(
+          item.exercise,
+          item.sets
+              .map((s) => _SetRow(w: s.weight, r: s.reps, warmup: s.isWarmup, done: false))
+              .toList(),
+          const [],
+        ));
+      }
+      _syncTimeFromWallClock();
+      _refreshLiveStats();
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+      return;
+    }
+
     final w = await Repo.getWorkout(widget.workoutId);
     final rec = await Repo.latestBodyRecordWithWeight();
-    _userWeightKg = rec?.weight ?? 65;
+    _userWeightKg = Nutrition.sanitizeWeightKg(rec?.weight) ?? 65;
     final sets = await Repo.getSets(widget.workoutId);
     final exMap = {for (final e in await Repo.getExercises()) e.id!: e};
     final byEx = <int, List<WorkoutSet>>{};
@@ -229,6 +266,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     _workout = w;
     _syncTimeFromWallClock();
     _ensureTickerIfVisible();
+    _refreshLiveStats();
 
     if (!mounted) return;
     setState(() {
@@ -243,10 +281,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   }
 
   void _startRestTimer({int? seconds, String? exerciseName}) {
-    final dur = seconds ?? _restTargetSeconds;
+    final dur = (seconds ?? _restTargetSeconds).clamp(5, 3600);
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
     _restPaused = false;
     _restEndAtMs = DateTime.now().millisecondsSinceEpoch + dur * 1000;
     _restRemainingNotifier.value = dur;
+    ReminderService.cancelRestAlarm();
     ReminderService.scheduleRestAlarm(
       dur,
       nextHint: exerciseName,
@@ -254,6 +296,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   }
 
   void _stopRestTimer() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
     _restPaused = false;
     _restEndAtMs = null;
     _restRemainingNotifier.value = 0;
@@ -289,39 +334,68 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     setState(() {
       _blocks.add(_ExerciseBlock(ex, [_SetRow(w: defW, r: defR)], lastWork));
     });
+    _refreshLiveStats();
   }
 
   void _addSet(_ExerciseBlock b) {
+    final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
     final prev = b.sets.isEmpty ? null : b.sets.last;
+    final parsedW = Nutrition.parsePlainDouble(prev?.weight.text ?? '') ?? 0;
+    final parsedR = Nutrition.parsePlainInt(prev?.reps.text ?? '') ?? 0;
+    final copyW = isCardio
+        ? (parsedW <= 1440 ? parsedW : 0.0)
+        : (parsedW <= Nutrition.maxSetWeightKg ? parsedW : 0.0);
+    final copyR = isCardio
+        ? (parsedR <= 200000 ? parsedR : 0)
+        : (parsedR <= Nutrition.maxSetReps ? parsedR : 0);
     setState(() {
-      b.sets.add(_SetRow(
-        w: double.tryParse(prev?.weight.text ?? '') ?? 0,
-        r: int.tryParse(prev?.reps.text ?? '') ?? 0,
-      ));
+      b.sets.add(_SetRow(w: copyW, r: copyR, warmup: false, done: false));
     });
+    _refreshLiveStats();
+  }
+
+  void _removeBlock(int bi) {
+    final removed = _blocks[bi];
+    setState(() {
+      _blocks.removeAt(bi);
+    });
+    for (final s in removed.sets) {
+      s.dispose();
+    }
+    _refreshLiveStats();
+  }
+
+  void _removeSet(_ExerciseBlock b, int si) {
+    final removed = b.sets[si];
+    setState(() {
+      b.sets.removeAt(si);
+    });
+    removed.dispose();
+    _refreshLiveStats();
+  }
+
+  void _refreshLiveStats() {
+    _statsNotifier.value = _liveStats();
   }
 
   ({int sets, double volume, double kcal}) _liveStats() {
-    var workSets = 0;
-    var vol = 0.0;
+    final rows = <({double weight, int reps, bool isWarmup})>[];
     for (final b in _blocks) {
       if (L10nHelper.isCardioCategory(b.exercise.category)) continue;
       for (final s in b.sets) {
-        final w = double.tryParse(s.weight.text) ?? 0;
-        final r = int.tryParse(s.reps.text) ?? 0;
-        if (!s.warmup && (w > 0 || r > 0)) {
-          workSets++;
-          vol += w * r;
-        }
+        final w = Nutrition.parsePlainDouble(s.weight.text) ?? 0;
+        final r = Nutrition.parsePlainInt(s.reps.text) ?? 0;
+        rows.add((weight: w, reps: r, isWarmup: s.warmup));
       }
     }
+    final strength = Nutrition.calcStrengthStats(rows);
     final mins = (_elapsedNotifier.value / 60.0).clamp(1.0, 180.0);
     final kcal = Nutrition.calcMetCalories(
       met: Nutrition.strengthMet,
       weightKg: _userWeightKg,
       minutes: mins,
     );
-    return (sets: workSets, volume: vol, kcal: kcal);
+    return (sets: strength.sets, volume: strength.volume, kcal: kcal);
   }
 
   Future<void> _finish() async {
@@ -331,11 +405,22 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     ReminderService.cancelRestAlarm();
     final allSets = <WorkoutSet>[];
     for (final b in _blocks) {
+      final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
       var idx = 1;
       for (final s in b.sets) {
-        final weight = double.tryParse(s.weight.text) ?? 0;
-        final reps = int.tryParse(s.reps.text) ?? 0;
-        if (weight <= 0 && reps <= 0) continue;
+        final rawW = Nutrition.parsePlainDouble(s.weight.text) ?? 0;
+        final rawR = Nutrition.parsePlainInt(s.reps.text) ?? 0;
+        final weight = isCardio
+            ? rawW.clamp(0.0, 1440.0).toDouble()
+            : (rawW <= Nutrition.maxSetWeightKg ? rawW : 0.0);
+        final reps = isCardio
+            ? rawR.clamp(0, 200000)
+            : (rawR <= Nutrition.maxSetReps ? rawR : 0);
+        if (isCardio) {
+          if (weight <= 0 && reps <= 0) continue;
+        } else {
+          if (weight <= 0 || reps <= 0) continue;
+        }
         allSets.add(WorkoutSet(
           workoutId: w.id!,
           exerciseId: b.exercise.id!,
@@ -383,8 +468,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   Widget build(BuildContext context) {
     final l = context.l10n;
     const numKb = TextInputType.numberWithOptions(decimal: true);
-    final stats = _liveStats();
     final workoutColor = AppColors.moduleWorkout(context);
+    final kbBottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return PopScope(
       canPop: false,
@@ -392,6 +477,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
         if (!didPop) _finish();
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           titleSpacing: 0,
           title: Row(
@@ -424,11 +510,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(
-                  l.sessionHeaderStats(stats.sets, fmtNum(stats.volume)),
-                  style: AppTypography.bodySecondary(context),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: ValueListenableBuilder<({int sets, double volume, double kcal})>(
+                  valueListenable: _statsNotifier,
+                  builder: (ctx, stats, _) => Text(
+                    l.sessionHeaderStats(stats.sets, fmtNum(stats.volume)),
+                    style: AppTypography.bodySecondary(ctx),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ],
@@ -481,7 +570,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                             ),
                           )
                         : ListView.builder(
-                            padding: AppSpacing.pagePadding,
+                            padding: EdgeInsets.fromLTRB(
+                              AppSpacing.lg,
+                              AppSpacing.md,
+                              AppSpacing.lg,
+                              kbBottom + 96,
+                            ),
                             itemCount: _blocks.length,
                             itemBuilder: (_, bi) => _buildExerciseCard(bi, numKb),
                           ),
@@ -690,7 +784,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   icon: Icon(Icons.close_rounded, size: 19, color: AppColors.textTertiary(context)),
-                  onPressed: () => setState(() => _blocks.removeAt(bi)),
+                  onPressed: () => _removeBlock(bi),
                 ),
               ],
             ),
@@ -717,111 +811,141 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
               ),
             const SizedBox(height: AppSpacing.xs),
             for (var si = 0; si < b.sets.length; si++)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                child: Row(
-                  children: [
-                    if (!isCardio) ...[
-                      InkWell(
-                        onTap: () => setState(() => b.sets[si].warmup = !b.sets[si].warmup),
-                        borderRadius: AppRadius.bSm,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: b.sets[si].warmup
-                                ? AppColors.softBg(context, warning, lightAlpha: 0.16, darkAlpha: 0.24)
-                                : AppColors.surfaceSubtle(context),
-                            borderRadius: AppRadius.bSm,
-                            border: Border.all(
+              KeyedSubtree(
+                key: b.sets[si].rowKey,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      if (!isCardio) ...[
+                        InkWell(
+                          onTap: () {
+                            setState(() => b.sets[si].warmup = !b.sets[si].warmup);
+                            _refreshLiveStats();
+                          },
+                          borderRadius: AppRadius.bSm,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
                               color: b.sets[si].warmup
-                                  ? AppColors.softBorder(context, warning)
-                                  : AppColors.border(context),
+                                  ? AppColors.softBg(context, warning, lightAlpha: 0.16, darkAlpha: 0.24)
+                                  : AppColors.surfaceSubtle(context),
+                              borderRadius: AppRadius.bSm,
+                              border: Border.all(
+                                color: b.sets[si].warmup
+                                    ? AppColors.softBorder(context, warning)
+                                    : AppColors.border(context),
+                              ),
+                            ),
+                            child: Text(
+                              b.sets[si].warmup ? l.sessionWarmupTag : '${si + 1}',
+                              style: AppTypography.badge(
+                                context,
+                                color: b.sets[si].warmup ? warning : AppColors.textPrimary(context),
+                              ),
                             ),
                           ),
-                          child: Text(
-                            b.sets[si].warmup ? l.sessionWarmupTag : '${si + 1}',
-                            style: AppTypography.badge(
-                              context,
-                              color: b.sets[si].warmup ? warning : AppColors.textPrimary(context),
+                        ),
+                        const SizedBox(width: AppSpacing.xs + 2),
+                      ],
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => b.sets[si].weightFocus.requestFocus(),
+                          child: TextField(
+                            controller: b.sets[si].weight,
+                            focusNode: b.sets[si].weightFocus,
+                            keyboardType: numKb,
+                            scrollPadding: const EdgeInsets.only(bottom: 120),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                              LengthLimitingTextInputFormatter(6),
+                            ],
+                            style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
+                            onChanged: (_) => _refreshLiveStats(),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
+                              suffixText: isCardio ? l.sessionCardioMins : 'kg',
+                              prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                              prefixIcon: Icon(
+                                isCardio ? Icons.timer_rounded : Icons.fitness_center_rounded,
+                                size: 16,
+                                color: workoutColor,
+                              ),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs + 2),
-                    ],
-                    Expanded(
-                      child: TextField(
-                        controller: b.sets[si].weight,
-                        keyboardType: numKb,
-                        style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
-                          suffixText: isCardio ? l.sessionCardioMins : 'kg',
-                          prefixIcon: Icon(
-                            isCardio ? Icons.timer_rounded : Icons.fitness_center_rounded,
-                            size: 16,
-                            color: workoutColor,
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => b.sets[si].repsFocus.requestFocus(),
+                          child: TextField(
+                            controller: b.sets[si].reps,
+                            focusNode: b.sets[si].repsFocus,
+                            keyboardType: TextInputType.number,
+                            scrollPadding: const EdgeInsets.only(bottom: 120),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(isCardio ? 6 : 3),
+                            ],
+                            style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
+                            onChanged: (_) => _refreshLiveStats(),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
+                              suffixText:
+                                  isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,
+                              prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                              prefixIcon: Icon(
+                                isCardio ? Icons.directions_walk_rounded : Icons.repeat_rounded,
+                                size: 16,
+                                color: info,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs + 2),
-                    Expanded(
-                      child: TextField(
-                        controller: b.sets[si].reps,
-                        keyboardType: TextInputType.number,
-                        style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
-                          suffixText:
-                              isCardio ? l.sessionCardioStepsUnit : l.sessionStrengthRepsUnit,
-                          prefixIcon: Icon(
-                            isCardio ? Icons.directions_walk_rounded : Icons.repeat_rounded,
-                            size: 16,
-                            color: info,
+                      if (!isCardio)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: l.sessionCompleteSetTooltip,
+                          icon: Icon(
+                            b.sets[si].done
+                                ? Icons.check_circle_rounded
+                                : Icons.check_circle_outline_rounded,
+                            color: b.sets[si].done ? success : AppColors.textTertiary(context),
                           ),
+                          onPressed: () {
+                            setState(() {
+                              b.sets[si].done = !b.sets[si].done;
+                              if (b.sets[si].done) {
+                                b.sets[si].completedAtMs = DateTime.now().millisecondsSinceEpoch;
+                                _startRestTimer(
+                                  exerciseName: L10nHelper.exerciseDisplayName(
+                                    context,
+                                    b.exercise.name,
+                                  ),
+                                );
+                              }
+                            });
+                          },
                         ),
-                      ),
-                    ),
-                    if (!isCardio)
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        tooltip: l.sessionCompleteSetTooltip,
                         icon: Icon(
-                          b.sets[si].done
-                              ? Icons.check_circle_rounded
-                              : Icons.check_circle_outline_rounded,
-                          color: b.sets[si].done ? success : AppColors.textTertiary(context),
+                          Icons.remove_circle_outline_rounded,
+                          size: 18,
+                          color: AppColors.textTertiary(context),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            b.sets[si].done = !b.sets[si].done;
-                            if (b.sets[si].done) {
-                              b.sets[si].completedAtMs = DateTime.now().millisecondsSinceEpoch;
-                              _startRestTimer(
-                                exerciseName: L10nHelper.exerciseDisplayName(
-                                  context,
-                                  b.exercise.name,
-                                ),
-                              );
-                            }
-                          });
-                        },
+                        onPressed: () => _removeSet(b, si),
                       ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.remove_circle_outline_rounded,
-                        size: 18,
-                        color: AppColors.textTertiary(context),
-                      ),
-                      onPressed: () => setState(() => b.sets.removeAt(si)),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             const SizedBox(height: AppSpacing.xs),
