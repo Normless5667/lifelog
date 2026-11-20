@@ -1,17 +1,150 @@
-# lifelog
+# 生活助手 · LifeLog
 
-A new Flutter project.
+一个用 Flutter 写的个人生活管理 App：课表、饮食、健身、身体数据、AI 教练。
 
-## Getting Started
+> 为自己和朋友做的工具，不是商业产品。功能按实际使用中的痛点长出来的。
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 功能
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### 课表
+- 支持左右滑动切换周数，周数从**学术日历**推算（不是从第一次打开那天数起）
+- 学期设置：填学期名、第 1 周开始日、总周数即可
+- 课程状态：已上完 / 进行中 / 未开始，带倒计时
+- 假期判断：公共假期自动不显示课程、不提醒
+- 可清空、可手动添加（不用写 JSON）
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 校车
+- BUV 校车时间表（去程/回程，5 个时段，14 个站点）
+- 实时时间轴：车按时间比例移动，五档颜色区分紧迫度
+- 支持自定义路线和 JSON 导入
+
+### 饮食
+- 记录三餐，热量的三档可视化
+- **拍照识别热量**（调视觉模型）
+- 根据训练量动态调整每日摄入（BMR × 活动系数 + 训练消耗）
+- 快捷记录：一句话记一顿
+
+### 健身
+- 力量训练：按组记录重量/次数，组间休息倒计时
+- 有氧：MET 公式计算消耗（走路 3.5 / 慢跑 7 / 骑行 7.5 / 跳绳 12.3）
+- **进行中的训练会持久化**：切出 App、杀掉重开都能继续
+- AI 生成训练计划，可一键导入、可删除
+- 训练消耗自动同步到饮食页
+
+### 身体数据
+- 体重曲线（带目标线）、体脂、围度
+- 连续记录天数（streak）
+
+### AI 教练
+- 接入 DeepSeek API（用户自己填 Key，不写死在包里）
+- 生成训练计划、饮食建议
+- JSON 结构化输出，可直接导入训练模块
+
+### 其他
+- 桌面小组件（今日概览）
+- 深色模式
+- 中英双语
+
+---
+
+## 环境要求
+
+| 组件 | 版本 |
+|---|---|
+| Flutter | 3.50.0 |
+| Dart | 3.14.0 |
+| Android SDK | 35 / 36 |
+| JDK | 17 |
+| 最低 Android | 8.0 (API 26) |
+
+---
+
+## 编译
+
+```bash
+flutter pub get
+flutter gen-l10n
+flutter build apk --release
+```
+
+产物在 `build/app/outputs/flutter-apk/app-release.apk`。
+
+**签名**：需要在 `android/key.properties` 里配置自己的 keystore。这个文件不进仓库。
+
+```properties
+storePassword=你的密码
+keyPassword=你的密码
+keyAlias=你的别名
+storeFile=你的.jks路径
+```
+
+---
+
+## 数据
+
+所有数据存在本地 SQLite，不上传服务器。
+
+- 饮食、训练、体重、课表：手机本地
+- API Key：存在 `flutter_secure_storage`（Android Keystore）
+- 使用统计：本地记录，可手动导出 JSON，**不联网上报**
+
+---
+
+## 权限说明
+
+| 权限 | 用途 |
+|---|---|
+| 步数传感器 | 记录每日步数 |
+| 定位 | 天气（GPS 优先，失败退回 IP） |
+| 相机/相册 | 拍照识别食物热量 |
+| 通知 | 课程提醒、训练休息提醒 |
+| 精确闹钟 | 定时提醒不被系统延迟 |
+
+---
+
+## 项目结构
+
+```
+lib/
+├── db/           数据库层（SQLite + Repo）
+├── models/       数据模型
+├── screens/      界面
+│   ├── home/     首页
+│   ├── schedule/ 课表
+│   ├── diet/     饮食
+│   ├── workout/  健身
+│   ├── body/     身体数据
+│   ├── ai/       AI 教练
+│   └── settings/ 设置
+├── services/     服务层（校车、天气、节日、widget 等）
+├── theme/        设计系统（颜色/字体/间距/圆角/阴影）
+├── l10n/         国际化（中/英，521+ key）
+└── widgets/      通用组件
+```
+
+---
+
+## 下载
+
+去 [Releases](../../releases) 页面下载最新 APK。
+
+安装时如果提示「未知来源」，需要先在设置里允许你的浏览器/文件管理器安装应用。
+
+---
+
+## 开发记录
+
+这个项目的需求文档、bug 修复记录都在仓库根目录：
+
+- `REQUIREMENTS_v*.md` — 每版的需求
+- `BUGFIX_*.md` — 每次修 bug 的根因分析
+
+写这些的原因很简单：同一个坑踩两次太蠢了。
+
+---
+
+## 许可
+
+个人项目，代码可读可学，不建议直接商用。里面内置的 BUV 校车表和学术日历是学校数据，换学校用要自己替换。
