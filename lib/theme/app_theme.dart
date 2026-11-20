@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'app_colors_dark_premium.dart';
 import 'app_radius.dart';
 import 'app_spacing.dart';
 
 export 'app_colors.dart';
+export 'app_colors_dark_premium.dart';
 export 'app_radius.dart';
 export 'app_shadows.dart';
 export 'app_spacing.dart';
@@ -64,31 +66,55 @@ class M3SubtlePageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// 组装浅色与深色 ThemeData
+/// 组装浅色、深色与 Gemini 深夜黑 ThemeData
 abstract final class AppTheme {
-  static ThemeData light() => _build(Brightness.light);
-  static ThemeData dark() => _build(Brightness.dark);
+  static ThemeData light() => _build(Brightness.light, isMidnight: false);
+  static ThemeData dark() => _build(Brightness.dark, isMidnight: false);
+  static ThemeData midnight() => _build(Brightness.dark, isMidnight: true);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData _build(Brightness brightness, {required bool isMidnight}) {
     final isDark = brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryDark : AppColors.primaryLight;
-    final accent = isDark ? AppColors.accentDark : AppColors.accentLight;
-    final teal = isDark ? AppColors.tealDark : AppColors.tealLight;
-    final bg = isDark ? AppColors.bgDark : AppColors.bgLight;
-    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-    final surfaceSubtle = isDark ? AppColors.surfaceSubtleDark : AppColors.surfaceSubtleLight;
-    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
-    final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    final primary = isMidnight
+        ? GeminiDarkColors.accent
+        : (isDark ? AppColors.primaryDark : AppColors.primaryLight);
+    final accent = isMidnight
+        ? GeminiDarkColors.accent
+        : (isDark ? AppColors.accentDark : AppColors.accentLight);
+    final teal = isMidnight
+        ? GeminiDarkColors.green
+        : (isDark ? AppColors.tealDark : AppColors.tealLight);
+    final bg = isMidnight
+        ? GeminiDarkColors.bgTop
+        : (isDark ? AppColors.bgDark : AppColors.bgLight);
+    final surface = isMidnight
+        ? GeminiDarkColors.surface
+        : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+    final surfaceSubtle = isMidnight
+        ? GeminiDarkColors.surfaceAlt
+        : (isDark ? AppColors.surfaceSubtleDark : AppColors.surfaceSubtleLight);
+    final border = isMidnight
+        ? GeminiDarkColors.surfaceAlt
+        : (isDark ? AppColors.borderDark : AppColors.borderLight);
+    final textPrimary = isMidnight
+        ? GeminiDarkColors.textPrimary
+        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
+    final textSecondary = isMidnight
+        ? GeminiDarkColors.textSecondary
+        : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight);
+    final skinExt = isMidnight
+        ? AppSkinExtension.midnightPremium
+        : (isDark ? AppSkinExtension.darkStandard : AppSkinExtension.lightStandard);
 
     final baseScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primaryLight,
+      seedColor: isMidnight ? GeminiDarkColors.accent : AppColors.primaryLight,
       brightness: brightness,
       primary: primary,
       secondary: accent,
       tertiary: teal,
       surface: surface,
-      error: isDark ? AppColors.dangerDark : AppColors.dangerLight,
+      error: isMidnight
+          ? GeminiDarkColors.red
+          : (isDark ? AppColors.dangerDark : AppColors.dangerLight),
     );
 
     final cs = baseScheme.copyWith(
@@ -108,7 +134,9 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: cs,
-      scaffoldBackgroundColor: bg,
+      // 深夜黑模式下 Scaffold 透明，直接透出根部固定 RepaintBoundary 纯黑→深蓝渐变层
+      scaffoldBackgroundColor: isMidnight ? Colors.transparent : bg,
+      extensions: [skinExt],
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -121,9 +149,9 @@ abstract final class AppTheme {
         },
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: bg,
+        backgroundColor: isMidnight ? Colors.transparent : bg,
         surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: isMidnight ? 0 : 0.5,
         elevation: 0,
         centerTitle: false,
         systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -142,14 +170,18 @@ abstract final class AppTheme {
         color: surface,
         margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.bXl,
-          side: BorderSide(color: border.withValues(alpha: isDark ? 0.75 : 0.85), width: 1),
+          borderRadius: BorderRadius.circular(skinExt.cardRadius),
+          side: isMidnight
+              ? BorderSide.none
+              : BorderSide(color: border.withValues(alpha: isDark ? 0.75 : 0.85), width: 1),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: isDark
-            ? const Color(0xFF131A24).withValues(alpha: 0.96)
-            : Colors.white.withValues(alpha: 0.96),
+        backgroundColor: isMidnight
+            ? GeminiDarkColors.bgBottom.withValues(alpha: 0.92)
+            : (isDark
+                ? const Color(0xFF131A24).withValues(alpha: 0.96)
+                : Colors.white.withValues(alpha: 0.96)),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         height: 68,
@@ -197,20 +229,22 @@ abstract final class AppTheme {
           vertical: AppSpacing.md,
         ),
         border: OutlineInputBorder(
-          borderRadius: AppRadius.bMd,
-          borderSide: BorderSide(color: border),
+          borderRadius: isMidnight ? BorderRadius.circular(24) : AppRadius.bMd,
+          borderSide: isMidnight ? BorderSide.none : BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadius.bMd,
-          borderSide: BorderSide(color: border),
+          borderRadius: isMidnight ? BorderRadius.circular(24) : AppRadius.bMd,
+          borderSide: isMidnight ? BorderSide.none : BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadius.bMd,
+          borderRadius: isMidnight ? BorderRadius.circular(24) : AppRadius.bMd,
           borderSide: BorderSide(color: primary, width: 1.6),
         ),
         hintStyle: TextStyle(
           fontSize: 13.5,
-          color: isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight,
+          color: isMidnight
+              ? GeminiDarkColors.textTertiary
+              : (isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight),
         ),
       ),
       chipTheme: ChipThemeData(

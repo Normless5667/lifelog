@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.1 · Co-developed with DaFeiYu'**
+  /// **'Version v3.1.2 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.1 (Build 19)'**
+  /// **'Version v3.1.2 (Build 20)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -4944,6 +4944,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Course Segments'**
   String get runDetailSegmentsTitle;
+
+  /// No description provided for @settingsSkinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance Skin'**
+  String get settingsSkinTitle;
+
+  /// No description provided for @settingsSkinLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsSkinLight;
+
+  /// No description provided for @settingsSkinDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsSkinDark;
+
+  /// No description provided for @settingsSkinMidnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Midnight'**
+  String get settingsSkinMidnight;
+
+  /// No description provided for @runEmptyStartBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Your First Run'**
+  String get runEmptyStartBtn;
+
+  /// No description provided for @runDetailReplayBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay Route'**
+  String get runDetailReplayBtn;
+
+  /// No description provided for @runDetailReplayingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaying…'**
+  String get runDetailReplayingLabel;
+
+  /// No description provided for @runDetailPaceChartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace Curve'**
+  String get runDetailPaceChartTitle;
+
+  /// No description provided for @runDetailPaceChartSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace (min/km) by distance — higher means faster'**
+  String get runDetailPaceChartSub;
 }
 
 class _AppLocalizationsDelegate

@@ -225,18 +225,32 @@ class SurfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? (isHero ? AppRadius.bXxl : AppRadius.bXl);
-    final bg = backgroundColor ?? AppColors.surface(context);
+    final skin = AppSkinExtension.of(context);
+    final isMidnight = skin.isMidnight;
+    final radius = borderRadius ??
+        BorderRadius.circular(isHero ? skin.heroCardRadius : skin.cardRadius);
+    final bg = backgroundColor ??
+        (isMidnight && isHero
+            ? skin.surface.withValues(alpha: 0.78)
+            : AppColors.surface(context));
     final border = borderColor ??
         AppColors.border(context).withValues(alpha: AppColors.isDark(context) ? 0.75 : 0.85);
+    final showBorder = !skin.borderlessCards || borderColor != null;
 
     final content = Container(
       margin: margin ?? EdgeInsets.zero,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: radius,
-        border: Border.all(color: border, width: 1),
-        boxShadow: isHero ? AppShadows.hero(context) : AppShadows.card(context),
+        border: showBorder
+            ? Border.all(
+                color: isMidnight ? border.withValues(alpha: 0.35) : border,
+                width: 1,
+              )
+            : null,
+        boxShadow: isMidnight
+            ? const []
+            : (isHero ? AppShadows.hero(context) : AppShadows.card(context)),
       ),
       child: ClipRRect(
         borderRadius: radius,

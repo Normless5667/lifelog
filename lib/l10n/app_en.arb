@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.1.1 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.1.2 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.1.1 (Build 19)",
+  "aboutVersion": "Version v3.1.2 (Build 20)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1621,5 +1621,15 @@
       "mins": { "type": "int" }
     }
   },
-  "runDetailSegmentsTitle": "Course Segments"
+  "runDetailSegmentsTitle": "Course Segments",
+
+  "settingsSkinTitle": "Appearance Skin",
+  "settingsSkinLight": "Light",
+  "settingsSkinDark": "Dark",
+  "settingsSkinMidnight": "Midnight",
+  "runEmptyStartBtn": "Start Your First Run",
+  "runDetailReplayBtn": "Replay Route",
+  "runDetailReplayingLabel": "Replaying…",
+  "runDetailPaceChartTitle": "Pace Curve",
+  "runDetailPaceChartSub": "Pace (min/km) by distance — higher means faster"
 }

@@ -392,6 +392,14 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
                             ),
                         ],
                       ),
+                      if (AppColors.isMidnight(context))
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: ColoredBox(
+                              color: GeminiDarkColors.bgBottom.withValues(alpha: 0.26),
+                            ),
+                          ),
+                        ),
                       // GPS 信号胶囊
                       Positioned(
                         left: 12,

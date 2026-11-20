@@ -44,6 +44,7 @@ class M3SlidingNavBar extends StatelessWidget {
     final duration = reduceMotion ? Duration.zero : AppMotion.medium1;
     final curve = AppMotion.emphasizedCurve;
     final isDark = AppColors.isDark(context);
+    final isMidnight = AppColors.isMidnight(context);
     final navTheme = Theme.of(context).navigationBarTheme;
     final bgColor = navTheme.backgroundColor ?? AppColors.surface(context);
     final activeItem = destinations[selectedIndex.clamp(0, destinations.length - 1)];
@@ -51,14 +52,16 @@ class M3SlidingNavBar extends StatelessWidget {
       context,
       activeItem.color,
       lightAlpha: 0.14,
-      darkAlpha: 0.22,
+      darkAlpha: isMidnight ? 0.20 : 0.22,
     );
-    final pillBorderColor = AppColors.softBorder(
-      context,
-      activeItem.color,
-      lightAlpha: 0.24,
-      darkAlpha: 0.34,
-    );
+    final pillBorderColor = isMidnight
+        ? Colors.transparent
+        : AppColors.softBorder(
+            context,
+            activeItem.color,
+            lightAlpha: 0.24,
+            darkAlpha: 0.34,
+          );
     final unselectedColor = AppColors.textSecondary(context);
     final selectedTextColor = AppColors.textPrimary(context);
 
@@ -68,7 +71,9 @@ class M3SlidingNavBar extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: AppColors.border(context).withValues(alpha: isDark ? 0.65 : 0.85),
+              color: isMidnight
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : AppColors.border(context).withValues(alpha: isDark ? 0.65 : 0.85),
               width: 1,
             ),
           ),

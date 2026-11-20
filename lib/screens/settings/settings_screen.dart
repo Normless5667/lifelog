@@ -468,29 +468,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(l.settingsThemeMode, style: AppTypography.badge(context)),
+                          Text(l.settingsSkinTitle, style: AppTypography.badge(context)),
                           const SizedBox(height: AppSpacing.sm),
-                          SegmentedButton<ThemeMode>(
+                          SegmentedButton<AppSkin>(
+                            key: const ValueKey('settings_skin_selector'),
                             style: _segmentedStyle(context, primary),
                             segments: [
                               ButtonSegment(
-                                value: ThemeMode.system,
-                                icon: const Icon(Icons.brightness_auto_rounded, size: 17),
-                                label: Text(l.settingsThemeSystem),
-                              ),
-                              ButtonSegment(
-                                value: ThemeMode.light,
+                                value: AppSkin.light,
                                 icon: const Icon(Icons.light_mode_rounded, size: 17),
-                                label: Text(l.settingsThemeLight),
+                                label: Text(l.settingsSkinLight),
                               ),
                               ButtonSegment(
-                                value: ThemeMode.dark,
+                                value: AppSkin.dark,
                                 icon: const Icon(Icons.dark_mode_rounded, size: 17),
-                                label: Text(l.settingsThemeDark),
+                                label: Text(l.settingsSkinDark),
+                              ),
+                              ButtonSegment(
+                                value: AppSkin.midnight,
+                                icon: const Icon(Icons.nights_stay_rounded, size: 17),
+                                label: Text(l.settingsSkinMidnight),
                               ),
                             ],
-                            selected: {prefs.themeMode},
-                            onSelectionChanged: (s) => prefs.setThemeMode(s.first),
+                            selected: {prefs.skin},
+                            onSelectionChanged: (s) => prefs.setSkin(s.first),
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           Text(l.settingsFontSize, style: AppTypography.badge(context)),

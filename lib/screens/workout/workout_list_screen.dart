@@ -380,21 +380,28 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 42,
-                            height: 42,
+                            width: 44,
+                            height: 44,
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: AppColors.softBg(
                                 context,
                                 AppColors.primary(context),
-                                lightAlpha: 0.18,
-                                darkAlpha: 0.28,
+                                lightAlpha: 0.14,
+                                darkAlpha: 0.24,
                               ),
                               borderRadius: AppRadius.bMd,
                             ),
-                            child: Icon(
-                              Icons.directions_run_rounded,
-                              color: AppColors.primary(context),
-                              size: 22,
+                            child: Image.asset(
+                              'assets/icons/generated/icon_running.png',
+                              width: 30,
+                              height: 30,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => Icon(
+                                Icons.directions_run_rounded,
+                                color: AppColors.primary(context),
+                                size: 22,
+                              ),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),

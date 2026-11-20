@@ -63,6 +63,88 @@ int estimateRunCalories({
   ).round();
 }
 
+/// 配速曲线采样点（距离 km -> 配速 分/公里）
+class PaceCurveSample {
+  final double km;
+  final double paceMinPerKm;
+
+  const PaceCurveSample({
+    required this.km,
+    required this.paceMinPerKm,
+  });
+}
+
+/// 从轨迹点序列计算平滑配速曲线（供跑步详情页 fl_chart 渲染）。
+/// 自动剔除暂停断档、瞬移跳点与极端配速，点数或距离不足时返回空列表。
+List<PaceCurveSample> computePaceCurveSamples(List<RoutePoint> points) {
+  if (points.length < 3) return const [];
+
+  // 第一遍：统计有效推进总距离
+  double totalDistM = 0;
+  final validSteps = <({double distM, double dtSec})>[];
+  for (var i = 1; i < points.length; i++) {
+    final prev = points[i - 1];
+    final cur = points[i];
+    final dtSec = (cur.t - prev.t) / 1000.0;
+    if (dtSec <= 0 || dtSec > 60.0) continue;
+    final distM = haversineMeters(prev.lat, prev.lng, cur.lat, cur.lng);
+    if (distM < 0.5) continue;
+    final speedMps = distM / dtSec;
+    if (speedMps > RunTrackProcessor.maxHumanSpeedMps || speedMps < 0.3) continue;
+    validSteps.add((distM: distM, dtSec: dtSec));
+    totalDistM += distM;
+  }
+
+  if (validSteps.length < 2 || totalDistM < 60.0) return const [];
+
+  // 动态分桶：最多约 32 个平滑采样点，短距离（如 200m）也能出 4+ 个点
+  final targetBucketM = math.max(35.0, math.min(250.0, totalDistM / 28.0));
+  final raw = <PaceCurveSample>[];
+  double cumM = 0;
+  double bucketM = 0;
+  double bucketSec = 0;
+
+  for (final step in validSteps) {
+    cumM += step.distM;
+    bucketM += step.distM;
+    bucketSec += step.dtSec;
+    if (bucketM >= targetBucketM && bucketSec >= 2.0) {
+      final pace = (bucketSec / 60.0) / (bucketM / 1000.0);
+      if (pace >= 2.0 && pace <= 20.0) {
+        raw.add(PaceCurveSample(
+          km: double.parse((cumM / 1000.0).toStringAsFixed(3)),
+          paceMinPerKm: pace,
+        ));
+      }
+      bucketM = 0;
+      bucketSec = 0;
+    }
+  }
+  if (bucketM >= targetBucketM * 0.4 && bucketSec >= 2.0) {
+    final pace = (bucketSec / 60.0) / (bucketM / 1000.0);
+    if (pace >= 2.0 && pace <= 20.0) {
+      raw.add(PaceCurveSample(
+        km: double.parse((cumM / 1000.0).toStringAsFixed(3)),
+        paceMinPerKm: pace,
+      ));
+    }
+  }
+
+  if (raw.length < 2) return const [];
+  if (raw.length < 3) return raw;
+
+  // 轻度 3 点加权平滑（0.25 / 0.50 / 0.25）消除局部 GPS 抖动
+  final smoothed = <PaceCurveSample>[raw.first];
+  for (var i = 1; i < raw.length - 1; i++) {
+    final avgPace = 0.25 * raw[i - 1].paceMinPerKm +
+        0.50 * raw[i].paceMinPerKm +
+        0.25 * raw[i + 1].paceMinPerKm;
+    smoothed.add(PaceCurveSample(km: raw[i].km, paceMinPerKm: avgPace));
+  }
+  smoothed.add(raw.last);
+  return smoothed;
+}
+
 /// 纯 GPS 轨迹过滤、平滑与距离累计引擎（零平台依赖，便于单元测试验证误差 < 5%）
 class RunTrackProcessor {
   static const double maxAccuracyMeters = 20.0;

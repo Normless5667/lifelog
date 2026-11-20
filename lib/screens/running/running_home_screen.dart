@@ -320,6 +320,23 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
     return context.l10n.runModeFree;
   }
 
+  String _courseAssetPath(RunningCourse course) {
+    final id = course.id;
+    if (id.startsWith('fartlek')) {
+      return 'assets/icons/generated/course_fartlek.png';
+    }
+    if (id.startsWith('interval')) {
+      return 'assets/icons/generated/course_interval.png';
+    }
+    if (id.startsWith('run_walk')) {
+      return 'assets/icons/generated/course_run_walk.png';
+    }
+    if (id.startsWith('easy') || id == 'distance_3k') {
+      return 'assets/icons/generated/course_easy_run.png';
+    }
+    return 'assets/icons/generated/course_fartlek.png';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -378,6 +395,14 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                               ),
                           ],
                         ),
+                        if (AppColors.isMidnight(context))
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: ColoredBox(
+                                color: GeminiDarkColors.bgBottom.withValues(alpha: 0.24),
+                              ),
+                            ),
+                          ),
                         Positioned(
                           right: 10,
                           top: 10,
@@ -473,23 +498,32 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: 52,
+                            height: 52,
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: AppColors.softBg(
                                 context,
                                 course.isDistanceCourse ? teal : workoutColor,
+                                lightAlpha: 0.10,
+                                darkAlpha: 0.18,
                               ),
                               borderRadius: AppRadius.bMd,
                             ),
-                            child: Icon(
-                              course.isDistanceCourse
-                                  ? Icons.straighten_rounded
-                                  : (course.level >= 2
-                                      ? Icons.bolt_rounded
-                                      : Icons.directions_run_rounded),
-                              color: course.isDistanceCourse ? teal : workoutColor,
-                              size: 22,
+                            child: Image.asset(
+                              _courseAssetPath(course),
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => Icon(
+                                course.isDistanceCourse
+                                    ? Icons.straighten_rounded
+                                    : (course.level >= 2
+                                        ? Icons.bolt_rounded
+                                        : Icons.directions_run_rounded),
+                                color: course.isDistanceCourse ? teal : workoutColor,
+                                size: 22,
+                              ),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -570,23 +604,34 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                 if (_runs.isEmpty)
                   SurfaceCard(
                     padding: AppSpacing.cardPadding,
-                    child: Row(
+                    child: Column(
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.softBg(context, primary),
-                            borderRadius: AppRadius.bMd,
+                        Image.asset(
+                          'assets/icons/generated/empty_running_whale.png',
+                          width: 112,
+                          height: 112,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: AppColors.softBg(context, primary),
+                              borderRadius: AppRadius.bLg,
+                            ),
+                            child: Icon(Icons.route_rounded, color: primary, size: 28),
                           ),
-                          child: Icon(Icons.route_rounded, color: primary, size: 22),
                         ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Text(
-                            l.runEmptyHistory,
-                            style: AppTypography.bodySecondary(context),
-                          ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          l.runEmptyHistory,
+                          style: AppTypography.bodySecondary(context),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        FilledButton.icon(
+                          onPressed: () => _launchRun(),
+                          icon: const Icon(Icons.directions_run_rounded, size: 18),
+                          label: Text(l.runEmptyStartBtn),
                         ),
                       ],
                     ),

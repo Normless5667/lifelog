@@ -26,7 +26,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
   UsageTelemetryService._();
   static final UsageTelemetryService instance = UsageTelemetryService._();
 
-  static const appVersion = '3.1.1';
+  static const appVersion = '3.1.2';
   static const _enabledKvKey = 'usage_telemetry_enabled';
   static const _flushIntervalSec = 30;
   static const _flushBatchThreshold = 50;

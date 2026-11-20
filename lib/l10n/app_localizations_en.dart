@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.1.1 · Co-developed with DaFeiYu';
+      'Version v3.1.2 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.1.1 (Build 19)';
+  String get aboutVersion => 'Version v3.1.2 (Build 20)';
 
   @override
   String get aboutBadge =>
@@ -2852,4 +2852,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runDetailSegmentsTitle => 'Course Segments';
+
+  @override
+  String get settingsSkinTitle => 'Appearance Skin';
+
+  @override
+  String get settingsSkinLight => 'Light';
+
+  @override
+  String get settingsSkinDark => 'Dark';
+
+  @override
+  String get settingsSkinMidnight => 'Midnight';
+
+  @override
+  String get runEmptyStartBtn => 'Start Your First Run';
+
+  @override
+  String get runDetailReplayBtn => 'Replay Route';
+
+  @override
+  String get runDetailReplayingLabel => 'Replaying…';
+
+  @override
+  String get runDetailPaceChartTitle => 'Pace Curve';
+
+  @override
+  String get runDetailPaceChartSub =>
+      'Pace (min/km) by distance — higher means faster';
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors_dark_premium.dart';
+
 /// LifeLog v2.0 统一色彩系统
 /// - 浅色模式：清爽高对比，深海蓝主色 + 活力珊瑚橙强调色
 /// - 深色模式：大幅降低模块色饱和度（融入深邃蓝灰基底），避免刺眼实心色块
@@ -80,77 +82,126 @@ abstract final class AppColors {
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
 
+  static bool isMidnight(BuildContext context) =>
+      AppSkinExtension.isMidnightOf(context);
+
   static Color primary(BuildContext context) =>
-      isDark(context) ? primaryDark : primaryLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? primaryDark : primaryLight);
 
   static Color accent(BuildContext context) =>
-      isDark(context) ? accentDark : accentLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? accentDark : accentLight);
 
   static Color teal(BuildContext context) =>
-      isDark(context) ? tealDark : tealLight;
+      isMidnight(context)
+          ? GeminiDarkColors.green
+          : (isDark(context) ? tealDark : tealLight);
 
   static Color bg(BuildContext context) =>
-      isDark(context) ? bgDark : bgLight;
+      isMidnight(context)
+          ? GeminiDarkColors.bgTop
+          : (isDark(context) ? bgDark : bgLight);
 
   static Color surface(BuildContext context) =>
-      isDark(context) ? surfaceDark : surfaceLight;
+      isMidnight(context)
+          ? GeminiDarkColors.surface
+          : (isDark(context) ? surfaceDark : surfaceLight);
 
   static Color surfaceSubtle(BuildContext context) =>
-      isDark(context) ? surfaceSubtleDark : surfaceSubtleLight;
+      isMidnight(context)
+          ? GeminiDarkColors.surfaceAlt
+          : (isDark(context) ? surfaceSubtleDark : surfaceSubtleLight);
 
   static Color border(BuildContext context) =>
-      isDark(context) ? borderDark : borderLight;
+      isMidnight(context)
+          ? GeminiDarkColors.surfaceAlt
+          : (isDark(context) ? borderDark : borderLight);
 
   static Color textPrimary(BuildContext context) =>
-      isDark(context) ? textPrimaryDark : textPrimaryLight;
+      isMidnight(context)
+          ? GeminiDarkColors.textPrimary
+          : (isDark(context) ? textPrimaryDark : textPrimaryLight);
 
   static Color textSecondary(BuildContext context) =>
-      isDark(context) ? textSecondaryDark : textSecondaryLight;
+      isMidnight(context)
+          ? GeminiDarkColors.textSecondary
+          : (isDark(context) ? textSecondaryDark : textSecondaryLight);
 
   static Color textTertiary(BuildContext context) =>
-      isDark(context) ? textTertiaryDark : textTertiaryLight;
+      isMidnight(context)
+          ? GeminiDarkColors.textTertiary
+          : (isDark(context) ? textTertiaryDark : textTertiaryLight);
 
   // 模块色获取器
   static Color moduleToday(BuildContext context) =>
-      isDark(context) ? moduleTodayDark : moduleTodayLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? moduleTodayDark : moduleTodayLight);
 
   static Color moduleSchedule(BuildContext context) =>
-      isDark(context) ? moduleScheduleDark : moduleScheduleLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? moduleScheduleDark : moduleScheduleLight);
 
   static Color moduleDiet(BuildContext context) =>
-      isDark(context) ? moduleDietDark : moduleDietLight;
+      isMidnight(context)
+          ? GeminiDarkColors.yellow
+          : (isDark(context) ? moduleDietDark : moduleDietLight);
 
   static Color moduleWorkout(BuildContext context) =>
-      isDark(context) ? moduleWorkoutDark : moduleWorkoutLight;
+      isMidnight(context)
+          ? GeminiDarkColors.red
+          : (isDark(context) ? moduleWorkoutDark : moduleWorkoutLight);
 
   static Color moduleBody(BuildContext context) =>
-      isDark(context) ? moduleBodyDark : moduleBodyLight;
+      isMidnight(context)
+          ? GeminiDarkColors.green
+          : (isDark(context) ? moduleBodyDark : moduleBodyLight);
 
   static Color moduleAi(BuildContext context) =>
-      isDark(context) ? moduleAiDark : moduleAiLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? moduleAiDark : moduleAiLight);
 
   // 营养素色获取器
   static Color macroProtein(BuildContext context) =>
-      isDark(context) ? macroProteinDark : macroProteinLight;
+      isMidnight(context)
+          ? GeminiDarkColors.red
+          : (isDark(context) ? macroProteinDark : macroProteinLight);
 
   static Color macroCarbs(BuildContext context) =>
-      isDark(context) ? macroCarbsDark : macroCarbsLight;
+      isMidnight(context)
+          ? GeminiDarkColors.yellow
+          : (isDark(context) ? macroCarbsDark : macroCarbsLight);
 
   static Color macroFat(BuildContext context) =>
-      isDark(context) ? macroFatDark : macroFatLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? macroFatDark : macroFatLight);
 
   // 状态色获取器
   static Color success(BuildContext context) =>
-      isDark(context) ? successDark : successLight;
+      isMidnight(context)
+          ? GeminiDarkColors.green
+          : (isDark(context) ? successDark : successLight);
 
   static Color warning(BuildContext context) =>
-      isDark(context) ? warningDark : warningLight;
+      isMidnight(context)
+          ? GeminiDarkColors.yellow
+          : (isDark(context) ? warningDark : warningLight);
 
   static Color danger(BuildContext context) =>
-      isDark(context) ? dangerDark : dangerLight;
+      isMidnight(context)
+          ? GeminiDarkColors.red
+          : (isDark(context) ? dangerDark : dangerLight);
 
   static Color info(BuildContext context) =>
-      isDark(context) ? infoDark : infoLight;
+      isMidnight(context)
+          ? GeminiDarkColors.accent
+          : (isDark(context) ? infoDark : infoLight);
 
   /// 将任意颜色在深色模式下自动向背景色柔和过渡（适合课程自定义色等动态色值）
   static Color adaptForDark(BuildContext context, Color rawColor) {

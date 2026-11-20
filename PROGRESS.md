@@ -73,7 +73,15 @@
   - 新增 `CardioType` 统一常量；有氧记录页支持 `running`（「跑步」+ `directions_run_rounded` + 距离/时长/配速/热量），点击直达 `RunDetailScreen` 查看轨迹。
 - [x] 验证：50/50 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.1_release.apk`。
 
-### 第三批：Gemini 深夜黑皮肤 + 生图插画/图标 + 轨迹回放与配速曲线（待 P0 验收后开始）⏳
-- [ ] 使用 `image-generator` 生成 4 张课程插画 + 空状态大肥鱼插画 + 模块图标（1024×1024 透明 PNG，存 `assets/icons/generated/`）
-- [ ] `app_colors_dark_premium.dart`（`ThemeExtension` + 固定 `RepaintBoundary` 纯黑到深蓝渐变背景 + 无边框大圆角 + 设置页三皮肤切换）
-- [ ] 轨迹一笔绘制回放动画 + `fl_chart` 配速曲线图
+### 第三批：Gemini 深夜黑皮肤 + 生图插画/图标 + 轨迹回放与配速曲线（v3.1.2+20）✅ 已完成并出包
+- [x] **Gemini 深夜黑高级皮肤 (`lib/theme/app_colors_dark_premium.dart`)**：
+  - 精准落地 Gemini 暗色色板（`#000000` → `#0A0E27` 渐变、`#15161A` 无边框表面、`#1E1F24` 胶囊输入框、`#E8EAED` / `#9AA0A6` 文本、`#4285F4` 主强调色与 Gemini 四色）。
+  - 通过 `AppSkinExtension`（`ThemeExtension`）与根部固定 `MidnightBackdropLayer`（`RepaintBoundary` 隔离，滚动零重绘背景渐变）实现无边框大圆角（`24dp` 常规卡 / `28dp` 半透明 Hero 卡）、融合式底部导航栏、无边框 AI 对话气泡 + 胶囊输入条、地图暗色蒙版。
+  - 设置页升级为三皮肤切换：`默认浅色 / 深色 / 深夜黑`（持久化并平滑兼容旧主题设置）。
+- [x] **Gemini 生图 1024×1024 透明 PNG 资产 (`assets/icons/generated/`)**：
+  - 生成并精修去底 6 张透明 PNG：`course_fartlek.png`、`course_easy_run.png`、`course_interval.png`、`course_run_walk.png`、`empty_running_whale.png`（大肥鱼赛前拉伸）、`icon_running.png`。
+  - 接入健身页跑步入口图标、跑步首页全部课程卡插画，以及无跑步记录空状态（大肥鱼插画 + 鼓励语 + 「立即开始第一次跑步」主按钮）。
+- [x] **轨迹动态回放动画 + `fl_chart` 配速曲线 (`RunDetailScreen`)**：
+  - 新增 `computePaceCurveSamples()`（自动过滤跳点与暂停断档、动态分桶与 3 点平滑），在跑步详情页渲染 `fl_chart` 平滑配速曲线（纵轴越靠上配速越快，支持触摸查看公里点配速）。
+  - 地图轨迹新增一笔平滑插值绘制回放动画（进入自动播放 + 右上角「回放轨迹」重播按钮，严格遵循 `MediaQuery.disableAnimationsOf(context)`）。
+- [x] 验证：55/55 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.2_release.apk`。

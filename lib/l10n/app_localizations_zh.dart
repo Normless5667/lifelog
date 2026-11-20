@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.1.1 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.1.2 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.1.1 (Build 19)';
+  String get aboutVersion => '版本 v3.1.2 (Build 20)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2760,4 +2760,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runDetailSegmentsTitle => '课程分段记录';
+
+  @override
+  String get settingsSkinTitle => '外观皮肤';
+
+  @override
+  String get settingsSkinLight => '默认浅色';
+
+  @override
+  String get settingsSkinDark => '深色';
+
+  @override
+  String get settingsSkinMidnight => '深夜黑';
+
+  @override
+  String get runEmptyStartBtn => '立即开始第一次跑步';
+
+  @override
+  String get runDetailReplayBtn => '回放轨迹';
+
+  @override
+  String get runDetailReplayingLabel => '轨迹回放中…';
+
+  @override
+  String get runDetailPaceChartTitle => '配速曲线';
+
+  @override
+  String get runDetailPaceChartSub => '纵轴为配速（分/公里），曲线越靠上配速越快';
 }

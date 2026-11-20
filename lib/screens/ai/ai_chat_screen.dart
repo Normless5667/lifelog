@@ -573,12 +573,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       final m = _messages[i];
                       final isUser = m.role == 'user';
                       final parsed = isUser ? null : _parseReplyContent(m.content);
+                      final isMidnight = AppColors.isMidnight(context);
+                      final bubbleR = isMidnight ? 24.0 : AppRadius.lg;
+                      final tailR = isMidnight ? 8.0 : AppRadius.xs;
 
                       final bubbleRadius = BorderRadius.only(
-                        topLeft: const Radius.circular(AppRadius.lg),
-                        topRight: const Radius.circular(AppRadius.lg),
-                        bottomLeft: Radius.circular(isUser ? AppRadius.lg : AppRadius.xs),
-                        bottomRight: Radius.circular(isUser ? AppRadius.xs : AppRadius.lg),
+                        topLeft: Radius.circular(bubbleR),
+                        topRight: Radius.circular(bubbleR),
+                        bottomLeft: Radius.circular(isUser ? bubbleR : tailR),
+                        bottomRight: Radius.circular(isUser ? tailR : bubbleR),
                       );
 
                       return Align(
@@ -591,16 +594,22 @@ class _AiChatScreenState extends State<AiChatScreen> {
                             vertical: AppSpacing.md,
                           ),
                           decoration: BoxDecoration(
-                            color: isUser
-                                ? AppColors.softBg(context, primary, lightAlpha: 0.11, darkAlpha: 0.22)
-                                : AppColors.surface(context),
+                            color: isMidnight
+                                ? (isUser
+                                    ? AppColors.surfaceSubtle(context)
+                                    : AppColors.surface(context).withValues(alpha: 0.88))
+                                : (isUser
+                                    ? AppColors.softBg(context, primary, lightAlpha: 0.11, darkAlpha: 0.22)
+                                    : AppColors.surface(context)),
                             borderRadius: bubbleRadius,
-                            border: Border.all(
-                              color: isUser
-                                  ? AppColors.softBorder(context, primary, lightAlpha: 0.24, darkAlpha: 0.34)
-                                  : borderColor.withValues(alpha: AppColors.isDark(context) ? 0.8 : 0.9),
-                            ),
-                            boxShadow: AppShadows.subtle(context),
+                            border: isMidnight
+                                ? null
+                                : Border.all(
+                                    color: isUser
+                                        ? AppColors.softBorder(context, primary, lightAlpha: 0.24, darkAlpha: 0.34)
+                                        : borderColor.withValues(alpha: AppColors.isDark(context) ? 0.8 : 0.9),
+                                  ),
+                            boxShadow: isMidnight ? const [] : AppShadows.subtle(context),
                           ),
                           child: isUser
                               ? SelectableText(
@@ -673,8 +682,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface(context),
-              border: Border(top: BorderSide(color: borderColor)),
+              color: AppColors.isMidnight(context)
+                  ? Colors.transparent
+                  : AppColors.surface(context),
+              border: AppColors.isMidnight(context)
+                  ? null
+                  : Border(top: BorderSide(color: borderColor)),
             ),
             child: SafeArea(
               top: false,
@@ -698,21 +711,33 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         onSubmitted: _send,
                         decoration: InputDecoration(
                           hintText: l.aiInputHint,
+                          filled: true,
+                          fillColor: AppColors.surfaceSubtle(context),
                           prefixIcon: Icon(
                             Icons.chat_bubble_outline_rounded,
                             size: 18,
                             color: AppColors.textTertiary(context),
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: AppRadius.bLg,
-                            borderSide: BorderSide(color: borderColor),
+                            borderRadius: AppColors.isMidnight(context)
+                                ? BorderRadius.circular(28)
+                                : AppRadius.bLg,
+                            borderSide: AppColors.isMidnight(context)
+                                ? BorderSide.none
+                                : BorderSide(color: borderColor),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: AppRadius.bLg,
-                            borderSide: BorderSide(color: borderColor),
+                            borderRadius: AppColors.isMidnight(context)
+                                ? BorderRadius.circular(28)
+                                : AppRadius.bLg,
+                            borderSide: AppColors.isMidnight(context)
+                                ? BorderSide.none
+                                : BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: AppRadius.bLg,
+                            borderRadius: AppColors.isMidnight(context)
+                                ? BorderRadius.circular(28)
+                                : AppRadius.bLg,
                             borderSide: BorderSide(color: aiColor, width: 1.6),
                           ),
                         ),
@@ -725,7 +750,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         backgroundColor: aiColor,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(44, 44),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.bMd),
+                        shape: AppColors.isMidnight(context)
+                            ? const CircleBorder()
+                            : RoundedRectangleBorder(borderRadius: AppRadius.bMd),
                       ),
                       icon: const Icon(Icons.send_rounded, size: 20),
                     ),

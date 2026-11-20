@@ -45,13 +45,16 @@ class LifeLogApp extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           themeMode: prefs.themeMode,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: prefs.isMidnight ? AppTheme.midnight() : AppTheme.dark(),
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.linear(prefs.textScale),
               ),
-              child: child ?? const SizedBox.shrink(),
+              child: MidnightBackdropLayer(
+                enabled: prefs.isMidnight,
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
           home: const HomeShell(),
