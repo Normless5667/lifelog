@@ -80,6 +80,7 @@ flutter:
     - assets/icon/app_icon.png
     - assets/icon/dafeiyu_mascot.png
     - assets/icon/gemini_avatar.png
+    - assets/icon/gemini_avatar.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
