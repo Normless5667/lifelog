@@ -1913,7 +1913,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.1.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.1.1 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2065,7 +2065,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.1.0 (Build 18)';
+  String get aboutVersion => '版本 v3.1.1 (Build 19)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2669,4 +2669,89 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runPermDeniedToast => '未授予位置权限，无法记录 GPS 轨迹';
+
+  @override
+  String runCourseSegmentProgress(int current, int total) {
+    return '第 $current 段 / 共 $total 段';
+  }
+
+  @override
+  String runCourseRemainingTime(String time) {
+    return '还剩 $time';
+  }
+
+  @override
+  String runCourseRemainingMeters(int meters) {
+    return '还剩 $meters 米';
+  }
+
+  @override
+  String runCourseNextSegmentTime(String label, int secs) {
+    return '下一段：$label $secs 秒';
+  }
+
+  @override
+  String runCourseNextSegmentMeters(String label, int meters) {
+    return '下一段：$label $meters 米';
+  }
+
+  @override
+  String get runCourseNextFinal => '最后一段，跑完即完成本课程';
+
+  @override
+  String get runCourseCompletedBanner => '课程已完成！点击结束保存本次记录';
+
+  @override
+  String get runCourseCompletedTag => '已完成课程';
+
+  @override
+  String get runCourseIncompleteTag => '未完成课程';
+
+  @override
+  String get runCourseEarlyFinishHint =>
+      '当前课程尚未全部跑完，保存后将标记为「未完成」，已跑数据与分段记录会完整保留。';
+
+  @override
+  String get runCourseTimeoutSwitched => '本段超时，已自动切入下一段';
+
+  @override
+  String get runCourseSkipSegmentTooltip => '跳至下一段';
+
+  @override
+  String get runCourseVoiceOnTooltip => '关闭语音教练';
+
+  @override
+  String get runCourseVoiceOffTooltip => '开启语音教练';
+
+  @override
+  String runCoursePreviewTitle(int count) {
+    return '课程分段一览（共 $count 段）';
+  }
+
+  @override
+  String get runCourseStartBtn => '开始本课程';
+
+  @override
+  String get runCourseTypeDistanceTag => '按距离';
+
+  @override
+  String get runCourseTypeTimeTag => '按时间';
+
+  @override
+  String runCourseSegmentStepMeters(int meters) {
+    return '$meters 米';
+  }
+
+  @override
+  String runCourseSegmentStepSecs(int secs) {
+    return '$secs 秒';
+  }
+
+  @override
+  String runCourseSegmentStepMins(int mins) {
+    return '$mins 分钟';
+  }
+
+  @override
+  String get runDetailSegmentsTitle => '课程分段记录';
 }

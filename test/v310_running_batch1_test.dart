@@ -151,11 +151,14 @@ void main() {
 
       final raw = File('assets/running_courses.json').readAsStringSync();
       final courses = await RunningCourseCatalog.loadAll(overrideRawJson: raw);
-      expect(courses.length, 8);
+      expect(courses.length, 11);
       expect(courses.any((c) => c.id == 'free_run' && c.isFree), isTrue);
       expect(courses.any((c) => c.id == 'fartlek_3k'), isTrue);
       expect(courses.any((c) => c.id == 'fartlek_5k'), isTrue);
       expect(courses.any((c) => c.id == 'fartlek_10k'), isTrue);
+      expect(courses.any((c) => c.id == 'distance_3k' && c.isDistanceCourse), isTrue);
+      expect(courses.any((c) => c.id == 'distance_5k' && c.isDistanceCourse), isTrue);
+      expect(courses.any((c) => c.id == 'distance_10k' && c.isDistanceCourse), isTrue);
       final intervals = courses.firstWhere((c) => c.id == 'interval_5x400');
       expect(intervals.segments.any((s) => s.isDistanceBased && s.durationMeters == 400), isTrue);
     });
@@ -178,7 +181,7 @@ void main() {
             weightKg: 70.0,
             controllerForTest: ctrl,
             disableMapTilesForTest: true,
-            onSaveRunOverrideForTest: (r) async {
+            onSaveRunOverrideForTest: (r, _) async {
               savedRun = r;
               return 42;
             },

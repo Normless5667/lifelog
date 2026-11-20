@@ -9,6 +9,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/run_models.dart';
 import '../utils/date_utils.dart';
 import 'reminder_service.dart';
+import 'run_course_engine.dart';
+import 'run_voice_coach.dart';
 
 /// Haversine 球面距离公式（单位：米）
 double haversineMeters(double lat1, double lng1, double lat2, double lng2) {
@@ -236,18 +238,43 @@ class RunningNativeService {
   }
 }
 
+/// 课程分段切换事件（供 UI 滑入横幅与测试验证）
+class SegmentTransitionEvent {
+  final int eventId;
+  final RunningCourseSegment? segment;
+  final int segmentNumber; // 1-based
+  final int totalSegments;
+  final bool courseCompleted;
+  final bool forcedByTimeout;
+
+  const SegmentTransitionEvent({
+    required this.eventId,
+    required this.segment,
+    required this.segmentNumber,
+    required this.totalSegments,
+    this.courseCompleted = false,
+    this.forcedByTimeout = false,
+  });
+}
+
 /// 跑步会话实时控制器：
 /// - 使用 Geolocator.getPositionStream(distanceFilter: 5) 省电追踪，绝不定时轮询
 /// - 启动 Android 前台定位服务（常驻通知「正在记录跑步」）防止切后台断轨
 /// - 使用单调真实时钟区分「运动时长（不含暂停）」与「总时长（含暂停）」
+/// - 驱动 RunCourseEngine 按时间 / 按距离自动推进课程分段 + RunVoiceCoach 语音播报与震动
 /// - 屏幕常亮（wakelock_plus）
 class RunningTrackerController extends ChangeNotifier {
   final double weightKg;
   final double? targetDistanceKm;
   final RunningCourse? course;
   final String notificationTitle;
+  final bool isEnglish;
+  final void Function(String text)? onSpeakForTest;
 
   final RunTrackProcessor _processor = RunTrackProcessor();
+  final RunVoiceCoach voiceCoach = RunVoiceCoach();
+  late final RunCourseEngine? courseEngine;
+
   StreamSubscription<Position>? _posSub;
   Timer? _uiTicker;
 
@@ -260,21 +287,35 @@ class RunningTrackerController extends ChangeNotifier {
   DateTime? _startAt;
   DateTime? _pauseStartedAt;
   int _accumulatedPausedMs = 0;
+  int? _activeSecsOverrideForTest;
   DateTime? _lastNotifSyncAt;
   double? _latestAccuracy;
   String? _gpsError;
+  int _lastAnnouncedKm = 0;
+  int _bannerSeq = 0;
+  SegmentTransitionEvent? _latestBannerEvent;
 
   RunningTrackerController({
     required this.weightKg,
     this.targetDistanceKm,
     this.course,
     this.notificationTitle = '正在记录跑步',
-  });
+    this.isEnglish = false,
+    this.onSpeakForTest,
+  }) {
+    courseEngine = (course != null && course!.segments.isNotEmpty)
+        ? RunCourseEngine(course!)
+        : null;
+  }
 
   bool get isStarted => _started;
   bool get isPaused => _paused;
   bool get isFinished => _finished;
   bool get targetReached => _targetNotified;
+  bool get hasCourseSegments => courseEngine != null;
+  bool get isCourseCompleted => courseEngine?.isCompleted ?? false;
+  bool get isVoiceMuted => voiceCoach.isMuted;
+  SegmentTransitionEvent? get latestBannerEvent => _latestBannerEvent;
   double? get latestAccuracy => _latestAccuracy;
   String? get gpsError => _gpsError;
   DateTime? get startAt => _startAt;
@@ -285,14 +326,21 @@ class RunningTrackerController extends ChangeNotifier {
   List<RoutePoint> get allPoints => _processor.allPoints;
   RoutePoint? get latestPoint => _processor.latestPoint;
 
+  void toggleVoiceMute() {
+    voiceCoach.setMuted(!voiceCoach.isMuted);
+    notifyListeners();
+  }
+
   /// 总时长（秒，含暂停）
   int get totalDurationSecs {
+    if (_activeSecsOverrideForTest != null) return _activeSecsOverrideForTest!;
     if (_startAt == null) return 0;
     return math.max(0, DateTime.now().difference(_startAt!).inSeconds);
   }
 
   /// 运动时长（秒，不含暂停）
   int get activeDurationSecs {
+    if (_activeSecsOverrideForTest != null) return _activeSecsOverrideForTest!;
     if (_startAt == null) return 0;
     final now = DateTime.now();
     var pausedMs = _accumulatedPausedMs;
@@ -318,6 +366,18 @@ class RunningTrackerController extends ChangeNotifier {
         activeDurationSecs: activeDurationSecs,
       );
 
+  Future<void> _speak(String text) async {
+    final msg = text.trim();
+    if (msg.isEmpty) return;
+    if (onSpeakForTest != null) {
+      if (!voiceCoach.isMuted) onSpeakForTest!(msg);
+      return;
+    }
+    if (!_skipPlatformSideEffects) {
+      await voiceCoach.speak(msg);
+    }
+  }
+
   Future<void> start({bool skipPlatformSideEffects = false}) async {
     if (_started) return;
     _skipPlatformSideEffects = skipPlatformSideEffects;
@@ -328,9 +388,10 @@ class RunningTrackerController extends ChangeNotifier {
     _accumulatedPausedMs = 0;
     _pauseStartedAt = null;
     _gpsError = null;
-    notifyListeners();
+    _lastAnnouncedKm = 0;
 
     if (!skipPlatformSideEffects) {
+      await voiceCoach.init(isEnglish: isEnglish);
       try {
         await WakelockPlus.enable();
       } catch (_) {}
@@ -341,9 +402,25 @@ class RunningTrackerController extends ChangeNotifier {
       _startLocationStream();
     }
 
+    // 课程模式开跑即触发第 1 段横幅 + 语音播报
+    if (courseEngine != null && courseEngine!.current != null) {
+      final firstSeg = courseEngine!.current!;
+      _emitBanner(
+        segment: firstSeg,
+        segmentNumber: 1,
+        totalSegments: courseEngine!.totalSegments,
+      );
+      _speak(firstSeg.voice);
+    }
+
+    notifyListeners();
+
     _uiTicker?.cancel();
     _uiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_finished) return;
+      if (!_paused) {
+        _tickCourseAndMilestones();
+      }
       notifyListeners();
       if (!skipPlatformSideEffects) {
         final now = DateTime.now();
@@ -356,6 +433,120 @@ class RunningTrackerController extends ChangeNotifier {
         }
       }
     });
+  }
+
+  void _emitBanner({
+    required RunningCourseSegment? segment,
+    required int segmentNumber,
+    required int totalSegments,
+    bool courseCompleted = false,
+    bool forcedByTimeout = false,
+  }) {
+    _bannerSeq++;
+    _latestBannerEvent = SegmentTransitionEvent(
+      eventId: _bannerSeq,
+      segment: segment,
+      segmentNumber: segmentNumber,
+      totalSegments: totalSegments,
+      courseCompleted: courseCompleted,
+      forcedByTimeout: forcedByTimeout,
+    );
+  }
+
+  bool _tickCourseAndMilestones() {
+    var segmentSwitched = false;
+    if (courseEngine != null && !courseEngine!.isCompleted) {
+      final res = courseEngine!.tick(
+        totalDistance: _processor.distanceMeters,
+        totalSeconds: activeDurationSecs,
+      );
+      if (res.advanced) {
+        segmentSwitched = true;
+        if (!_skipPlatformSideEffects) {
+          HapticFeedback.mediumImpact();
+        }
+        if (res.courseCompleted) {
+          if (!_skipPlatformSideEffects) {
+            ReminderService.vibrateShort();
+          }
+          _emitBanner(
+            segment: null,
+            segmentNumber: courseEngine!.totalSegments,
+            totalSegments: courseEngine!.totalSegments,
+            courseCompleted: true,
+            forcedByTimeout: res.forcedByTimeout,
+          );
+          _speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！');
+        } else if (res.newSegment != null) {
+          _emitBanner(
+            segment: res.newSegment,
+            segmentNumber: courseEngine!.currentIndex + 1,
+            totalSegments: courseEngine!.totalSegments,
+            forcedByTimeout: res.forcedByTimeout,
+          );
+          final cue = res.newSegment!.voice.trim().isNotEmpty
+              ? res.newSegment!.voice
+              : RunningCourseCatalog.segmentMeta(res.newSegment!.type)
+                  .localizedLabel(isEn: isEnglish);
+          _speak(cue);
+        }
+      }
+    }
+
+    // 整公里配速语音播报（若本 tick 刚切段则让位给课程切段语音，避免互相打断）
+    final completedKm = (_processor.distanceMeters / 1000.0).floor();
+    if (completedKm > _lastAnnouncedKm) {
+      _lastAnnouncedKm = completedKm;
+      if (!segmentSwitched) {
+        final pace = avgPaceSecsPerKm;
+        if (pace != null) {
+          final pm = pace ~/ 60;
+          final ps = pace % 60;
+          final msg = isEnglish
+              ? '$completedKm kilometers completed. Average pace $pm minutes $ps seconds per kilometer.'
+              : '已完成 $completedKm 公里，平均配速 $pm 分 $ps 秒';
+          _speak(msg);
+        }
+      }
+    }
+    return segmentSwitched;
+  }
+
+  /// 供测试同步推进时间并触发课程分段评估
+  @visibleForTesting
+  void advanceTestClock(int activeSecs) {
+    _activeSecsOverrideForTest = activeSecs;
+    if (!_paused && _started && !_finished) {
+      _tickCourseAndMilestones();
+    }
+    notifyListeners();
+  }
+
+  /// 手动跳到课程下一段
+  void skipCourseSegment() {
+    if (courseEngine == null || courseEngine!.isCompleted || _finished) return;
+    final res = courseEngine!.skipCurrentSegment();
+    if (!res.advanced) return;
+    if (!_skipPlatformSideEffects) {
+      HapticFeedback.mediumImpact();
+    }
+    if (res.courseCompleted) {
+      _emitBanner(
+        segment: null,
+        segmentNumber: courseEngine!.totalSegments,
+        totalSegments: courseEngine!.totalSegments,
+        courseCompleted: true,
+      );
+      _speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！');
+    } else if (res.newSegment != null) {
+      _emitBanner(
+        segment: res.newSegment,
+        segmentNumber: courseEngine!.currentIndex + 1,
+        totalSegments: courseEngine!.totalSegments,
+      );
+      _speak(res.newSegment!.voice);
+    }
+    notifyListeners();
   }
 
   void _startLocationStream() {
@@ -397,12 +588,16 @@ class RunningTrackerController extends ChangeNotifier {
     _latestAccuracy = point.accuracy;
     final accepted = _processor.addRawPoint(point, isPaused: _paused);
     if (accepted) {
+      _tickCourseAndMilestones();
       if (!_targetNotified &&
+          courseEngine == null &&
           targetDistanceKm != null &&
           targetDistanceKm! > 0 &&
           distanceKm >= targetDistanceKm!) {
         _targetNotified = true;
-        ReminderService.vibrateShort();
+        if (!_skipPlatformSideEffects) {
+          ReminderService.vibrateShort();
+        }
       }
       notifyListeners();
     }
@@ -446,12 +641,20 @@ class RunningTrackerController extends ChangeNotifier {
     }
   }
 
-  /// 结束跑步并组装可入库的 RunRecord
+  /// 导出本次跑步的课程分段明细（自由跑返回空列表）
+  List<RunSegmentRecord> buildFinalSegmentRecords() =>
+      courseEngine?.buildSegmentRecords() ?? const [];
+
+  /// 结束跑步并组装可入库的 RunRecord（课程模式自动标记 course_completed / course_incomplete）
   Future<RunRecord> finish({String? note}) async {
     final activeSecs = activeDurationSecs;
     final totalSecs = totalDurationSecs;
     final startMs = (_startAt ?? DateTime.now()).millisecondsSinceEpoch;
     final endMs = DateTime.now().millisecondsSinceEpoch;
+    final effectiveNote = note ??
+        (courseEngine != null
+            ? (courseEngine!.isCompleted ? 'course_completed' : 'course_incomplete')
+            : null);
     final record = RunRecord(
       date: fmtDate(_startAt ?? DateTime.now()),
       startTime: startMs,
@@ -463,7 +666,7 @@ class RunningTrackerController extends ChangeNotifier {
       caloriesKcal: caloriesKcal,
       courseId: course?.id,
       routeJson: RoutePoint.encodeList(_processor.allPoints),
-      note: note,
+      note: effectiveNote,
     );
     await stopAndCleanup();
     return record;
@@ -475,6 +678,7 @@ class RunningTrackerController extends ChangeNotifier {
     _uiTicker = null;
     await _posSub?.cancel();
     _posSub = null;
+    await voiceCoach.stop();
     if (!_skipPlatformSideEffects) {
       try {
         await WakelockPlus.disable();
@@ -488,6 +692,11 @@ class RunningTrackerController extends ChangeNotifier {
     final dist = distanceKm.toStringAsFixed(2);
     final dur = formatRunDuration(activeDurationSecs);
     final pace = formatRunPace(avgPaceSecsPerKm);
+    final curSeg = courseEngine?.current;
+    if (curSeg != null) {
+      final segLabel = RunningCourseCatalog.segmentMeta(curSeg.type).localizedLabel(isEn: isEnglish);
+      return '$segLabel · $dist km · $dur';
+    }
     return '$dist km · $dur · $pace';
   }
 
@@ -495,6 +704,7 @@ class RunningTrackerController extends ChangeNotifier {
   void dispose() {
     _uiTicker?.cancel();
     _posSub?.cancel();
+    voiceCoach.dispose();
     if (!_finished && !_skipPlatformSideEffects) {
       WakelockPlus.disable().catchError((_) {});
       RunningNativeService.stopForegroundService();

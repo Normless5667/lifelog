@@ -183,6 +183,135 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
     }
   }
 
+  String _formatSegmentTarget(BuildContext context, RunningCourseSegment seg) {
+    final l = context.l10n;
+    if (seg.isDistanceBased) {
+      return l.runCourseSegmentStepMeters(seg.durationMeters!.round());
+    }
+    final s = seg.durationSeconds ?? 0;
+    if (s >= 60 && s % 60 == 0) {
+      return l.runCourseSegmentStepMins(s ~/ 60);
+    }
+    return l.runCourseSegmentStepSecs(s);
+  }
+
+  Future<void> _previewAndStartCourse(RunningCourse course) async {
+    final l = context.l10n;
+    final isEn = context.isEnLocale;
+    final startNow = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.62,
+        minChildSize: 0.4,
+        maxChildSize: 0.88,
+        builder: (ctx, scrollCtrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            0,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                course.localizedName(isEn: isEn),
+                style: AppTypography.sectionTitle(ctx),
+              ),
+              const SizedBox(height: 4),
+              Text(course.description, style: AppTypography.bodySecondary(ctx)),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                l.runCoursePreviewTitle(course.segments.length),
+                style: AppTypography.subtitle(ctx),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollCtrl,
+                  itemCount: course.segments.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
+                  itemBuilder: (_, idx) {
+                    final seg = course.segments[idx];
+                    final meta = RunningCourseCatalog.segmentMeta(seg.type);
+                    final segColor = AppColors.adaptForDark(ctx, Color(meta.colorValue));
+                    final label = meta.localizedLabel(isEn: isEn);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.softBg(ctx, segColor, lightAlpha: 0.10, darkAlpha: 0.18),
+                        borderRadius: AppRadius.bMd,
+                        border: Border.all(
+                          color: AppColors.softBorder(ctx, segColor, lightAlpha: 0.25, darkAlpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: segColor,
+                              borderRadius: AppRadius.bSm,
+                            ),
+                            child: Text(
+                              '${idx + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$label · ${_formatSegmentTarget(ctx, seg)}',
+                                  style: AppTypography.subtitle(ctx, color: segColor),
+                                ),
+                                if (seg.voice.isNotEmpty)
+                                  Text(
+                                    seg.voice,
+                                    style: AppTypography.caption(ctx),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                label: Text(l.runCourseStartBtn),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (startNow == true && mounted) {
+      await _launchRun(course: course, targetDistanceKm: course.targetDistanceKm);
+    }
+  }
+
   String _courseNameById(String? id) {
     if (id == null) return context.l10n.runModeFree;
     for (final c in _courses) {
@@ -328,41 +457,38 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                   ],
                 ),
 
-                // 推荐课程（assets/running_courses.json）
+                // 推荐课程（assets/running_courses.json，10 门结构化课程：含按时间与按距离）
                 SectionTitle(
                   key: _coursesKey,
                   l.runRecommendedCourses,
                   icon: Icons.local_fire_department_rounded,
                   iconColor: workoutColor,
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Text(
-                    l.runCourseBatch2Hint,
-                    style: AppTypography.caption(context),
-                  ),
-                ),
                 for (final course in _courses)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: SurfaceCard(
                       padding: AppSpacing.cardCompactPadding,
-                      onTap: () => _launchRun(
-                        course: course,
-                        targetDistanceKm: course.targetDistanceKm,
-                      ),
+                      onTap: () => _previewAndStartCourse(course),
                       child: Row(
                         children: [
                           Container(
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: AppColors.softBg(context, workoutColor),
+                              color: AppColors.softBg(
+                                context,
+                                course.isDistanceCourse ? teal : workoutColor,
+                              ),
                               borderRadius: AppRadius.bMd,
                             ),
                             child: Icon(
-                              course.level >= 2 ? Icons.bolt_rounded : Icons.directions_run_rounded,
-                              color: workoutColor,
+                              course.isDistanceCourse
+                                  ? Icons.straighten_rounded
+                                  : (course.level >= 2
+                                      ? Icons.bolt_rounded
+                                      : Icons.directions_run_rounded),
+                              color: course.isDistanceCourse ? teal : workoutColor,
                               size: 22,
                             ),
                           ),
@@ -371,20 +497,48 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  course.localizedName(isEn: isEn),
-                                  style: AppTypography.cardTitle(context),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        course.localizedName(isEn: isEn),
+                                        style: AppTypography.cardTitle(context),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.softBg(
+                                          context,
+                                          course.isDistanceCourse ? teal : primary,
+                                        ),
+                                        borderRadius: AppRadius.bPill,
+                                      ),
+                                      child: Text(
+                                        course.isDistanceCourse
+                                            ? l.runCourseTypeDistanceTag
+                                            : l.runCourseTypeTimeTag,
+                                        style: AppTypography.badge(
+                                          context,
+                                          color: course.isDistanceCourse ? teal : primary,
+                                        ).copyWith(fontSize: 9.5),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  l.runCourseMeta(
-                                    course.estimatedMinutes ?? 30,
-                                    course.estimatedKcal ?? 200,
-                                    course.levelLabel.isNotEmpty
-                                        ? course.levelLabel
-                                        : 'K${course.level}',
+                                  '${l.runCourseMeta(course.estimatedMinutes ?? 30, course.estimatedKcal ?? 200, course.levelLabel.isNotEmpty ? course.levelLabel : 'K${course.level}')} · ${course.segments.length}',
+                                  style: AppTypography.caption(
+                                    context,
+                                    color: course.isDistanceCourse ? teal : workoutColor,
                                   ),
-                                  style: AppTypography.caption(context, color: workoutColor),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -397,7 +551,11 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
-                          Icon(Icons.play_circle_filled_rounded, color: workoutColor, size: 28),
+                          Icon(
+                            Icons.play_circle_filled_rounded,
+                            color: course.isDistanceCourse ? teal : workoutColor,
+                            size: 28,
+                          ),
                         ],
                       ),
                     ),

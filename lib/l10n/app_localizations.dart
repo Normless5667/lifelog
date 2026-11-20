@@ -3467,7 +3467,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.0 · Co-developed with DaFeiYu'**
+  /// **'Version v3.1.1 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3753,7 +3753,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.0 (Build 18)'**
+  /// **'Version v3.1.1 (Build 19)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -4800,6 +4800,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Location permission denied — unable to track GPS'**
   String get runPermDeniedToast;
+
+  /// No description provided for @runCourseSegmentProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Segment {current} / {total}'**
+  String runCourseSegmentProgress(int current, int total);
+
+  /// No description provided for @runCourseRemainingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String runCourseRemainingTime(String time);
+
+  /// No description provided for @runCourseRemainingMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{meters} m left'**
+  String runCourseRemainingMeters(int meters);
+
+  /// No description provided for @runCourseNextSegmentTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {label} · {secs}s'**
+  String runCourseNextSegmentTime(String label, int secs);
+
+  /// No description provided for @runCourseNextSegmentMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {label} · {meters} m'**
+  String runCourseNextSegmentMeters(String label, int meters);
+
+  /// No description provided for @runCourseNextFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final segment — finish strong!'**
+  String get runCourseNextFinal;
+
+  /// No description provided for @runCourseCompletedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Course completed! Tap Finish to save your run'**
+  String get runCourseCompletedBanner;
+
+  /// No description provided for @runCourseCompletedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Completed'**
+  String get runCourseCompletedTag;
+
+  /// No description provided for @runCourseIncompleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get runCourseIncompleteTag;
+
+  /// No description provided for @runCourseEarlyFinishHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This course isn\'t finished yet. Your run and completed segments will still be saved as incomplete.'**
+  String get runCourseEarlyFinishHint;
+
+  /// No description provided for @runCourseTimeoutSwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'Segment timed out — advanced to next segment'**
+  String get runCourseTimeoutSwitched;
+
+  /// No description provided for @runCourseSkipSegmentTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip to next segment'**
+  String get runCourseSkipSegmentTooltip;
+
+  /// No description provided for @runCourseVoiceOnTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute voice coach'**
+  String get runCourseVoiceOnTooltip;
+
+  /// No description provided for @runCourseVoiceOffTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute voice coach'**
+  String get runCourseVoiceOffTooltip;
+
+  /// No description provided for @runCoursePreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Segments ({count} steps)'**
+  String runCoursePreviewTitle(int count);
+
+  /// No description provided for @runCourseStartBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Course'**
+  String get runCourseStartBtn;
+
+  /// No description provided for @runCourseTypeDistanceTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get runCourseTypeDistanceTag;
+
+  /// No description provided for @runCourseTypeTimeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed'**
+  String get runCourseTypeTimeTag;
+
+  /// No description provided for @runCourseSegmentStepMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{meters} m'**
+  String runCourseSegmentStepMeters(int meters);
+
+  /// No description provided for @runCourseSegmentStepSecs.
+  ///
+  /// In en, this message translates to:
+  /// **'{secs}s'**
+  String runCourseSegmentStepSecs(int secs);
+
+  /// No description provided for @runCourseSegmentStepMins.
+  ///
+  /// In en, this message translates to:
+  /// **'{mins} min'**
+  String runCourseSegmentStepMins(int mins);
+
+  /// No description provided for @runDetailSegmentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Segments'**
+  String get runDetailSegmentsTitle;
 }
 
 class _AppLocalizationsDelegate

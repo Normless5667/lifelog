@@ -57,12 +57,19 @@
 - [x] **Keep 风格跑步首页 / 跑步中 / 历史详情**：健身页顶部独立入口，跑步首页提供「自由跑 / 距离跑 (1/3/5/10km) / 跑步课程（加载 8 门内置课）」及历史记录；跑步中采用超大四项核心数字 + 实时轨迹地图 + 暂停/结束；历史详情可从 `route_json` 完整重绘轨迹。
 - [x] 验证：43/43 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.0_release.apk`。
 
-### 第二批：8 门跑步课程 + TTS 语音教练 + 分段记录（待第一批验收后开始）⏳
-- [ ] `flutter_tts` + `audio_session` 压低音乐焦点（ducking）
-- [ ] 课程分段推进引擎（时间段 + 距离段如 5×400m）、每公里配速播报、`run_segments` 分段入库
-- [ ] 使用 `image-generator` 生成 4 张课程卡片透明插画（存 `assets/icons/generated/`）
+### 第二批（P0）：11 门跑步课程分段执行 + TTS 语音教练 + 分段记录（v3.1.1+19）✅ 已完成并出包
+- [x] **课程分段执行引擎 (`lib/services/run_course_engine.dart`)**：
+  - 同时支持按时间（`durationSeconds`，如 3/5/10 公里法特莱克）与按距离（`durationMeters`，如新增 3/5/10 公里分段跑与 5×400m 间歇）。
+  - 复用 `assets/running_courses.json` 中 `segmentTypes` 中文名与色值（热身 / 慢跑 / 快跑 / 慢跑恢复 / 快走 / 放松）。
+  - 完整三种结束/推进判定：全部段跑完记「已完成」、用户提前结束记「未完成」但照存数据与分段、单段达 3 倍预期基准时长自动强制切段防 GPS 信号差卡死。
+- [x] **TTS 语音教练 (`lib/services/run_voice_coach.dart`)**：
+  - 引入 `flutter_tts ^4.0.2` + `audio_session ^0.1.25`，初始化前先检测 TTS 可用性，不可用安全降级为震动 + 横幅绝不崩溃；说话时申请 `gainTransientMayDuck` 压低音乐而不打断音乐；支持顶栏一键静音与整公里配速播报。
+- [x] **跑步中实时指导 UI & 分段持久化**：
+  - 跑步中新增：切段滑入横幅（2.4s 自动收起）+ `HapticFeedback.mediumImpact()` 震动 + 醒目当前段卡片（中文名 / 进度条 / 还剩几分几秒或还剩多少米 / `第 X 段 / 共 Y 段` 总进度 / 语音文案 / 手动跳段）+ 底部「下一段预告」。
+  - 跑步首页支持全部 11 门课（含按距离/按时间标签），点击课程先弹出完整分段一览再开跑；跑步结束同步写入 `runs` 与 `run_segments` 并在详情页完整展示已完成/未完成标签与每段明细。
+- [x] 验证：48/48 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.1_release.apk`。
 
-### 第三批：轨迹回放 + 配速曲线 + Gemini 深夜黑皮肤 + 图标美化（待第二批验收后开始）⏳
-- [ ] 轨迹一笔绘制回放动画 + `fl_chart` 配速曲线图 + 空状态大肥鱼插画
+### 第三批：Gemini 深夜黑皮肤 + 生图插画/图标 + 轨迹回放与配速曲线（待 P0 验收后开始）⏳
+- [ ] 使用 `image-generator` 生成 4 张课程插画 + 空状态大肥鱼插画 + 模块图标（1024×1024 透明 PNG，存 `assets/icons/generated/`）
 - [ ] `app_colors_dark_premium.dart`（`ThemeExtension` + 固定 `RepaintBoundary` 纯黑到深蓝渐变背景 + 无边框大圆角 + 设置页三皮肤切换）
-- [ ] 统一生成并替换模块图标（1024×1024 透明 PNG，48px 清晰可辨）
+- [ ] 轨迹一笔绘制回放动画 + `fl_chart` 配速曲线图

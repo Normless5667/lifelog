@@ -7,25 +7,52 @@ import '../../models/run_models.dart';
 import '../../services/running_tracker.dart';
 import '../../widgets/common.dart';
 
-/// 跑步记录详情页：从数据库 route_json 还原并绘制完整地图轨迹 + 距离/时长/配速/热量
-class RunDetailScreen extends StatelessWidget {
+/// 跑步记录详情页：从数据库 route_json 还原并绘制完整地图轨迹 + 距离/时长/配速/热量 + 课程分段记录
+class RunDetailScreen extends StatefulWidget {
   final RunRecord run;
   final String? courseName;
+  final List<RunSegmentRecord>? initialSegments;
   final bool disableMapTilesForTest;
 
   const RunDetailScreen({
     super.key,
     required this.run,
     this.courseName,
+    this.initialSegments,
     this.disableMapTilesForTest = false,
   });
 
+  @override
+  State<RunDetailScreen> createState() => _RunDetailScreenState();
+}
+
+class _RunDetailScreenState extends State<RunDetailScreen> {
+  List<RunSegmentRecord> _segments = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialSegments != null) {
+      _segments = widget.initialSegments!;
+    } else if (widget.run.id != null) {
+      _loadSegments();
+    }
+  }
+
+  Future<void> _loadSegments() async {
+    try {
+      final list = await Repo.getRunSegments(widget.run.id!);
+      if (!mounted) return;
+      setState(() => _segments = list);
+    } catch (_) {}
+  }
+
   Future<void> _delete(BuildContext context) async {
     final l = context.l10n;
-    if (run.id == null) return;
+    if (widget.run.id == null) return;
     final ok = await confirm(context, l.runDetailDeleteConfirm);
     if (!ok || !context.mounted) return;
-    await Repo.deleteRun(run.id!);
+    await Repo.deleteRun(widget.run.id!);
     if (!context.mounted) return;
     toast(context, l.runDetailDeletedToast);
     Navigator.pop(context, true);
@@ -34,10 +61,12 @@ class RunDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final run = widget.run;
     final points = run.decodeRoute();
     final latLngs = points.map((p) => LatLng(p.lat, p.lng)).toList();
     final primary = AppColors.primary(context);
     final success = AppColors.success(context);
+    final warning = AppColors.warning(context);
     final danger = AppColors.danger(context);
     final workoutColor = AppColors.moduleWorkout(context);
 
@@ -47,9 +76,12 @@ class RunDetailScreen extends StatelessWidget {
         (latLngs.first.latitude != latLngs.last.latitude ||
             latLngs.first.longitude != latLngs.last.longitude);
 
+    final isCourseCompleted = run.note == 'course_completed';
+    final isCourseIncomplete = run.note == 'course_incomplete';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(courseName ?? l.runDetailTitle),
+        title: Text(widget.courseName ?? l.runDetailTitle),
         actions: [
           if (run.id != null)
             IconButton(
@@ -70,7 +102,7 @@ class RunDetailScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: AppRadius.bXl,
             child: SizedBox(
-              height: 280,
+              height: 260,
               child: Stack(
                 children: [
                   FlutterMap(
@@ -85,7 +117,7 @@ class RunDetailScreen extends StatelessWidget {
                           : null,
                     ),
                     children: [
-                      if (!disableMapTilesForTest)
+                      if (!widget.disableMapTilesForTest)
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.lifelog.lifelog',
@@ -177,6 +209,28 @@ class RunDetailScreen extends StatelessWidget {
                       run.date,
                       style: AppTypography.badge(context, color: primary),
                     ),
+                    if (isCourseCompleted || isCourseIncomplete) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.softBg(
+                            context,
+                            isCourseCompleted ? success : warning,
+                          ),
+                          borderRadius: AppRadius.bPill,
+                        ),
+                        child: Text(
+                          isCourseCompleted
+                              ? l.runCourseCompletedTag
+                              : l.runCourseIncompleteTag,
+                          style: AppTypography.badge(
+                            context,
+                            color: isCourseCompleted ? success : warning,
+                          ).copyWith(fontSize: 10.5),
+                        ),
+                      ),
+                    ],
                     const Spacer(),
                     Text(
                       l.runDetailRoutePoints(points.length),
@@ -243,8 +297,64 @@ class RunDetailScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (_segments.isNotEmpty) ...[
+            SectionTitle(
+              l.runDetailSegmentsTitle,
+              icon: Icons.format_list_numbered_rounded,
+              iconColor: primary,
+            ),
+            SurfaceCard(
+              padding: AppSpacing.cardCompactPadding,
+              child: Column(
+                children: [
+                  for (var i = 0; i < _segments.length; i++) ...[
+                    if (i > 0) const Divider(height: 16),
+                    _segmentRow(context, _segments[i]),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _segmentRow(BuildContext context, RunSegmentRecord seg) {
+    final meta = RunningCourseCatalog.segmentMeta(seg.type);
+    final segColor = AppColors.adaptForDark(context, Color(meta.colorValue));
+    final label = meta.localizedLabel(isEn: context.isEnLocale);
+    final distKm = ((seg.distanceM ?? 0) / 1000.0).toStringAsFixed(2);
+    final durStr = formatRunDuration(seg.durationSecs ?? 0);
+    final paceStr = formatRunPace(seg.avgPaceSecsPerKm);
+
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.softBg(context, segColor, lightAlpha: 0.16, darkAlpha: 0.26),
+            borderRadius: AppRadius.bSm,
+          ),
+          child: Text(
+            '${seg.seq}',
+            style: AppTypography.badge(context, color: segColor),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.subtitle(context, color: segColor),
+          ),
+        ),
+        Text(
+          '$durStr · $distKm km · $paceStr',
+          style: AppTypography.bodySecondary(context),
+        ),
+      ],
     );
   }
 

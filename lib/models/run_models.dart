@@ -214,6 +214,13 @@ class RunningCourse {
 
   bool get isFree => type == 'free';
 
+  /// 是否属于按距离分段的课程（如 3/5/10 公里分段跑）
+  bool get isDistanceCourse =>
+      segments.isNotEmpty && segments.every((s) => s.isDistanceBased);
+
+  /// 是否包含任何按距离分段（含混合课程如 5×400m）
+  bool get hasDistanceSegments => segments.any((s) => s.isDistanceBased);
+
   String localizedName({required bool isEn}) =>
       isEn && nameEn.isNotEmpty ? nameEn : name;
 
@@ -241,17 +248,79 @@ class RunningCourse {
   }
 }
 
-/// 加载 assets/running_courses.json 的课程目录服务
+/// 课程分段类型元信息（复用 running_courses.json 中 segmentTypes 映射）
+class SegmentTypeMeta {
+  final String key;
+  final String labelZh;
+  final String labelEn;
+  final int colorValue;
+
+  const SegmentTypeMeta({
+    required this.key,
+    required this.labelZh,
+    required this.labelEn,
+    required this.colorValue,
+  });
+
+  String localizedLabel({required bool isEn}) => isEn ? labelEn : labelZh;
+}
+
+/// 加载 assets/running_courses.json 的课程目录与分段类型映射服务
 class RunningCourseCatalog {
   RunningCourseCatalog._();
 
   static List<RunningCourse>? _cache;
+  static Map<String, SegmentTypeMeta> _segmentTypes = Map.of(_defaultSegmentTypes);
+
+  static const Map<String, SegmentTypeMeta> _defaultSegmentTypes = {
+    'warmup': SegmentTypeMeta(key: 'warmup', labelZh: '热身', labelEn: 'Warm-up', colorValue: 0xFFFFB74D),
+    'run': SegmentTypeMeta(key: 'run', labelZh: '慢跑', labelEn: 'Easy Run', colorValue: 0xFF4FC3F7),
+    'fast': SegmentTypeMeta(key: 'fast', labelZh: '快跑', labelEn: 'Fast Run', colorValue: 0xFFEF5350),
+    'slow': SegmentTypeMeta(key: 'slow', labelZh: '慢跑恢复', labelEn: 'Recovery Jog', colorValue: 0xFF81C784),
+    'walk': SegmentTypeMeta(key: 'walk', labelZh: '快走', labelEn: 'Brisk Walk', colorValue: 0xFFBDBDBD),
+    'cooldown': SegmentTypeMeta(key: 'cooldown', labelZh: '放松', labelEn: 'Cool-down', colorValue: 0xFF9575CD),
+  };
+
+  /// 获取某段类型对应的中文/英文名称与颜色（自动复用 running_courses.json 的 segmentTypes）
+  static SegmentTypeMeta segmentMeta(String type) {
+    final key = type.trim().toLowerCase();
+    return _segmentTypes[key] ??
+        _defaultSegmentTypes[key] ??
+        SegmentTypeMeta(key: key, labelZh: key, labelEn: key, colorValue: 0xFF4FC3F7);
+  }
+
+  static int _parseHexColor(String? hex, int fallback) {
+    if (hex == null || hex.trim().isEmpty) return fallback;
+    final clean = hex.trim().replaceFirst('#', '');
+    final full = clean.length == 6 ? 'FF$clean' : clean;
+    return int.tryParse(full, radix: 16) ?? fallback;
+  }
 
   static Future<List<RunningCourse>> loadAll({String? overrideRawJson}) async {
     if (_cache != null && overrideRawJson == null) return _cache!;
     try {
       final raw = overrideRawJson ?? await rootBundle.loadString('assets/running_courses.json');
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
+
+      final rawTypes = decoded['segmentTypes'];
+      if (rawTypes is Map) {
+        final parsedTypes = Map<String, SegmentTypeMeta>.of(_defaultSegmentTypes);
+        for (final entry in rawTypes.entries) {
+          final key = entry.key.toString().trim().toLowerCase();
+          if (entry.value is Map) {
+            final m = Map<String, dynamic>.from(entry.value as Map);
+            final def = _defaultSegmentTypes[key];
+            parsedTypes[key] = SegmentTypeMeta(
+              key: key,
+              labelZh: (m['label'] ?? def?.labelZh ?? key).toString(),
+              labelEn: (m['labelEn'] ?? def?.labelEn ?? m['label'] ?? key).toString(),
+              colorValue: _parseHexColor(m['color']?.toString(), def?.colorValue ?? 0xFF4FC3F7),
+            );
+          }
+        }
+        _segmentTypes = parsedTypes;
+      }
+
       final list = (decoded['courses'] as List? ?? const [])
           .whereType<Map>()
           .map((m) => RunningCourse.fromJson(Map<String, dynamic>.from(m)))

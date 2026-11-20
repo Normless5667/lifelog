@@ -1117,7 +1117,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.1.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.1.1 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1182,7 +1182,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.1.0 (Build 18)",
+  "aboutVersion": "Version v3.1.1 (Build 19)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1548,5 +1548,76 @@
   "runPermRequestBtn": "Grant Location Permission",
   "runPermOpenSettingsBtn": "Open Settings for 'Always Allow'",
   "runPermContinueFgBtn": "Continue Foreground Only",
-  "runPermDeniedToast": "Location permission denied — unable to track GPS"
+  "runPermDeniedToast": "Location permission denied — unable to track GPS",
+
+  "runCourseSegmentProgress": "Segment {current} / {total}",
+  "@runCourseSegmentProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "runCourseRemainingTime": "{time} left",
+  "@runCourseRemainingTime": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "runCourseRemainingMeters": "{meters} m left",
+  "@runCourseRemainingMeters": {
+    "placeholders": {
+      "meters": { "type": "int" }
+    }
+  },
+  "runCourseNextSegmentTime": "Next: {label} · {secs}s",
+  "@runCourseNextSegmentTime": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "secs": { "type": "int" }
+    }
+  },
+  "runCourseNextSegmentMeters": "Next: {label} · {meters} m",
+  "@runCourseNextSegmentMeters": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "meters": { "type": "int" }
+    }
+  },
+  "runCourseNextFinal": "Final segment — finish strong!",
+  "runCourseCompletedBanner": "Course completed! Tap Finish to save your run",
+  "runCourseCompletedTag": "Course Completed",
+  "runCourseIncompleteTag": "Incomplete",
+  "runCourseEarlyFinishHint": "This course isn't finished yet. Your run and completed segments will still be saved as incomplete.",
+  "runCourseTimeoutSwitched": "Segment timed out — advanced to next segment",
+  "runCourseSkipSegmentTooltip": "Skip to next segment",
+  "runCourseVoiceOnTooltip": "Mute voice coach",
+  "runCourseVoiceOffTooltip": "Unmute voice coach",
+  "runCoursePreviewTitle": "Course Segments ({count} steps)",
+  "@runCoursePreviewTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "runCourseStartBtn": "Start Course",
+  "runCourseTypeDistanceTag": "Distance",
+  "runCourseTypeTimeTag": "Timed",
+  "runCourseSegmentStepMeters": "{meters} m",
+  "@runCourseSegmentStepMeters": {
+    "placeholders": {
+      "meters": { "type": "int" }
+    }
+  },
+  "runCourseSegmentStepSecs": "{secs}s",
+  "@runCourseSegmentStepSecs": {
+    "placeholders": {
+      "secs": { "type": "int" }
+    }
+  },
+  "runCourseSegmentStepMins": "{mins} min",
+  "@runCourseSegmentStepMins": {
+    "placeholders": {
+      "mins": { "type": "int" }
+    }
+  },
+  "runDetailSegmentsTitle": "Course Segments"
 }

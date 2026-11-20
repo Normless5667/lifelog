@@ -1972,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.1.0 · Co-developed with DaFeiYu';
+      'Version v3.1.1 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2128,7 +2128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.1.0 (Build 18)';
+  String get aboutVersion => 'Version v3.1.1 (Build 19)';
 
   @override
   String get aboutBadge =>
@@ -2759,4 +2759,91 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runPermDeniedToast =>
       'Location permission denied — unable to track GPS';
+
+  @override
+  String runCourseSegmentProgress(int current, int total) {
+    return 'Segment $current / $total';
+  }
+
+  @override
+  String runCourseRemainingTime(String time) {
+    return '$time left';
+  }
+
+  @override
+  String runCourseRemainingMeters(int meters) {
+    return '$meters m left';
+  }
+
+  @override
+  String runCourseNextSegmentTime(String label, int secs) {
+    return 'Next: $label · ${secs}s';
+  }
+
+  @override
+  String runCourseNextSegmentMeters(String label, int meters) {
+    return 'Next: $label · $meters m';
+  }
+
+  @override
+  String get runCourseNextFinal => 'Final segment — finish strong!';
+
+  @override
+  String get runCourseCompletedBanner =>
+      'Course completed! Tap Finish to save your run';
+
+  @override
+  String get runCourseCompletedTag => 'Course Completed';
+
+  @override
+  String get runCourseIncompleteTag => 'Incomplete';
+
+  @override
+  String get runCourseEarlyFinishHint =>
+      'This course isn\'t finished yet. Your run and completed segments will still be saved as incomplete.';
+
+  @override
+  String get runCourseTimeoutSwitched =>
+      'Segment timed out — advanced to next segment';
+
+  @override
+  String get runCourseSkipSegmentTooltip => 'Skip to next segment';
+
+  @override
+  String get runCourseVoiceOnTooltip => 'Mute voice coach';
+
+  @override
+  String get runCourseVoiceOffTooltip => 'Unmute voice coach';
+
+  @override
+  String runCoursePreviewTitle(int count) {
+    return 'Course Segments ($count steps)';
+  }
+
+  @override
+  String get runCourseStartBtn => 'Start Course';
+
+  @override
+  String get runCourseTypeDistanceTag => 'Distance';
+
+  @override
+  String get runCourseTypeTimeTag => 'Timed';
+
+  @override
+  String runCourseSegmentStepMeters(int meters) {
+    return '$meters m';
+  }
+
+  @override
+  String runCourseSegmentStepSecs(int secs) {
+    return '${secs}s';
+  }
+
+  @override
+  String runCourseSegmentStepMins(int mins) {
+    return '$mins min';
+  }
+
+  @override
+  String get runDetailSegmentsTitle => 'Course Segments';
 }
