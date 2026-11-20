@@ -40,6 +40,14 @@ class DailyTargets {
       (s, c) => s + Nutrition.burnForCardio(c, weightKg: w),
     );
 
+    // 1.5) 当日跑步模块消耗（runs 表自动同步至饮食页）
+    final runs = await Repo.getRuns(date: targetDate);
+    for (final r in runs) {
+      if (r.caloriesKcal > 0) {
+        burn += r.caloriesKcal.toDouble();
+      }
+    }
+
     // 2) 当日力量训练消耗（遵循 manualBurnKcal > manualDurationMin > 容量法/计时法取大）
     final exercises = await Repo.getExercises();
     final exMap = {for (final e in exercises) e.id: e};

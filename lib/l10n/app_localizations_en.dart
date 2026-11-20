@@ -1972,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.0.1 · Co-developed with DaFeiYu';
+      'Version v3.1.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2128,7 +2128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.0.1 (Build 17)';
+  String get aboutVersion => 'Version v3.1.0 (Build 18)';
 
   @override
   String get aboutBadge =>
@@ -2571,4 +2571,192 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get semesterIcalSoonSub =>
       'Coming soon: standard .ics calendar import';
+
+  @override
+  String get runModuleTitle => 'Outdoor Running';
+
+  @override
+  String get runModuleEntrySub =>
+      'Live GPS Track · Free Run / Distance / Courses';
+
+  @override
+  String runModuleLatestSub(int count, String km) {
+    return '$count runs · $km km total';
+  }
+
+  @override
+  String get runStartSection => 'Start Running';
+
+  @override
+  String get runModeFree => 'Free Run';
+
+  @override
+  String get runModeFreeSub => 'No target, just run';
+
+  @override
+  String get runModeDistance => 'Distance';
+
+  @override
+  String get runModeDistanceSub => '1 / 3 / 5 / 10 km';
+
+  @override
+  String get runModeCourse => 'Courses';
+
+  @override
+  String get runModeCourseSub => 'Fartlek / Intervals / Easy';
+
+  @override
+  String get runPickDistanceTitle => 'Choose Target Distance';
+
+  @override
+  String runPickDistanceBtn(String km) {
+    return 'Start $km km Run';
+  }
+
+  @override
+  String get runRecommendedCourses => 'Recommended Courses';
+
+  @override
+  String runCourseMeta(int mins, int kcal, String level) {
+    return '$mins min · ~$kcal kcal · $level';
+  }
+
+  @override
+  String get runCourseBatch2Hint =>
+      'Live GPS tracking with course target is active; TTS voice coaching arrives in Batch 2.';
+
+  @override
+  String get runRecentHistory => 'Recent Runs';
+
+  @override
+  String get runEmptyHistory => 'No runs recorded yet. Lace up and head out!';
+
+  @override
+  String get runOsmAttribution => '© OpenStreetMap contributors';
+
+  @override
+  String get runNotifTrackingTitle => 'Recording Run';
+
+  @override
+  String get runMetricDistance => 'Distance (km)';
+
+  @override
+  String get runMetricDuration => 'Active Time';
+
+  @override
+  String get runMetricPace => 'Avg Pace';
+
+  @override
+  String get runMetricCalories => 'Calories (kcal)';
+
+  @override
+  String get runMetricTotalTime => 'Total Time';
+
+  @override
+  String get runPausedBanner => 'Paused · Distance and active time are paused';
+
+  @override
+  String runTargetReachedBanner(String km) {
+    return '$km km target reached! Keep going or tap Finish to save.';
+  }
+
+  @override
+  String runTargetProgress(String done, String target) {
+    return 'Target $done / $target km';
+  }
+
+  @override
+  String get runPauseBtn => 'Pause';
+
+  @override
+  String get runResumeBtn => 'Resume';
+
+  @override
+  String get runFinishBtn => 'Finish';
+
+  @override
+  String get runFinishConfirmTitle => 'Finish this run?';
+
+  @override
+  String runFinishConfirmDesc(String km, String dur, int kcal) {
+    return 'Summary: $km km · $dur · ~$kcal kcal. Calories will sync automatically to Diet.';
+  }
+
+  @override
+  String get runFinishDiscardBtn => 'Discard';
+
+  @override
+  String get runFinishSaveBtn => 'Save Run';
+
+  @override
+  String get runLeaveGuardTitle => 'Run in Progress';
+
+  @override
+  String get runLeaveGuardDesc =>
+      'Leaving now will stop GPS tracking. Background the app to keep recording, or tap Finish to save.';
+
+  @override
+  String runSavedToast(int kcal) {
+    return 'Run saved (+$kcal kcal synced to Diet)';
+  }
+
+  @override
+  String get runDetailTitle => 'Run Summary';
+
+  @override
+  String runDetailRoutePoints(int count) {
+    return 'GPS points: $count';
+  }
+
+  @override
+  String get runDetailNoRoute =>
+      'No valid GPS route points recorded for this run';
+
+  @override
+  String get runDetailDeleteConfirm =>
+      'Delete this run record? Today\'s Diet burn will also update.';
+
+  @override
+  String get runDetailDeletedToast => 'Run deleted';
+
+  @override
+  String get runGpsSearching => 'Acquiring GPS…';
+
+  @override
+  String runGpsSignalGood(int acc) {
+    return 'GPS Good (±${acc}m)';
+  }
+
+  @override
+  String runGpsSignalWeak(int acc) {
+    return 'GPS Weak (±${acc}m, drift filtered)';
+  }
+
+  @override
+  String get runPermTitle => 'Location & Background Tracking';
+
+  @override
+  String get runPermDesc =>
+      'To prevent GPS track breaks when locking the screen or switching apps, Android 11+ requires \'Allow all the time\' location access in system settings.';
+
+  @override
+  String get runPermStep1 =>
+      '1. Grant precise location permission for live map & distance';
+
+  @override
+  String get runPermStep2 =>
+      '2. In Settings → Permissions → Location, choose \'Allow all the time\'';
+
+  @override
+  String get runPermRequestBtn => 'Grant Location Permission';
+
+  @override
+  String get runPermOpenSettingsBtn => 'Open Settings for \'Always Allow\'';
+
+  @override
+  String get runPermContinueFgBtn => 'Continue Foreground Only';
+
+  @override
+  String get runPermDeniedToast =>
+      'Location permission denied — unable to track GPS';
 }

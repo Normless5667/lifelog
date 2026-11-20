@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../models/run_models.dart';
 import '../services/academic_calendar_service.dart';
 import '../services/battery_probe_service.dart';
 import '../services/reminder_service.dart';
@@ -473,6 +474,73 @@ class Repo {
     return ex;
   }
 
+  // ---------------- 跑步（runs + run_segments）----------------
+  static Future<int> saveRun(
+    RunRecord run, {
+    List<RunSegmentRecord> segments = const [],
+  }) async {
+    BatteryProbeService.instance.recordDbWrite();
+    final db = await _db;
+    final runId = await db.transaction<int>((txn) async {
+      final int id;
+      if (run.id == null) {
+        id = await txn.insert('runs', run.toMap()..remove('id'));
+      } else {
+        await txn.update('runs', run.toMap(), where: 'id = ?', whereArgs: [run.id]);
+        id = run.id!;
+        await txn.delete('run_segments', where: 'run_id = ?', whereArgs: [id]);
+      }
+      for (final seg in segments) {
+        final m = seg.toMap()..remove('id');
+        m['run_id'] = id;
+        await txn.insert('run_segments', m);
+      }
+      return id;
+    });
+    run.id = runId;
+    notifyDataChanged();
+    WidgetService.sync(force: true);
+    return runId;
+  }
+
+  static Future<List<RunRecord>> getRuns({String? date, int? limit}) async {
+    final normalized = date == null ? null : dateOnlyStr(date);
+    final rows = await (await _db).query(
+      'runs',
+      where: normalized != null ? 'date = ?' : null,
+      whereArgs: normalized != null ? [normalized] : null,
+      orderBy: 'start_time DESC',
+      limit: limit,
+    );
+    return rows.map(RunRecord.fromMap).toList();
+  }
+
+  static Future<RunRecord?> getRunById(int id) async {
+    final rows = await (await _db).query('runs', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : RunRecord.fromMap(rows.first);
+  }
+
+  static Future<List<RunSegmentRecord>> getRunSegments(int runId) async {
+    final rows = await (await _db).query(
+      'run_segments',
+      where: 'run_id = ?',
+      whereArgs: [runId],
+      orderBy: 'seq ASC',
+    );
+    return rows.map(RunSegmentRecord.fromMap).toList();
+  }
+
+  static Future<void> deleteRun(int id) async {
+    BatteryProbeService.instance.recordDbWrite();
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.delete('run_segments', where: 'run_id = ?', whereArgs: [id]);
+      await txn.delete('runs', where: 'id = ?', whereArgs: [id]);
+    });
+    notifyDataChanged();
+    WidgetService.sync(force: true);
+  }
+
   // ---------------- 聊天 ----------------
   static Future<List<ChatMessage>> getChatMessages() async {
     final rows = await (await _db).query('chat_messages', orderBy: 'id');
@@ -495,7 +563,7 @@ class Repo {
     final out = <String, dynamic>{
       'app': 'LifeLog',
       'exported_at': DateTime.now().toIso8601String(),
-      'db_version': 3,
+      'db_version': 7,
     };
     for (final t in [
       'kv',
@@ -506,6 +574,8 @@ class Repo {
       'workouts',
       'workout_sets',
       'cardio_records',
+      'runs',
+      'run_segments',
       'chat_messages'
     ]) {
       out[t] = await db.query(t);

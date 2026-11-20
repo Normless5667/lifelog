@@ -1117,7 +1117,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.0.1 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.1.0 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1182,7 +1182,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.0.1 (Build 17)",
+  "aboutVersion": "Version v3.1.0 (Build 18)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1438,5 +1438,115 @@
   "semesterResetBuiltinBtn": "Reset to Built-in BUV Calendar",
   "semesterResetBuiltinToast": "Restored built-in BUV 2026/2027 calendar",
   "semesterIcalSoonTitle": "Import iCal (.ics) Calendar",
-  "semesterIcalSoonSub": "Coming soon: standard .ics calendar import"
+  "semesterIcalSoonSub": "Coming soon: standard .ics calendar import",
+
+  "runModuleTitle": "Outdoor Running",
+  "runModuleEntrySub": "Live GPS Track · Free Run / Distance / Courses",
+  "runModuleLatestSub": "{count} runs · {km} km total",
+  "@runModuleLatestSub": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "km": { "type": "String" }
+    }
+  },
+  "runStartSection": "Start Running",
+  "runModeFree": "Free Run",
+  "runModeFreeSub": "No target, just run",
+  "runModeDistance": "Distance",
+  "runModeDistanceSub": "1 / 3 / 5 / 10 km",
+  "runModeCourse": "Courses",
+  "runModeCourseSub": "Fartlek / Intervals / Easy",
+  "runPickDistanceTitle": "Choose Target Distance",
+  "runPickDistanceBtn": "Start {km} km Run",
+  "@runPickDistanceBtn": {
+    "placeholders": {
+      "km": { "type": "String" }
+    }
+  },
+  "runRecommendedCourses": "Recommended Courses",
+  "runCourseMeta": "{mins} min · ~{kcal} kcal · {level}",
+  "@runCourseMeta": {
+    "placeholders": {
+      "mins": { "type": "int" },
+      "kcal": { "type": "int" },
+      "level": { "type": "String" }
+    }
+  },
+  "runCourseBatch2Hint": "Live GPS tracking with course target is active; TTS voice coaching arrives in Batch 2.",
+  "runRecentHistory": "Recent Runs",
+  "runEmptyHistory": "No runs recorded yet. Lace up and head out!",
+  "runOsmAttribution": "© OpenStreetMap contributors",
+  "runNotifTrackingTitle": "Recording Run",
+  "runMetricDistance": "Distance (km)",
+  "runMetricDuration": "Active Time",
+  "runMetricPace": "Avg Pace",
+  "runMetricCalories": "Calories (kcal)",
+  "runMetricTotalTime": "Total Time",
+  "runPausedBanner": "Paused · Distance and active time are paused",
+  "runTargetReachedBanner": "{km} km target reached! Keep going or tap Finish to save.",
+  "@runTargetReachedBanner": {
+    "placeholders": {
+      "km": { "type": "String" }
+    }
+  },
+  "runTargetProgress": "Target {done} / {target} km",
+  "@runTargetProgress": {
+    "placeholders": {
+      "done": { "type": "String" },
+      "target": { "type": "String" }
+    }
+  },
+  "runPauseBtn": "Pause",
+  "runResumeBtn": "Resume",
+  "runFinishBtn": "Finish",
+  "runFinishConfirmTitle": "Finish this run?",
+  "runFinishConfirmDesc": "Summary: {km} km · {dur} · ~{kcal} kcal. Calories will sync automatically to Diet.",
+  "@runFinishConfirmDesc": {
+    "placeholders": {
+      "km": { "type": "String" },
+      "dur": { "type": "String" },
+      "kcal": { "type": "int" }
+    }
+  },
+  "runFinishDiscardBtn": "Discard",
+  "runFinishSaveBtn": "Save Run",
+  "runLeaveGuardTitle": "Run in Progress",
+  "runLeaveGuardDesc": "Leaving now will stop GPS tracking. Background the app to keep recording, or tap Finish to save.",
+  "runSavedToast": "Run saved (+{kcal} kcal synced to Diet)",
+  "@runSavedToast": {
+    "placeholders": {
+      "kcal": { "type": "int" }
+    }
+  },
+  "runDetailTitle": "Run Summary",
+  "runDetailRoutePoints": "GPS points: {count}",
+  "@runDetailRoutePoints": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "runDetailNoRoute": "No valid GPS route points recorded for this run",
+  "runDetailDeleteConfirm": "Delete this run record? Today's Diet burn will also update.",
+  "runDetailDeletedToast": "Run deleted",
+  "runGpsSearching": "Acquiring GPS…",
+  "runGpsSignalGood": "GPS Good (±{acc}m)",
+  "@runGpsSignalGood": {
+    "placeholders": {
+      "acc": { "type": "int" }
+    }
+  },
+  "runGpsSignalWeak": "GPS Weak (±{acc}m, drift filtered)",
+  "@runGpsSignalWeak": {
+    "placeholders": {
+      "acc": { "type": "int" }
+    }
+  },
+  "runPermTitle": "Location & Background Tracking",
+  "runPermDesc": "To prevent GPS track breaks when locking the screen or switching apps, Android 11+ requires 'Allow all the time' location access in system settings.",
+  "runPermStep1": "1. Grant precise location permission for live map & distance",
+  "runPermStep2": "2. In Settings → Permissions → Location, choose 'Allow all the time'",
+  "runPermRequestBtn": "Grant Location Permission",
+  "runPermOpenSettingsBtn": "Open Settings for 'Always Allow'",
+  "runPermContinueFgBtn": "Continue Foreground Only",
+  "runPermDeniedToast": "Location permission denied — unable to track GPS"
 }

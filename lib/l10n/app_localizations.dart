@@ -3467,7 +3467,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.0.1 · Co-developed with DaFeiYu'**
+  /// **'Version v3.1.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3753,7 +3753,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.0.1 (Build 17)'**
+  /// **'Version v3.1.0 (Build 18)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -4482,6 +4482,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coming soon: standard .ics calendar import'**
   String get semesterIcalSoonSub;
+
+  /// No description provided for @runModuleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor Running'**
+  String get runModuleTitle;
+
+  /// No description provided for @runModuleEntrySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Live GPS Track · Free Run / Distance / Courses'**
+  String get runModuleEntrySub;
+
+  /// No description provided for @runModuleLatestSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} runs · {km} km total'**
+  String runModuleLatestSub(int count, String km);
+
+  /// No description provided for @runStartSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Running'**
+  String get runStartSection;
+
+  /// No description provided for @runModeFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free Run'**
+  String get runModeFree;
+
+  /// No description provided for @runModeFreeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'No target, just run'**
+  String get runModeFreeSub;
+
+  /// No description provided for @runModeDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get runModeDistance;
+
+  /// No description provided for @runModeDistanceSub.
+  ///
+  /// In en, this message translates to:
+  /// **'1 / 3 / 5 / 10 km'**
+  String get runModeDistanceSub;
+
+  /// No description provided for @runModeCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get runModeCourse;
+
+  /// No description provided for @runModeCourseSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Fartlek / Intervals / Easy'**
+  String get runModeCourseSub;
+
+  /// No description provided for @runPickDistanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Target Distance'**
+  String get runPickDistanceTitle;
+
+  /// No description provided for @runPickDistanceBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Start {km} km Run'**
+  String runPickDistanceBtn(String km);
+
+  /// No description provided for @runRecommendedCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended Courses'**
+  String get runRecommendedCourses;
+
+  /// No description provided for @runCourseMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'{mins} min · ~{kcal} kcal · {level}'**
+  String runCourseMeta(int mins, int kcal, String level);
+
+  /// No description provided for @runCourseBatch2Hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Live GPS tracking with course target is active; TTS voice coaching arrives in Batch 2.'**
+  String get runCourseBatch2Hint;
+
+  /// No description provided for @runRecentHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Runs'**
+  String get runRecentHistory;
+
+  /// No description provided for @runEmptyHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs recorded yet. Lace up and head out!'**
+  String get runEmptyHistory;
+
+  /// No description provided for @runOsmAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'© OpenStreetMap contributors'**
+  String get runOsmAttribution;
+
+  /// No description provided for @runNotifTrackingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording Run'**
+  String get runNotifTrackingTitle;
+
+  /// No description provided for @runMetricDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance (km)'**
+  String get runMetricDistance;
+
+  /// No description provided for @runMetricDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Time'**
+  String get runMetricDuration;
+
+  /// No description provided for @runMetricPace.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Pace'**
+  String get runMetricPace;
+
+  /// No description provided for @runMetricCalories.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories (kcal)'**
+  String get runMetricCalories;
+
+  /// No description provided for @runMetricTotalTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Time'**
+  String get runMetricTotalTime;
+
+  /// No description provided for @runPausedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused · Distance and active time are paused'**
+  String get runPausedBanner;
+
+  /// No description provided for @runTargetReachedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km target reached! Keep going or tap Finish to save.'**
+  String runTargetReachedBanner(String km);
+
+  /// No description provided for @runTargetProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Target {done} / {target} km'**
+  String runTargetProgress(String done, String target);
+
+  /// No description provided for @runPauseBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get runPauseBtn;
+
+  /// No description provided for @runResumeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get runResumeBtn;
+
+  /// No description provided for @runFinishBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get runFinishBtn;
+
+  /// No description provided for @runFinishConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish this run?'**
+  String get runFinishConfirmTitle;
+
+  /// No description provided for @runFinishConfirmDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary: {km} km · {dur} · ~{kcal} kcal. Calories will sync automatically to Diet.'**
+  String runFinishConfirmDesc(String km, String dur, int kcal);
+
+  /// No description provided for @runFinishDiscardBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get runFinishDiscardBtn;
+
+  /// No description provided for @runFinishSaveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Run'**
+  String get runFinishSaveBtn;
+
+  /// No description provided for @runLeaveGuardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in Progress'**
+  String get runLeaveGuardTitle;
+
+  /// No description provided for @runLeaveGuardDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaving now will stop GPS tracking. Background the app to keep recording, or tap Finish to save.'**
+  String get runLeaveGuardDesc;
+
+  /// No description provided for @runSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Run saved (+{kcal} kcal synced to Diet)'**
+  String runSavedToast(int kcal);
+
+  /// No description provided for @runDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Summary'**
+  String get runDetailTitle;
+
+  /// No description provided for @runDetailRoutePoints.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS points: {count}'**
+  String runDetailRoutePoints(int count);
+
+  /// No description provided for @runDetailNoRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid GPS route points recorded for this run'**
+  String get runDetailNoRoute;
+
+  /// No description provided for @runDetailDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this run record? Today\'s Diet burn will also update.'**
+  String get runDetailDeleteConfirm;
+
+  /// No description provided for @runDetailDeletedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Run deleted'**
+  String get runDetailDeletedToast;
+
+  /// No description provided for @runGpsSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Acquiring GPS…'**
+  String get runGpsSearching;
+
+  /// No description provided for @runGpsSignalGood.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Good (±{acc}m)'**
+  String runGpsSignalGood(int acc);
+
+  /// No description provided for @runGpsSignalWeak.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Weak (±{acc}m, drift filtered)'**
+  String runGpsSignalWeak(int acc);
+
+  /// No description provided for @runPermTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location & Background Tracking'**
+  String get runPermTitle;
+
+  /// No description provided for @runPermDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'To prevent GPS track breaks when locking the screen or switching apps, Android 11+ requires \'Allow all the time\' location access in system settings.'**
+  String get runPermDesc;
+
+  /// No description provided for @runPermStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Grant precise location permission for live map & distance'**
+  String get runPermStep1;
+
+  /// No description provided for @runPermStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'2. In Settings → Permissions → Location, choose \'Allow all the time\''**
+  String get runPermStep2;
+
+  /// No description provided for @runPermRequestBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant Location Permission'**
+  String get runPermRequestBtn;
+
+  /// No description provided for @runPermOpenSettingsBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings for \'Always Allow\''**
+  String get runPermOpenSettingsBtn;
+
+  /// No description provided for @runPermContinueFgBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Foreground Only'**
+  String get runPermContinueFgBtn;
+
+  /// No description provided for @runPermDeniedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission denied — unable to track GPS'**
+  String get runPermDeniedToast;
 }
 
 class _AppLocalizationsDelegate

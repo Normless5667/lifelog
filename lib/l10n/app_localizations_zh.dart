@@ -1913,7 +1913,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.0.1 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.1.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2065,7 +2065,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.0.1 (Build 17)';
+  String get aboutVersion => '版本 v3.1.0 (Build 18)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2489,4 +2489,184 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get semesterIcalSoonSub => '即将支持标准 .ics 校历文件导入';
+
+  @override
+  String get runModuleTitle => '户外跑步';
+
+  @override
+  String get runModuleEntrySub => 'GPS 实时轨迹 · 自由跑 / 距离跑 / 跑步课程';
+
+  @override
+  String runModuleLatestSub(int count, String km) {
+    return '累计 $count 次 · 总距离 $km km';
+  }
+
+  @override
+  String get runStartSection => '开始跑步';
+
+  @override
+  String get runModeFree => '自由跑';
+
+  @override
+  String get runModeFreeSub => '不设目标，随心开跑';
+
+  @override
+  String get runModeDistance => '距离跑';
+
+  @override
+  String get runModeDistanceSub => '1 / 3 / 5 / 10 km';
+
+  @override
+  String get runModeCourse => '跑步课程';
+
+  @override
+  String get runModeCourseSub => '法特莱克 / 间歇 / 慢跑';
+
+  @override
+  String get runPickDistanceTitle => '选择目标距离';
+
+  @override
+  String runPickDistanceBtn(String km) {
+    return '开始 $km 公里跑';
+  }
+
+  @override
+  String get runRecommendedCourses => '推荐课程';
+
+  @override
+  String runCourseMeta(int mins, int kcal, String level) {
+    return '$mins 分钟 · 约 $kcal kcal · $level';
+  }
+
+  @override
+  String get runCourseBatch2Hint => '当前已支持按课程目标实时 GPS 记录；语音分段教练将在下个版本上线';
+
+  @override
+  String get runRecentHistory => '最近跑步记录';
+
+  @override
+  String get runEmptyHistory => '还没有跑步记录，换上跑鞋出发吧！';
+
+  @override
+  String get runOsmAttribution => '© OpenStreetMap contributors';
+
+  @override
+  String get runNotifTrackingTitle => '正在记录跑步';
+
+  @override
+  String get runMetricDistance => '距离 (km)';
+
+  @override
+  String get runMetricDuration => '运动时长';
+
+  @override
+  String get runMetricPace => '平均配速';
+
+  @override
+  String get runMetricCalories => '消耗 (kcal)';
+
+  @override
+  String get runMetricTotalTime => '累计总时长';
+
+  @override
+  String get runPausedBanner => '已暂停 · 暂停期间不计入距离与运动时长';
+
+  @override
+  String runTargetReachedBanner(String km) {
+    return '已达成 $km km 目标！可继续跑或点击结束保存';
+  }
+
+  @override
+  String runTargetProgress(String done, String target) {
+    return '目标 $done / $target km';
+  }
+
+  @override
+  String get runPauseBtn => '暂停';
+
+  @override
+  String get runResumeBtn => '继续';
+
+  @override
+  String get runFinishBtn => '结束';
+
+  @override
+  String get runFinishConfirmTitle => '结束本次跑步？';
+
+  @override
+  String runFinishConfirmDesc(String km, String dur, int kcal) {
+    return '本次记录：$km km · $dur · 约 $kcal kcal，将自动同步热量消耗到饮食页。';
+  }
+
+  @override
+  String get runFinishDiscardBtn => '放弃记录';
+
+  @override
+  String get runFinishSaveBtn => '保存记录';
+
+  @override
+  String get runLeaveGuardTitle => '跑步正在记录中';
+
+  @override
+  String get runLeaveGuardDesc => '返回将停止本次 GPS 轨迹追踪。建议切后台保留常驻记录，或点击结束保存。';
+
+  @override
+  String runSavedToast(int kcal) {
+    return '跑步记录已保存（+$kcal kcal 已同步至饮食页）';
+  }
+
+  @override
+  String get runDetailTitle => '跑步详情';
+
+  @override
+  String runDetailRoutePoints(int count) {
+    return '轨迹点数：$count';
+  }
+
+  @override
+  String get runDetailNoRoute => '本次跑步未记录到有效 GPS 轨迹点';
+
+  @override
+  String get runDetailDeleteConfirm => '确定删除这条跑步记录吗？删除后饮食页当日消耗也会同步更新。';
+
+  @override
+  String get runDetailDeletedToast => '已删除跑步记录';
+
+  @override
+  String get runGpsSearching => '正在定位 GPS…';
+
+  @override
+  String runGpsSignalGood(int acc) {
+    return 'GPS 信号良好 (±${acc}m)';
+  }
+
+  @override
+  String runGpsSignalWeak(int acc) {
+    return 'GPS 精度偏弱 (±${acc}m，已自动过滤漂移点)';
+  }
+
+  @override
+  String get runPermTitle => '开启定位与后台轨迹权限';
+
+  @override
+  String get runPermDesc =>
+      '为了在锁屏或切换应用时持续记录跑步轨迹不断轨，Android 11+ 需要您在系统设置中将位置权限设为「始终允许」。';
+
+  @override
+  String get runPermStep1 => '1. 先授予精确位置权限（用于绘制地图与计算距离）';
+
+  @override
+  String get runPermStep2 => '2. 在系统设置 → 权限 → 位置信息 中选择「始终允许」';
+
+  @override
+  String get runPermRequestBtn => '授予位置权限';
+
+  @override
+  String get runPermOpenSettingsBtn => '前往系统设置开启「始终允许」';
+
+  @override
+  String get runPermContinueFgBtn => '暂仅在前台记录，立即开跑';
+
+  @override
+  String get runPermDeniedToast => '未授予位置权限，无法记录 GPS 轨迹';
 }

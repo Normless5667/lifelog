@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "note": "跑步课程数据。结构参考跑滴答(RunDida)法特莱克指南与 Keep 课程设计，分段为通用方案，不针对个人体能。",
+  "courses": [
+    {
+      "id": "free_run",
+      "name": "自由跑",
+      "nameEn": "Free Run",
+      "level": 0,
+      "description": "不设目标，想跑多久跑多久。只记录轨迹、距离和配速。",
+      "type": "free",
+      "segments": []
+    },
+    {
+      "id": "fartlek_3k",
+      "name": "3 公里法特莱克跑",
+      "nameEn": "3K Fartlek",
+      "level": 1,
+      "levelLabel": "K1 入门",
+      "estimatedMinutes": 29,
+      "estimatedKcal": 160,
+      "targetDistanceKm": 3.0,
+      "description": "给刚接触跑步的人。快慢交替，不会一口气跑到岔气。跟着语音找到自己的步频节奏。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup",   "durationSeconds": 300, "voice": "先快走 5 分钟，让身体热起来" },
+        { "type": "run",      "durationSeconds": 180, "voice": "开始慢跑，保持能说话的节奏" },
+        { "type": "walk",     "durationSeconds": 120, "voice": "快走恢复，深呼吸" },
+        { "type": "run",      "durationSeconds": 180, "voice": "再跑起来，注意脚步放轻" },
+        { "type": "walk",     "durationSeconds": 120, "voice": "走一走，别停太久" },
+        { "type": "run",      "durationSeconds": 180, "voice": "最后一组慢跑，稳住" },
+        { "type": "walk",     "durationSeconds": 120, "voice": "快走放松" },
+        { "type": "run",      "durationSeconds": 180, "voice": "再跑一段，快到终点了" },
+        { "type": "cooldown", "durationSeconds": 360, "voice": "慢走 6 分钟放松，结束后记得拉伸" }
+      ]
+    },
+    {
+      "id": "fartlek_5k",
+      "name": "5 公里法特莱克跑",
+      "nameEn": "5K Fartlek",
+      "level": 1,
+      "levelLabel": "K1 入门",
+      "estimatedMinutes": 40,
+      "estimatedKcal": 280,
+      "targetDistanceKm": 5.0,
+      "description": "经典法特莱克。10 分钟热身后，按地标加速冲刺，慢跑恢复，重复 15 分钟。适合想提速又怕枯燥的人。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup",   "durationSeconds": 600, "voice": "轻松跑 10 分钟热身，把心率带起来" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "加速！冲到前面那个路灯" },
+        { "type": "slow",     "durationSeconds": 90,  "voice": "慢跑恢复，等呼吸平下来" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "再快一次" },
+        { "type": "slow",     "durationSeconds": 90,  "voice": "慢下来" },
+        { "type": "fast",     "durationSeconds": 90,  "voice": "这次冲久一点" },
+        { "type": "slow",     "durationSeconds": 120, "voice": "好好恢复，别急着下一次" },
+        { "type": "fast",     "durationSeconds": 90,  "voice": "再来一组" },
+        { "type": "slow",     "durationSeconds": 120, "voice": "慢跑" },
+        { "type": "fast",     "durationSeconds": 120, "voice": "最后一次加速，用完就走" },
+        { "type": "slow",     "durationSeconds": 120, "voice": "收一收" },
+        { "type": "cooldown", "durationSeconds": 300, "voice": "轻松跑 5 分钟冷身，恭喜完成" }
+      ]
+    },
+    {
+      "id": "fartlek_10k",
+      "name": "10 公里肯尼亚式法特莱克",
+      "nameEn": "10K Kenyan Fartlek",
+      "level": 2,
+      "levelLabel": "K2 进阶",
+      "estimatedMinutes": 50,
+      "estimatedKcal": 450,
+      "targetDistanceKm": 10.0,
+      "description": "肯尼亚选手的日常课。15 分钟热身后，1 分钟快 / 1 分钟慢交替 20 分钟。练的是中段加速后还能稳住的能力。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup",   "durationSeconds": 900, "voice": "热身跑 15 分钟，慢慢把节奏带起来" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "加速，按 10K 比赛强度" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢跑恢复" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "保持住" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "恢复" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "还有一半，稳住" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "快" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "最后几组，拼一下" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢" },
+        { "type": "fast",     "durationSeconds": 60,  "voice": "最后一组快跑" },
+        { "type": "slow",     "durationSeconds": 60,  "voice": "慢下来" },
+        { "type": "cooldown", "durationSeconds": 900, "voice": "放松跑 15 分钟，今天这课很硬" }
+      ]
+    },
+    {
+      "id": "easy_run_3k",
+      "name": "3 公里轻松跑",
+      "nameEn": "3K Easy Run",
+      "level": 1,
+      "levelLabel": "K1 入门",
+      "estimatedMinutes": 25,
+      "estimatedKcal": 150,
+      "targetDistanceKm": 3.0,
+      "description": "纯轻松跑，全程一个配速。能边跑边说话就对了。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup",   "durationSeconds": 240, "voice": "快走 4 分钟" },
+        { "type": "run",      "durationSeconds": 900, "voice": "轻松跑 15 分钟，能说完整句子就对了" },
+        { "type": "cooldown", "durationSeconds": 360, "voice": "走到心率降下来" }
+      ]
+    },
+    {
+      "id": "easy_run_5k",
+      "name": "5 公里轻松跑",
+      "nameEn": "5K Easy Run",
+      "level": 1,
+      "levelLabel": "K1 入门",
+      "estimatedMinutes": 38,
+      "estimatedKcal": 260,
+      "targetDistanceKm": 5.0,
+      "description": "基础有氧。80% 的训练量都该是这个强度——慢，但能撑住。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup",   "durationSeconds": 300, "voice": "热身 5 分钟" },
+        { "type": "run",      "durationSeconds": 1800, "voice": "匀速跑 30 分钟，保持舒服的节奏" },
+        { "type": "cooldown", "durationSeconds": 300, "voice": "冷身 5 分钟" }
+      ]
+    },
+    {
+      "id": "interval_5x400",
+      "name": "间歇跑 5×400 米",
+      "nameEn": "5x400m Intervals",
+      "level": 2,
+      "levelLabel": "K2 进阶",
+      "estimatedMinutes": 35,
+      "estimatedKcal": 300,
+      "description": "操场课。5 组 400 米快跑，每组之间慢走 200 米恢复。练的是速度和心肺上限。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup", "durationSeconds": 600, "voice": "热身 10 分钟，最后 2 分钟做几次加速跑" },
+        { "type": "fast",   "durationMeters": 400, "voice": "第 1 组，快跑 400 米" },
+        { "type": "walk",   "durationMeters": 200, "voice": "慢走 200 米恢复" },
+        { "type": "fast",   "durationMeters": 400, "voice": "第 2 组" },
+        { "type": "walk",   "durationMeters": 200, "voice": "恢复" },
+        { "type": "fast",   "durationMeters": 400, "voice": "第 3 组，还有三组" },
+        { "type": "walk",   "durationMeters": 200, "voice": "恢复" },
+        { "type": "fast",   "durationMeters": 400, "voice": "第 4 组" },
+        { "type": "walk",   "durationMeters": 200, "voice": "恢复" },
+        { "type": "fast",   "durationMeters": 400, "voice": "最后一组，拼了" },
+        { "type": "walk",   "durationMeters": 200, "voice": "走一走" },
+        { "type": "cooldown", "durationSeconds": 600, "voice": "冷身 10 分钟，慢跑加拉伸" }
+      ]
+    },
+    {
+      "id": "run_walk_beginner",
+      "name": "跑走交替（新手第一课）",
+      "nameEn": "Run-Walk Beginner",
+      "level": 1,
+      "levelLabel": "K1 入门",
+      "estimatedMinutes": 24,
+      "estimatedKcal": 120,
+      "targetDistanceKm": 2.0,
+      "description": "第一次跑就从这个开始。跑 1 分钟走 2 分钟，重复 6 组。不累，但有效。",
+      "type": "course",
+      "segments": [
+        { "type": "warmup", "durationSeconds": 300, "voice": "快走 5 分钟热身" },
+        { "type": "run",    "durationSeconds": 60, "voice": "跑 1 分钟" },
+        { "type": "walk",   "durationSeconds": 120, "voice": "走 2 分钟" },
+        { "type": "run",    "durationSeconds": 60, "voice": "再跑 1 分钟" },
+        { "type": "walk",   "durationSeconds": 120, "voice": "走" },
+        { "type": "run",    "durationSeconds": 60, "voice": "跑" },
+        { "type": "walk",   "durationSeconds": 120, "voice": "走" },
+        { "type": "run",    "durationSeconds": 60, "voice": "跑" },
+        { "type": "walk",   "durationSeconds": 120, "voice": "走" },
+        { "type": "run",    "durationSeconds": 60, "voice": "倒数第二组" },
+        { "type": "walk",   "durationSeconds": 120, "voice": "走" },
+        { "type": "run",    "durationSeconds": 60, "voice": "最后一组，跑完就自由了" },
+        { "type": "cooldown", "durationSeconds": 300, "voice": "走 5 分钟冷身，今天很厉害" }
+      ]
+    }
+  ],
+
+  "segmentTypes": {
+    "warmup":   { "label": "热身", "color": "#FFB74D" },
+    "run":      { "label": "慢跑", "color": "#4FC3F7" },
+    "fast":     { "label": "快跑", "color": "#EF5350" },
+    "slow":     { "label": "慢跑恢复", "color": "#81C784" },
+    "walk":     { "label": "快走", "color": "#BDBDBD" },
+    "cooldown": { "label": "放松", "color": "#9575CD" }
+  }
+}

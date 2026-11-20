@@ -10,6 +10,7 @@ import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import '../../widgets/in_progress_workout_card.dart';
 import '../ai/ai_chat_screen.dart';
+import '../running/running_home_screen.dart';
 import 'exercise_library_screen.dart';
 import 'workout_session_screen.dart';
 
@@ -52,6 +53,8 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   TrainingPlan? _plan;
   double _userWeightKg = 65;
   int _tab = 0; // 0=力量训练, 1=独立有氧
+  int _runCount = 0;
+  double _runTotalKm = 0;
   bool _loading = true;
 
   @override
@@ -76,6 +79,8 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     final weightKg = Nutrition.sanitizeWeightKg(rec?.weight) ?? 65;
     final workouts = await Repo.getWorkouts(limit: 60);
     final cardios = await Repo.getCardioRecords(limit: 60);
+    final runs = await Repo.getRuns(limit: 200);
+    final runTotalKm = runs.fold<double>(0, (s, r) => s + r.distanceKm);
     final plan = await Repo.getTrainingPlan();
     final exercises = await Repo.getExercises();
     final inProgress = await InProgressWorkoutHelper.loadSnapshot(weightKg: weightKg);
@@ -134,6 +139,8 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       _exercises = exercises;
       _inProgress = inProgress;
       _plan = plan;
+      _runCount = runs.length;
+      _runTotalKm = runTotalKm;
       _loading = false;
     });
     if (inProgress != null && mounted) {
@@ -343,16 +350,86 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    AppSpacing.sm,
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.xs,
+                    ),
+                    child: SurfaceCard(
+                      padding: AppSpacing.cardCompactPadding,
+                      backgroundColor: AppColors.softBg(
+                        context,
+                        AppColors.primary(context),
+                        lightAlpha: 0.08,
+                        darkAlpha: 0.16,
+                      ),
+                      borderColor: AppColors.softBorder(context, AppColors.primary(context)),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RunningHomeScreen()),
+                        );
+                        if (mounted) _load();
+                      },
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.softBg(
+                                context,
+                                AppColors.primary(context),
+                                lightAlpha: 0.18,
+                                darkAlpha: 0.28,
+                              ),
+                              borderRadius: AppRadius.bMd,
+                            ),
+                            child: Icon(
+                              Icons.directions_run_rounded,
+                              color: AppColors.primary(context),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(l.runModuleTitle, style: AppTypography.cardTitle(context)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _runCount > 0
+                                      ? l.runModuleLatestSub(
+                                          _runCount,
+                                          _runTotalKm.toStringAsFixed(1),
+                                        )
+                                      : l.runModuleEntrySub,
+                                  style: AppTypography.bodySecondary(context),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.primary(context),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: SegmentedButton<int>(
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.xs,
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                    ),
+                    child: SegmentedButton<int>(
                     style: SegmentedButton.styleFrom(
                       backgroundColor: AppColors.surface(context),
                       selectedBackgroundColor: AppColors.softBg(

@@ -282,6 +282,91 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                     else -> result.notImplemented()
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.lifelog/running")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startForegroundService" -> {
+                        val title = call.argument<String>("title") ?: RunningForegroundService.DEFAULT_TITLE
+                        val body = call.argument<String>("body") ?: RunningForegroundService.DEFAULT_BODY
+                        val svcIntent = Intent(this, RunningForegroundService::class.java).apply {
+                            action = RunningForegroundService.ACTION_START
+                            putExtra(RunningForegroundService.EXTRA_TITLE, title)
+                            putExtra(RunningForegroundService.EXTRA_BODY, body)
+                        }
+                        try {
+                            ContextCompat.startForegroundService(this, svcIntent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "updateForegroundNotification" -> {
+                        val title = call.argument<String>("title") ?: RunningForegroundService.DEFAULT_TITLE
+                        val body = call.argument<String>("body") ?: RunningForegroundService.DEFAULT_BODY
+                        val svcIntent = Intent(this, RunningForegroundService::class.java).apply {
+                            action = RunningForegroundService.ACTION_UPDATE
+                            putExtra(RunningForegroundService.EXTRA_TITLE, title)
+                            putExtra(RunningForegroundService.EXTRA_BODY, body)
+                        }
+                        try {
+                            startService(svcIntent)
+                            result.success(true)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "stopForegroundService" -> {
+                        val svcIntent = Intent(this, RunningForegroundService::class.java).apply {
+                            action = RunningForegroundService.ACTION_STOP
+                        }
+                        try {
+                            startService(svcIntent)
+                            result.success(true)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "checkLocationPermissions" -> {
+                        val fine = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val coarse = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val bg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            fine || coarse
+                        }
+                        result.success(
+                            mapOf(
+                                "fine" to fine,
+                                "coarse" to coarse,
+                                "background" to bg,
+                                "sdkInt" to Build.VERSION.SDK_INT
+                            )
+                        )
+                    }
+                    "openAppSettings" -> {
+                        try {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     private fun ensureChannelCreated() {

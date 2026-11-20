@@ -45,3 +45,24 @@
 - [x] **「学期设置」独立表单页 (`SemesterSettingsScreen`)**：
   - 设置页与课表页均可进入，支持普通用户直接填写「学期名称 / 第 1 周开始日期 / 总周数」实时预览周数并保存；支持一键切换校历学期、手动修正低置信度日期、粘贴导入 `academic_calendar.json`（高级功能），并预留 iCal (`.ics`) 导入入口。
 - [x] 验证：版本号跃升至 **`3.0.1+17`**，39/39 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.0.1_release.apk`。
+
+## v3.1.0 跑步模块 + 深色皮肤 + 生图插画（分三批交付）
+### 第一批：GPS 轨迹 + 地图 + 自由跑/距离跑 + 记录保存（v3.1.0+18）✅ 已完成并出包
+- [x] **地图与依赖**：接入 `flutter_map ^8.0.0` + `latlong2 ^0.9.1`（OpenStreetMap 免费免 Key，地图页统一标注 `© OpenStreetMap contributors`）与 `wakelock_plus` 屏幕常亮。
+- [x] **Android 原生前台定位服务 & 权限**：新增 `RunningForegroundService.kt`（`FOREGROUND_SERVICE_LOCATION` 常驻通知「正在记录跑步」+ 实时距离/时长/配速刷新 + `PARTIAL_WAKE_LOCK`），补充 `ACCESS_BACKGROUND_LOCATION` / `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_LOCATION` / `WAKE_LOCK` 权限，并实现 Android 11+ 后台定位分步引导页 `location_permission_guide.dart`。
+- [x] **GPS 精准过滤与平滑引擎 (`RunningTrackerController` + `RunTrackProcessor`)**：
+  - 使用 `Geolocator.getPositionStream(distanceFilter: 5)`（不轮询），丢弃 `accuracy > 20m` 坏点与速度突变跳点，结合 Haversine 与轻量 EMA 坐标平滑（1km 实测与噪声模拟误差均 < 5%）。
+  - 暂停时停止接收 GPS 并切断分段，继续时绝不计入暂停位移；单调时钟独立统计「运动时长（不含暂停）」与「累计总时长（含暂停）」。
+- [x] **数据库 v7 & 饮食热量同步**：新增 `runs`（`route_json` 存 `[{lat,lng,t}]`）与 `run_segments` 表；保存跑步记录后自动汇总进 `DailyTargets.load()` 同步至饮食页热量预算。
+- [x] **Keep 风格跑步首页 / 跑步中 / 历史详情**：健身页顶部独立入口，跑步首页提供「自由跑 / 距离跑 (1/3/5/10km) / 跑步课程（加载 8 门内置课）」及历史记录；跑步中采用超大四项核心数字 + 实时轨迹地图 + 暂停/结束；历史详情可从 `route_json` 完整重绘轨迹。
+- [x] 验证：43/43 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.0_release.apk`。
+
+### 第二批：8 门跑步课程 + TTS 语音教练 + 分段记录（待第一批验收后开始）⏳
+- [ ] `flutter_tts` + `audio_session` 压低音乐焦点（ducking）
+- [ ] 课程分段推进引擎（时间段 + 距离段如 5×400m）、每公里配速播报、`run_segments` 分段入库
+- [ ] 使用 `image-generator` 生成 4 张课程卡片透明插画（存 `assets/icons/generated/`）
+
+### 第三批：轨迹回放 + 配速曲线 + Gemini 深夜黑皮肤 + 图标美化（待第二批验收后开始）⏳
+- [ ] 轨迹一笔绘制回放动画 + `fl_chart` 配速曲线图 + 空状态大肥鱼插画
+- [ ] `app_colors_dark_premium.dart`（`ThemeExtension` + 固定 `RepaintBoundary` 纯黑到深蓝渐变背景 + 无边框大圆角 + 设置页三皮肤切换）
+- [ ] 统一生成并替换模块图标（1024×1024 透明 PNG，48px 清晰可辨）

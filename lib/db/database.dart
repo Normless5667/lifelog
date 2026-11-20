@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'lifelog.db';
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   Database? _db;
 
@@ -132,6 +132,34 @@ class AppDatabase {
       )''');
     b.execute('CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts)');
     b.execute('CREATE INDEX IF NOT EXISTS idx_usage_cat ON usage_events(category, name)');
+    b.execute('''
+      CREATE TABLE IF NOT EXISTS runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        start_time INTEGER NOT NULL,
+        end_time INTEGER,
+        duration_secs INTEGER NOT NULL,
+        total_secs INTEGER NOT NULL,
+        distance_m REAL NOT NULL,
+        avg_pace_secs_per_km INTEGER,
+        calories_kcal INTEGER,
+        course_id TEXT,
+        route_json TEXT,
+        note TEXT
+      )''');
+    b.execute('CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date)');
+    b.execute('''
+      CREATE TABLE IF NOT EXISTS run_segments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        seq INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        duration_secs INTEGER,
+        distance_m REAL,
+        avg_pace_secs_per_km INTEGER,
+        FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
+      )''');
+    b.execute('CREATE INDEX IF NOT EXISTS idx_run_segments_run ON run_segments(run_id)');
 
     for (final entry in _seedExercises.entries) {
       for (final name in entry.value) {
@@ -212,6 +240,36 @@ class AppDatabase {
           }
         }
       }
+    }
+    if (oldVersion < 7) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          start_time INTEGER NOT NULL,
+          end_time INTEGER,
+          duration_secs INTEGER NOT NULL,
+          total_secs INTEGER NOT NULL,
+          distance_m REAL NOT NULL,
+          avg_pace_secs_per_km INTEGER,
+          calories_kcal INTEGER,
+          course_id TEXT,
+          route_json TEXT,
+          note TEXT
+        )''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date)');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS run_segments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_id INTEGER NOT NULL,
+          seq INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          duration_secs INTEGER,
+          distance_m REAL,
+          avg_pace_secs_per_km INTEGER,
+          FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
+        )''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_run_segments_run ON run_segments(run_id)');
     }
   }
 
