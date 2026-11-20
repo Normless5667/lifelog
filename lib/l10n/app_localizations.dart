@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.2 · Co-developed with DaFeiYu'**
+  /// **'Version v3.1.3 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.2 (Build 20)'**
+  /// **'Version v3.1.3 (Build 21)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -4998,6 +4998,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pace (min/km) by distance — higher means faster'**
   String get runDetailPaceChartSub;
+
+  /// No description provided for @runVoiceUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Coach Unavailable'**
+  String get runVoiceUnavailableTitle;
+
+  /// No description provided for @runVoiceUnavailableDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your device does not appear to have a compatible Text-to-Speech engine or voice pack installed.\n\nYou can install one in Settings → Accessibility → Text-to-Speech, or continue this run with vibration and on-screen cues.'**
+  String get runVoiceUnavailableDesc;
+
+  /// No description provided for @runVoiceUnavailableGotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got It'**
+  String get runVoiceUnavailableGotIt;
+
+  /// No description provided for @runVoiceUnavailableSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get runVoiceUnavailableSettings;
+
+  /// No description provided for @runVoiceRetrySuccessToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice coach is ready'**
+  String get runVoiceRetrySuccessToast;
 }
 
 class _AppLocalizationsDelegate

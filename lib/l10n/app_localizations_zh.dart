@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.1.2 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.1.3 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.1.2 (Build 20)';
+  String get aboutVersion => '版本 v3.1.3 (Build 21)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2787,4 +2787,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runDetailPaceChartSub => '纵轴为配速（分/公里），曲线越靠上配速越快';
+
+  @override
+  String get runVoiceUnavailableTitle => '语音播报不可用';
+
+  @override
+  String get runVoiceUnavailableDesc =>
+      '看起来你的手机尚未安装或未启用中文语音引擎。\n\n你可以去「设置 → 辅助功能 → 文字转语音」安装中文语音包，或者这次先用振动 + 屏幕横幅提示完成跟练。';
+
+  @override
+  String get runVoiceUnavailableGotIt => '知道了';
+
+  @override
+  String get runVoiceUnavailableSettings => '去设置';
+
+  @override
+  String get runVoiceRetrySuccessToast => '语音教练已恢复就绪';
 }

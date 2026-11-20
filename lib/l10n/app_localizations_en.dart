@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.1.2 · Co-developed with DaFeiYu';
+      'Version v3.1.3 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.1.2 (Build 20)';
+  String get aboutVersion => 'Version v3.1.3 (Build 21)';
 
   @override
   String get aboutBadge =>
@@ -2880,4 +2880,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runDetailPaceChartSub =>
       'Pace (min/km) by distance — higher means faster';
+
+  @override
+  String get runVoiceUnavailableTitle => 'Voice Coach Unavailable';
+
+  @override
+  String get runVoiceUnavailableDesc =>
+      'Your device does not appear to have a compatible Text-to-Speech engine or voice pack installed.\n\nYou can install one in Settings → Accessibility → Text-to-Speech, or continue this run with vibration and on-screen cues.';
+
+  @override
+  String get runVoiceUnavailableGotIt => 'Got It';
+
+  @override
+  String get runVoiceUnavailableSettings => 'Open Settings';
+
+  @override
+  String get runVoiceRetrySuccessToast => 'Voice coach is ready';
 }

@@ -364,6 +364,9 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                             result.success(false)
                         }
                     }
+                    "openTtsSettings" -> {
+                        result.success(openTtsSettingsPage())
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -509,6 +512,22 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    private fun openTtsSettingsPage(): Boolean {
+        val candidates = listOf(
+            Intent("com.android.settings.TTS_SETTINGS"),
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS)
+        )
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                return true
+            } catch (_: Exception) {}
+        }
+        return false
     }
 
     private fun openSystemWeatherApp(): Boolean {

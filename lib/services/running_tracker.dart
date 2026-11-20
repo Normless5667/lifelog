@@ -314,6 +314,15 @@ class RunningNativeService {
       return false;
     }
   }
+
+  static Future<bool> openTtsSettings() async {
+    try {
+      final ok = await _ch.invokeMethod<bool>('openTtsSettings');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 /// 课程分段切换事件（供 UI 滑入横幅与测试验证）
@@ -348,9 +357,10 @@ class RunningTrackerController extends ChangeNotifier {
   final String notificationTitle;
   final bool isEnglish;
   final void Function(String text)? onSpeakForTest;
+  final bool simulateVoiceUnavailableForTest;
 
   final RunTrackProcessor _processor = RunTrackProcessor();
-  final RunVoiceCoach voiceCoach = RunVoiceCoach();
+  final RunVoiceCoach voiceCoach;
   late final RunCourseEngine? courseEngine;
 
   StreamSubscription<Position>? _posSub;
@@ -361,6 +371,7 @@ class RunningTrackerController extends ChangeNotifier {
   bool _finished = false;
   bool _targetNotified = false;
   bool _skipPlatformSideEffects = false;
+  bool _voiceUnavailablePromptNeeded = false;
 
   DateTime? _startAt;
   DateTime? _pauseStartedAt;
@@ -380,7 +391,9 @@ class RunningTrackerController extends ChangeNotifier {
     this.notificationTitle = '正在记录跑步',
     this.isEnglish = false,
     this.onSpeakForTest,
-  }) {
+    this.simulateVoiceUnavailableForTest = false,
+    RunVoiceCoach? voiceCoach,
+  }) : voiceCoach = voiceCoach ?? RunVoiceCoach() {
     courseEngine = (course != null && course!.segments.isNotEmpty)
         ? RunCourseEngine(course!)
         : null;
@@ -393,7 +406,20 @@ class RunningTrackerController extends ChangeNotifier {
   bool get hasCourseSegments => courseEngine != null;
   bool get isCourseCompleted => courseEngine?.isCompleted ?? false;
   bool get isVoiceMuted => voiceCoach.isMuted;
+  bool get isVoiceAvailable => voiceCoach.isAvailable;
+  bool get voiceUnavailablePromptNeeded => _voiceUnavailablePromptNeeded;
+  String? get voiceFailureReason => voiceCoach.lastFailureReason;
   SegmentTransitionEvent? get latestBannerEvent => _latestBannerEvent;
+
+  void consumeVoiceUnavailablePrompt() {
+    _voiceUnavailablePromptNeeded = false;
+  }
+
+  Future<bool> retryVoiceInit() async {
+    final ok = await voiceCoach.retryInit(isEnglish: isEnglish);
+    notifyListeners();
+    return ok;
+  }
   double? get latestAccuracy => _latestAccuracy;
   String? get gpsError => _gpsError;
   DateTime? get startAt => _startAt;
@@ -452,8 +478,48 @@ class RunningTrackerController extends ChangeNotifier {
       return;
     }
     if (!_skipPlatformSideEffects) {
-      await voiceCoach.speak(msg);
+      try {
+        await voiceCoach.speak(msg);
+      } catch (e, st) {
+        debugPrint('[VoiceCoach] _speak threw: $e\n$st');
+      }
     }
+  }
+
+  Future<void> _speakSequence(
+    List<String> lines, {
+    Duration gap = const Duration(milliseconds: 800),
+  }) async {
+    final nonEmpty = [
+      for (final s in lines)
+        if (s.trim().isNotEmpty) s.trim(),
+    ];
+    if (nonEmpty.isEmpty) return;
+    if (onSpeakForTest != null) {
+      if (!voiceCoach.isMuted) {
+        for (final line in nonEmpty) {
+          onSpeakForTest!(line);
+        }
+      }
+      return;
+    }
+    if (!_skipPlatformSideEffects) {
+      try {
+        await voiceCoach.speakSequence(nonEmpty, gap: gap);
+      } catch (e, st) {
+        debugPrint('[VoiceCoach] _speakSequence threw: $e\n$st');
+      }
+    }
+  }
+
+  String _buildCourseIntroLine(RunningCourse c, int totalSegments) {
+    final mins = c.estimatedMinutes;
+    if (isEnglish) {
+      final minsPart = mins != null ? ', about $mins minutes' : '';
+      return 'Starting ${c.localizedName(isEn: true)}, $totalSegments segments$minsPart.';
+    }
+    final minsPart = mins != null ? '，预计 $mins 分钟' : '';
+    return '开始 ${c.name}，共 $totalSegments 段$minsPart';
   }
 
   Future<void> start({bool skipPlatformSideEffects = false}) async {
@@ -467,9 +533,13 @@ class RunningTrackerController extends ChangeNotifier {
     _pauseStartedAt = null;
     _gpsError = null;
     _lastAnnouncedKm = 0;
+    _voiceUnavailablePromptNeeded = false;
 
     if (!skipPlatformSideEffects) {
-      await voiceCoach.init(isEnglish: isEnglish);
+      final ttsOk = await voiceCoach.init(isEnglish: isEnglish);
+      if (!ttsOk && courseEngine != null) {
+        _voiceUnavailablePromptNeeded = true;
+      }
       try {
         await WakelockPlus.enable();
       } catch (_) {}
@@ -478,17 +548,32 @@ class RunningTrackerController extends ChangeNotifier {
         body: _formatNotificationBody(),
       );
       _startLocationStream();
+    } else if (simulateVoiceUnavailableForTest && courseEngine != null) {
+      _voiceUnavailablePromptNeeded = true;
     }
 
-    // 课程模式开跑即触发第 1 段横幅 + 语音播报
+    // 课程模式开跑即触发震动 + 第 1 段横幅 + 主动总述与第 1 段顺序语音播报（间隔 1.5s 防吞字）
     if (courseEngine != null && courseEngine!.current != null) {
       final firstSeg = courseEngine!.current!;
+      if (!skipPlatformSideEffects) {
+        HapticFeedback.mediumImpact();
+      }
       _emitBanner(
         segment: firstSeg,
         segmentNumber: 1,
         totalSegments: courseEngine!.totalSegments,
       );
-      _speak(firstSeg.voice);
+      final introLine = _buildCourseIntroLine(course!, courseEngine!.totalSegments);
+      final firstCue = firstSeg.voice.trim().isNotEmpty
+          ? firstSeg.voice.trim()
+          : RunningCourseCatalog.segmentMeta(firstSeg.type)
+              .localizedLabel(isEn: isEnglish);
+      unawaited(
+        _speakSequence(
+          [introLine, firstCue],
+          gap: const Duration(milliseconds: 1500),
+        ),
+      );
     }
 
     notifyListeners();
@@ -554,7 +639,7 @@ class RunningTrackerController extends ChangeNotifier {
             courseCompleted: true,
             forcedByTimeout: res.forcedByTimeout,
           );
-          _speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！');
+          unawaited(_speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！'));
         } else if (res.newSegment != null) {
           _emitBanner(
             segment: res.newSegment,
@@ -566,15 +651,18 @@ class RunningTrackerController extends ChangeNotifier {
               ? res.newSegment!.voice
               : RunningCourseCatalog.segmentMeta(res.newSegment!.type)
                   .localizedLabel(isEn: isEnglish);
-          _speak(cue);
+          unawaited(_speak(cue));
         }
       }
     }
 
-    // 整公里配速语音播报（若本 tick 刚切段则让位给课程切段语音，避免互相打断）
+    // 整公里震动 + 配速语音播报（即使 TTS 不可用也保留轻震动反馈；若本 tick 刚切段则语音让位给切段提醒）
     final completedKm = (_processor.distanceMeters / 1000.0).floor();
     if (completedKm > _lastAnnouncedKm) {
       _lastAnnouncedKm = completedKm;
+      if (!_skipPlatformSideEffects) {
+        HapticFeedback.lightImpact();
+      }
       if (!segmentSwitched) {
         final pace = avgPaceSecsPerKm;
         if (pace != null) {
@@ -583,7 +671,7 @@ class RunningTrackerController extends ChangeNotifier {
           final msg = isEnglish
               ? '$completedKm kilometers completed. Average pace $pm minutes $ps seconds per kilometer.'
               : '已完成 $completedKm 公里，平均配速 $pm 分 $ps 秒';
-          _speak(msg);
+          unawaited(_speak(msg));
         }
       }
     }
@@ -615,14 +703,14 @@ class RunningTrackerController extends ChangeNotifier {
         totalSegments: courseEngine!.totalSegments,
         courseCompleted: true,
       );
-      _speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！');
+      unawaited(_speak(isEnglish ? 'Course completed! Great job.' : '课程已全部完成，太棒了！'));
     } else if (res.newSegment != null) {
       _emitBanner(
         segment: res.newSegment,
         segmentNumber: courseEngine!.currentIndex + 1,
         totalSegments: courseEngine!.totalSegments,
       );
-      _speak(res.newSegment!.voice);
+      unawaited(_speak(res.newSegment!.voice));
     }
     notifyListeners();
   }

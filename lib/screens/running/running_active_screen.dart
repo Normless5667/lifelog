@@ -52,6 +52,7 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
   int _lastBannerId = 0;
   SegmentTransitionEvent? _visibleBanner;
   Timer? _bannerHideTimer;
+  bool _voiceDialogOpen = false;
 
   @override
   void initState() {
@@ -76,8 +77,78 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
         _ctrl.start(skipPlatformSideEffects: widget.controllerForTest != null);
       } else {
         _syncBannerEvent();
+        _maybeShowVoiceUnavailableDialog();
       }
     });
+  }
+
+  void _maybeShowVoiceUnavailableDialog() {
+    if (!mounted || _voiceDialogOpen) return;
+    if (!_ctrl.voiceUnavailablePromptNeeded) return;
+    _ctrl.consumeVoiceUnavailablePrompt();
+    _showVoiceUnavailableDialog();
+  }
+
+  Future<void> _showVoiceUnavailableDialog() async {
+    if (!mounted || _voiceDialogOpen) return;
+    _voiceDialogOpen = true;
+    final l = context.l10n;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          key: const ValueKey('run_voice_unavailable_dialog'),
+          title: Row(
+            children: [
+              Icon(Icons.volume_off_rounded, color: AppColors.warning(ctx), size: 22),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  l.runVoiceUnavailableTitle,
+                  style: AppTypography.sectionTitle(ctx),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            l.runVoiceUnavailableDesc,
+            style: AppTypography.body(ctx),
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('run_voice_unavailable_got_it'),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.runVoiceUnavailableGotIt),
+            ),
+            FilledButton.icon(
+              key: const ValueKey('run_voice_unavailable_settings'),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await RunningNativeService.openTtsSettings();
+              },
+              icon: const Icon(Icons.settings_rounded, size: 17),
+              label: Text(l.runVoiceUnavailableSettings),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _voiceDialogOpen = false;
+    }
+  }
+
+  Future<void> _onVoiceTogglePressed() async {
+    if (widget.controllerForTest == null && !_ctrl.isVoiceAvailable && !_ctrl.isVoiceMuted) {
+      final ok = await _ctrl.retryVoiceInit();
+      if (!mounted) return;
+      if (ok) {
+        toast(context, context.l10n.runVoiceRetrySuccessToast);
+      } else {
+        await _showVoiceUnavailableDialog();
+      }
+      return;
+    }
+    _ctrl.toggleVoiceMute();
   }
 
   void _syncBannerEvent() {
@@ -97,6 +168,7 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
   void _onTrackerUpdate() {
     if (!mounted) return;
     _syncBannerEvent();
+    _maybeShowVoiceUnavailableDialog();
     final pts = _ctrl.allPoints;
     if (_followUser && pts.isNotEmpty && pts.length != _lastMovedPointCount) {
       _lastMovedPointCount = pts.length;
@@ -334,9 +406,12 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
             IconButton(
               tooltip: _ctrl.isVoiceMuted ? l.runCourseVoiceOffTooltip : l.runCourseVoiceOnTooltip,
               icon: Icon(
-                _ctrl.isVoiceMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                (_ctrl.isVoiceMuted ||
+                        (widget.controllerForTest == null && !_ctrl.isVoiceAvailable))
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
               ),
-              onPressed: _ctrl.toggleVoiceMute,
+              onPressed: _onVoiceTogglePressed,
             ),
           ],
         ),

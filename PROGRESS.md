@@ -85,3 +85,15 @@
   - 新增 `computePaceCurveSamples()`（自动过滤跳点与暂停断档、动态分桶与 3 点平滑），在跑步详情页渲染 `fl_chart` 平滑配速曲线（纵轴越靠上配速越快，支持触摸查看公里点配速）。
   - 地图轨迹新增一笔平滑插值绘制回放动画（进入自动播放 + 右上角「回放轨迹」重播按钮，严格遵循 `MediaQuery.disableAnimationsOf(context)`）。
 - [x] 验证：55/55 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.2_release.apk`。
+
+### P0 语音修复补丁（v3.1.3+21）✅ 已完成并出包
+- [x] **Android 11+ `<queries>` 补齐 `TTS_SERVICE` 意图**：在 `AndroidManifest.xml` 声明 `android.intent.action.TTS_SERVICE`，修复 OPPO/ColorOS 等 Android 11+ 机型因包可见性限制导致查询/绑定 TTS 引擎失败的问题。
+- [x] **`RunVoiceCoach` 根治静默失败 + 分步诊断 + 失败可重试 (`lib/services/run_voice_coach.dart`)**：
+  - 增加 `step1~step5` 完整 `debugPrint` 诊断日志与 `lastFailureReason`；独立捕获 `getLanguages` 异常不误杀；支持多候选语言回退（`zh-CN / zh_CN / zh-Hans / zh`）。
+  - 移除存在平台兼容性问题的 `awaitSpeakCompletion(false)`；移除初始化失败后永久锁死的 `_initialized` 门控，失败后随时可重试。
+  - 新增 `speakSequence()`（等待前句结束 + 间隔防吞字）；所有 `_speak()` 调用增加 `try/catch` 与错误日志。
+- [x] **不可用可见弹窗 + 直达系统文字转语音设置 (`MainActivity.kt` + `RunningActiveScreen`)**：
+  - 首次进课程若 TTS 不可用，立即弹出明确提示弹窗，提供「知道了」与「去设置」（通过 `com.lifelog/running` → `openTtsSettings` 直达 `TTS_SETTINGS` / 辅助功能设置），点击顶栏语音图标还可随时重试。
+  - 不可用时确保分级降级生效：开跑与切段 `HapticFeedback.mediumImpact()` + 顶部滑入横幅，每公里 `HapticFeedback.lightImpact()`。
+- [x] **课程开跑主动语音引导**：开跑先播总述（「开始 3 公里法特莱克跑，共 9 段，预计 29 分钟」），间隔 1.5 秒后再播第 1 段提示。
+- [x] 验证：59/59 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.3_release.apk`。
