@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../db/database.dart';
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'battery_probe_service.dart';
 import 'reminder_service.dart';
 
 /// 本地使用数据埋点与导出分析服务（v1.8）：
@@ -25,7 +26,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
   UsageTelemetryService._();
   static final UsageTelemetryService instance = UsageTelemetryService._();
 
-  static const appVersion = '2.1.7';
+  static const appVersion = '2.1.8';
   static const _enabledKvKey = 'usage_telemetry_enabled';
   static const _flushIntervalSec = 30;
   static const _flushBatchThreshold = 50;
@@ -129,7 +130,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
           _enqueue(
             category: 'perf',
             name: 'frame_jank',
-            value: maxMs,
+            value: count.toDouble(),
             extra: {
               'page': _currentPage,
               'jank_count': count,
@@ -168,8 +169,11 @@ class UsageTelemetryService with WidgetsBindingObserver {
           durationMs: fgDur,
         );
       }
-      // 切后台立即停止所有采样定时器并将缓冲刷入 SQLite，确保后台零耗电
+      // 切后台立即停止所有采样定时器、释放无用图片缓存并将缓冲刷入 SQLite
       _stopForegroundTimers();
+      try {
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
       flush();
     } else if (state == AppLifecycleState.resumed) {
       if (!_inForeground) {
@@ -231,7 +235,24 @@ class UsageTelemetryService with WidgetsBindingObserver {
     );
   }
 
-  /// 2.3 记录性能与耗电事件 (kind: 'gps_call' | 'timer_tick' | 'db_write')
+  /// 2.3 记录后台系统自动任务（不混入用户 feature 转化率，如 step_sync）
+  void trackSystem(
+    String name,
+    String action, {
+    int? durationMs,
+    Map<String, Object?>? extra,
+  }) {
+    if (!_enabled) return;
+    _enqueue(
+      category: 'system',
+      name: name,
+      action: action,
+      durationMs: durationMs,
+      extra: extra,
+    );
+  }
+
+  /// 2.4 记录性能与耗电事件 (kind: 'gps_call' | 'timer_active_sec' | 'db_write')
   void trackPerf(
     String kind, {
     num value = 1,
@@ -323,28 +344,22 @@ class UsageTelemetryService with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  /// 查询指定天数范围内的事件并构建带 summary 的完整分析数据包
-  Future<Map<String, dynamic>> buildExportPayload({int? days}) async {
-    await flush();
-    final now = DateTime.now();
-    final fromDt = days != null ? now.subtract(Duration(days: days)) : DateTime(2025, 1, 1);
-    final fromMs = fromDt.millisecondsSinceEpoch;
-
-    final db = await AppDatabase.instance.db;
-    final rows = await db.query(
-      'usage_events',
-      where: days != null ? 'ts >= ?' : null,
-      whereArgs: days != null ? [fromMs] : null,
-      orderBy: 'ts DESC',
-    );
-
-    // 1. 计算 total_fg_minutes 与 daily_active_days
+  /// 纯函数聚合事件列表，确保 summary 与 events 统计口径完全一致（同时供单元测试验证）
+  static Map<String, dynamic> summarizeEvents(
+    List<Map<String, Object?>> rows, {
+    int extraLiveFgMs = 0,
+    int extraLiveTimerSec = 0,
+    String? liveTodayDate,
+  }) {
     var totalFgMs = 0;
     final activeDaysSet = <String>{};
     final pageMsMap = <String, int>{};
     final pageViewsMap = <String, int>{};
     final featureCounts = <String, Map<String, int>>{};
+    final systemCounts = <String, Map<String, int>>{};
     var jankFramesTotal = 0;
+    var jankEventsTotal = 0;
+    var maxJankMs = 0.0;
     var memorySumMb = 0.0;
     var memorySamples = 0;
     var gpsCallsTotal = 0;
@@ -352,8 +367,10 @@ class UsageTelemetryService with WidgetsBindingObserver {
 
     for (final r in rows) {
       final ts = ((r['ts'] ?? 0) as num).toInt();
-      final dt = DateTime.fromMillisecondsSinceEpoch(ts);
-      activeDaysSet.add(fmtDate(dt));
+      if (ts > 0) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+        activeDaysSet.add(fmtDate(dt));
+      }
 
       final cat = (r['category'] ?? '').toString();
       final name = (r['name'] ?? '').toString();
@@ -374,6 +391,12 @@ class UsageTelemetryService with WidgetsBindingObserver {
         pageMsMap[name] = (pageMsMap[name] ?? 0) + durMs;
         pageViewsMap[name] = (pageViewsMap[name] ?? 0) + 1;
       } else if (cat == 'feature') {
+        // 兼容历史旧版写入的 step_sync，避免拉偏用户功能转化率
+        if (name == 'step_sync') {
+          final sb = systemCounts.putIfAbsent(name, () => {'success': 0, 'fail': 0});
+          if (sb.containsKey(action)) sb[action] = (sb[action] ?? 0) + 1;
+          continue;
+        }
         final bucket = featureCounts.putIfAbsent(
           name,
           () => {'tap': 0, 'success': 0, 'fail': 0, 'cancel': 0},
@@ -381,25 +404,32 @@ class UsageTelemetryService with WidgetsBindingObserver {
         if (bucket.containsKey(action)) {
           bucket[action] = (bucket[action] ?? 0) + 1;
         }
+      } else if (cat == 'system') {
+        final sb = systemCounts.putIfAbsent(name, () => {'success': 0, 'fail': 0});
+        if (sb.containsKey(action)) {
+          sb[action] = (sb[action] ?? 0) + 1;
+        }
       } else if (cat == 'perf') {
         if (name == 'frame_jank') {
-          final jc = ((extraMap?['jank_count'] ?? 1) as num).toInt();
-          jankFramesTotal += jc;
+          jankEventsTotal++;
+          final jc = ((extraMap?['jank_count'] ?? (val >= 1 ? val.round() : 1)) as num).toInt();
+          jankFramesTotal += jc.clamp(1, 10000);
+          final frameMs = ((extraMap?['max_frame_ms'] ?? 0) as num).toDouble();
+          if (frameMs > maxJankMs) maxJankMs = frameMs;
         } else if (name == 'memory' && val > 0) {
           memorySumMb += val;
           memorySamples++;
         } else if (name == 'gps_call') {
           gpsCallsTotal += val.round().clamp(1, 100);
-        } else if (name == 'timer_tick') {
-          timerActiveMsTotal += durMs;
+        } else if (name == 'timer_active_sec' || name == 'timer_tick') {
+          timerActiveMsTotal += durMs > 0 ? durMs : (val * 1000).round();
         }
       }
     }
 
-    // 如果当前还在前台，把本次尚未 paused 的前台时长也算进 summary
-    if (_inForeground && _sessionResumeMs > 0) {
-      totalFgMs += (now.millisecondsSinceEpoch - _sessionResumeMs).clamp(0, 86400000);
-      activeDaysSet.add(today());
+    if (extraLiveFgMs > 0) {
+      totalFgMs += extraLiveFgMs;
+      if (liveTodayDate != null) activeDaysSet.add(liveTodayDate);
     }
 
     final topPages = pageMsMap.entries.map((e) {
@@ -417,7 +447,9 @@ class UsageTelemetryService with WidgetsBindingObserver {
       final fail = e.value['fail'] ?? 0;
       final cancel = e.value['cancel'] ?? 0;
       final denom = tap > 0 ? tap : (success + fail + cancel);
-      final rate = denom > 0 ? double.parse((success / denom).toStringAsFixed(2)) : 0.0;
+      final rate = denom > 0
+          ? double.parse((success / denom).clamp(0.0, 1.0).toStringAsFixed(2))
+          : 0.0;
       return {
         'feature': e.key,
         'tap': tap,
@@ -427,6 +459,51 @@ class UsageTelemetryService with WidgetsBindingObserver {
         'rate': rate,
       };
     }).toList();
+
+    return {
+      'total_fg_minutes': (totalFgMs / 60000.0).round(),
+      'daily_active_days': activeDaysSet.length,
+      'total_events': rows.length,
+      'top_pages': topPages,
+      'feature_conversion': featureConversion,
+      'system_tasks': systemCounts,
+      'perf': {
+        'jank_events': jankEventsTotal,
+        'jank_frames': jankFramesTotal,
+        'max_jank_ms': double.parse(maxJankMs.toStringAsFixed(1)),
+        'avg_memory_mb': memorySamples > 0
+            ? double.parse((memorySumMb / memorySamples).toStringAsFixed(1))
+            : 0.0,
+        'gps_calls': gpsCallsTotal,
+        'timer_active_seconds': (timerActiveMsTotal / 1000).round() + extraLiveTimerSec,
+      },
+    };
+  }
+
+  /// 查询指定天数范围内的事件并构建带 summary 的完整分析数据包
+  Future<Map<String, dynamic>> buildExportPayload({int? days}) async {
+    await flush();
+    final now = DateTime.now();
+    final fromDt = days != null ? now.subtract(Duration(days: days)) : DateTime(2025, 1, 1);
+    final fromMs = fromDt.millisecondsSinceEpoch;
+
+    final db = await AppDatabase.instance.db;
+    final rows = await db.query(
+      'usage_events',
+      where: days != null ? 'ts >= ?' : null,
+      whereArgs: days != null ? [fromMs] : null,
+      orderBy: 'ts DESC',
+    );
+
+    final liveFgMs = (_inForeground && _sessionResumeMs > 0)
+        ? (now.millisecondsSinceEpoch - _sessionResumeMs).clamp(0, 86400000)
+        : 0;
+    final summary = summarizeEvents(
+      rows,
+      extraLiveFgMs: liveFgMs,
+      extraLiveTimerSec: BatteryProbeService.instance.currentActiveTimerSeconds,
+      liveTodayDate: today(),
+    );
 
     final notifStatus = await ReminderService.checkNotificationStatus();
     final view = WidgetsBinding.instance.platformDispatcher.views.firstOrNull;
@@ -447,21 +524,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
         'to': fmtDate(now),
         'days': days ?? 'all',
       },
-      'summary': {
-        'total_fg_minutes': (totalFgMs / 60000.0).round(),
-        'daily_active_days': activeDaysSet.length,
-        'total_events': rows.length,
-        'top_pages': topPages,
-        'feature_conversion': featureConversion,
-        'perf': {
-          'jank_frames': jankFramesTotal,
-          'avg_memory_mb': memorySamples > 0
-              ? double.parse((memorySumMb / memorySamples).toStringAsFixed(1))
-              : 0.0,
-          'gps_calls': gpsCallsTotal,
-          'timer_active_seconds': (timerActiveMsTotal / 1000).round(),
-        },
-      },
+      'summary': summary,
       'events': rows,
     };
   }

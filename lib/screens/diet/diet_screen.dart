@@ -150,7 +150,7 @@ class _DietScreenState extends State<DietScreen> {
             children: [
               ClipRRect(
                 borderRadius: AppRadius.bMd,
-                child: Image.file(img, height: 180, fit: BoxFit.cover),
+                child: Image.file(img, height: 180, cacheHeight: 540, fit: BoxFit.cover),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
@@ -236,12 +236,15 @@ class _DietScreenState extends State<DietScreen> {
   Future<void> _manualEdit({Meal? existing, int? defaultMealType}) async {
     final t0 = DateTime.now().millisecondsSinceEpoch;
     UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
+    final recentMeals = existing == null ? await Repo.getRecentUniqueMeals(days: 7, limit: 6) : const <Meal>[];
+    if (!mounted) return;
     final m = await showDialog<Meal>(
       context: context,
       builder: (_) => MealEditDialog(
         date: _date,
         existing: existing,
         initialMealType: defaultMealType ?? _guessMealType(),
+        recentMeals: recentMeals,
       ),
     );
     final dur = DateTime.now().millisecondsSinceEpoch - t0;
@@ -557,6 +560,8 @@ class _DietScreenState extends State<DietScreen> {
                   File(m.photoPath!),
                   width: 44,
                   height: 44,
+                  cacheWidth: 132,
+                  cacheHeight: 132,
                   fit: BoxFit.cover,
                 ),
               )

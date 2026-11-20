@@ -1079,6 +1079,81 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get workoutInProgressBadge => '训练进行中';
+
+  @override
+  String workoutInProgressElapsed(String clock) {
+    return '已进行 $clock';
+  }
+
+  @override
+  String get workoutResumeBtn => '继续训练';
+
+  @override
+  String get workoutFinishSaveBtn => '结束并保存';
+
+  @override
+  String get workoutStaleTitle => '这次训练还要继续吗？';
+
+  @override
+  String workoutStaleDesc(int hours, int sets) {
+    return '检测到你在 $hours 小时前开始了一次未结束的训练（已记录 $sets 组），是否继续？';
+  }
+
+  @override
+  String get workoutDiscardBtn => '放弃本次';
+
+  @override
+  String get workoutExitDialogTitle => '训练仍在进行中';
+
+  @override
+  String get workoutExitDialogDesc => '你可以暂离页面（计时器将在后台继续），或直接结束并保存本次训练。';
+
+  @override
+  String get workoutExitKeepRunningBtn => '暂离（保持计时）';
+
+  @override
+  String get workoutExitContinueBtn => '继续训练';
+
+  @override
+  String get workoutPlanMenuRename => '重命名计划';
+
+  @override
+  String get workoutPlanMenuReplace => '替换计划（去 AI 生成）';
+
+  @override
+  String get workoutPlanMenuDelete => '删除计划';
+
+  @override
+  String get workoutPlanRenameTitle => '重命名训练计划';
+
+  @override
+  String get workoutPlanRenameLabel => '计划名称';
+
+  @override
+  String workoutPlanDeleteTitle(String name) {
+    return '确认删除「$name」？';
+  }
+
+  @override
+  String get workoutPlanDeleteDesc => '这个计划会被移除，但已经完成的训练记录不受影响。';
+
+  @override
+  String get workoutPlanDeletedToast => '已删除当前训练计划';
+
+  @override
+  String get workoutFreeTrainingBtn => '不按计划，自由训练';
+
+  @override
+  String get mealQuickRecentTitle => '最近常吃（点一下秒填）';
+
+  @override
+  String get mealExpandMacrosBtn => '展开份量与三大营养素（可选）';
+
+  @override
+  String get mealCollapseMacrosBtn => '收起营养素明细';
+
+  @override
   String get cardioDialogAddTitle => '记录有氧运动';
 
   @override
@@ -1733,7 +1808,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v2.1.7 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v2.1.8 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -1885,7 +1960,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v2.1.7 (Build 13)';
+  String get aboutVersion => '版本 v2.1.8 (Build 14)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';

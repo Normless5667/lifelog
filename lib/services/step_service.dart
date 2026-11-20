@@ -73,7 +73,7 @@ class StepService {
             _lastWrittenSteps = currentSteps;
             _lastWrittenDate = t;
             await Repo.setKv('steps_val_$t', '$currentSteps');
-            UsageTelemetryService.instance.trackFeature('step_sync', 'success');
+            UsageTelemetryService.instance.trackSystem('step_sync', 'success');
           }
           if (syncWidget && currentSteps != savedToday) {
             WidgetService.sync(fromStepUpdate: true);

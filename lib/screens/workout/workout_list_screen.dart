@@ -8,6 +8,8 @@ import '../../services/usage_telemetry_service.dart';
 import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
+import '../../widgets/in_progress_workout_card.dart';
+import '../ai/ai_chat_screen.dart';
 import 'exercise_library_screen.dart';
 import 'workout_session_screen.dart';
 
@@ -46,6 +48,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   List<_WorkoutSummary> _items = [];
   List<CardioRecord> _cardios = [];
   List<Exercise> _exercises = [];
+  InProgressWorkoutSnapshot? _inProgress;
   TrainingPlan? _plan;
   double _userWeightKg = 65;
   int _tab = 0; // 0=力量训练, 1=独立有氧
@@ -75,9 +78,12 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     final cardios = await Repo.getCardioRecords(limit: 60);
     final plan = await Repo.getTrainingPlan();
     final exercises = await Repo.getExercises();
+    final inProgress = await InProgressWorkoutHelper.loadSnapshot(weightKg: weightKg);
     final exMap = {for (final e in exercises) e.id: e};
     final out = <_WorkoutSummary>[];
     for (final w in workouts) {
+      // 进行中的训练单独展示在顶部「🔴 训练进行中」恢复卡片，不混入已完成历史
+      if (w.endTime == null) continue;
       final sets = await Repo.getSets(w.id!);
       final names = <String>[];
       String? primaryCat;
@@ -126,9 +132,22 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
       _items = out;
       _cardios = cardios;
       _exercises = exercises;
+      _inProgress = inProgress;
       _plan = plan;
       _loading = false;
     });
+    if (inProgress != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _inProgress == null) return;
+        InProgressWorkoutHelper.maybePromptStale(
+          context,
+          _inProgress!,
+          weightKg: _userWeightKg,
+          onResume: () => _openSession(_inProgress!.workout.id!),
+          onChanged: _load,
+        );
+      });
+    }
   }
 
   Future<void> _startNew({List<TrainingPlanExercise>? planExercises, String? note}) async {
@@ -375,6 +394,21 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     final l = context.l10n;
     final workoutColor = AppColors.moduleWorkout(context);
     final headerWidgets = <Widget>[
+      if (_inProgress != null) ...[
+        InProgressWorkoutCard(
+          snapshot: _inProgress!,
+          onResume: () => _openSession(_inProgress!.workout.id!),
+          onFinish: () async {
+            await InProgressWorkoutHelper.finishAndSave(
+              context,
+              _inProgress!,
+              weightKg: _userWeightKg,
+            );
+            _load();
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
       if (_plan != null) ...[
         _activePlanCard(_plan!),
         const SizedBox(height: AppSpacing.md),
@@ -418,6 +452,65 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     );
   }
 
+  Future<void> _renamePlan(TrainingPlan plan) async {
+    final l = context.l10n;
+    final ctrl = TextEditingController(text: plan.planName);
+    final nextName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.workoutPlanRenameTitle, style: AppTypography.sectionTitle(ctx)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l.workoutPlanRenameLabel),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
+          FilledButton(
+            onPressed: () {
+              final v = ctrl.text.trim();
+              if (v.isEmpty) return;
+              Navigator.pop(ctx, v);
+            },
+            child: Text(l.commonSave),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (nextName == null || nextName == plan.planName) return;
+    plan.planName = nextName;
+    await Repo.saveTrainingPlan(plan);
+    _load();
+  }
+
+  Future<void> _confirmDeletePlan(TrainingPlan plan) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.workoutPlanDeleteTitle(plan.planName), style: AppTypography.sectionTitle(ctx)),
+        content: Text(l.workoutPlanDeleteDesc, style: AppTypography.body(ctx)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger(ctx),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await Repo.clearTrainingPlan();
+    if (!mounted) return;
+    toast(context, l.workoutPlanDeletedToast);
+    _load();
+  }
+
   Widget _activePlanCard(TrainingPlan plan) {
     final l = context.l10n;
     final teal = AppColors.teal(context);
@@ -457,6 +550,57 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                   ],
                 ),
               ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_horiz_rounded, color: AppColors.textSecondary(context)),
+                onSelected: (action) async {
+                  if (action == 'rename') {
+                    await _renamePlan(plan);
+                  } else if (action == 'replace') {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AiChatScreen()),
+                    );
+                    _load();
+                  } else if (action == 'delete') {
+                    await _confirmDeletePlan(plan);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(l.workoutPlanMenuRename),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'replace',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.auto_awesome_rounded, size: 18),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(l.workoutPlanMenuReplace),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.danger(ctx)),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          l.workoutPlanMenuDelete,
+                          style: TextStyle(color: AppColors.danger(ctx)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -480,6 +624,19 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 ),
               );
             }).toList(),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => _startNew(),
+              icon: const Icon(Icons.bolt_rounded, size: 16),
+              label: Text(l.workoutFreeTrainingBtn),
+            ),
           ),
         ],
       ),

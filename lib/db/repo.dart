@@ -242,6 +242,40 @@ class Repo {
     return rows.isEmpty ? null : Workout.fromMap(rows.first);
   }
 
+  /// 查询最近一条尚未结束的训练会话（end_time IS NULL），用于中断恢复与冷启动续练
+  static Future<Workout?> getInProgressWorkout() async {
+    final rows = await (await _db).query(
+      'workouts',
+      where: 'end_time IS NULL',
+      orderBy: 'start_time DESC',
+      limit: 1,
+    );
+    return rows.isEmpty ? null : Workout.fromMap(rows.first);
+  }
+
+  /// 查询近 [days] 天内去重后的常用食物，供快速记饮食一键填入
+  static Future<List<Meal>> getRecentUniqueMeals({int days = 7, int limit = 8}) async {
+    final fromDate = fmtDate(DateTime.now().subtract(Duration(days: days)));
+    final rows = await (await _db).query(
+      'meals',
+      where: 'date >= ?',
+      whereArgs: [fromDate],
+      orderBy: 'created_at DESC',
+      limit: 60,
+    );
+    final seen = <String>{};
+    final out = <Meal>[];
+    for (final r in rows) {
+      final m = Meal.fromMap(r);
+      final key = m.name.trim().toLowerCase();
+      if (key.isEmpty || seen.contains(key)) continue;
+      seen.add(key);
+      out.add(m);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
   static Future<List<WorkoutSet>> getSets(int workoutId) async {
     final rows = await (await _db).query('workout_sets',
         where: 'workout_id = ?', whereArgs: [workoutId], orderBy: 'id');
@@ -334,8 +368,16 @@ class Repo {
     }
   }
 
-  static Future<void> saveTrainingPlan(TrainingPlan plan) =>
-      setKv('active_training_plan', jsonEncode(plan.toJson()));
+  static Future<void> saveTrainingPlan(TrainingPlan plan) async {
+    await setKv('active_training_plan', jsonEncode(plan.toJson()));
+    notifyDataChanged();
+  }
+
+  /// 清除当前活跃训练计划（不影响已完成的历史训练记录）
+  static Future<void> clearTrainingPlan() async {
+    await setKv('active_training_plan', '');
+    notifyDataChanged();
+  }
 
   static Future<bool> isOnboardingDone() async => (await getKv('onboarding_done')) == '1';
 

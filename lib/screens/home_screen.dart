@@ -12,12 +12,14 @@ import '../services/weather_service.dart';
 import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import '../widgets/common.dart';
+import '../widgets/in_progress_workout_card.dart';
 import 'body/body_screen.dart';
 import 'body/onboarding_sheet.dart';
 import 'diet/food_confirm_sheet.dart';
 import 'schedule/bus_schedule_screen.dart';
 import 'settings/battery_diagnostics_screen.dart';
 import 'settings/settings_screen.dart';
+import 'workout/workout_session_screen.dart';
 
 /// 今日仪表盘（生活助手 v2.0 视觉重写）：
 /// - 统一引用 AppColors / AppTypography / AppSpacing / AppRadius / AppShadows
@@ -47,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<CardioRecord> _todayCardios = [];
   int _todaySets = 0;
   BodyRecord? _latestWeight;
+  InProgressWorkoutSnapshot? _inProgressWorkout;
+  double _userWeightKg = 65;
   Profile _profile = Profile();
 
   WeatherInfo? _weather;
@@ -114,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .length;
     }
 
+    final inProgress = await InProgressWorkoutHelper.loadSnapshot(weightKg: wKg);
     final bus = await BusService.nextBusSummary();
     final weather = await WeatherService.getWeather();
 
@@ -134,6 +139,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _todayCardios = cardios;
       _todaySets = sets;
       _latestWeight = weight;
+      _inProgressWorkout = inProgress;
+      _userWeightKg = wKg;
       _busRouteName = bus.routeName;
       _busStop = bus.stopName;
       _busDirection = bus.direction;
@@ -163,6 +170,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         );
         if (saved == true) _load();
       });
+    } else if (inProgress != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _inProgressWorkout == null) return;
+        InProgressWorkoutHelper.maybePromptStale(
+          context,
+          _inProgressWorkout!,
+          weightKg: _userWeightKg,
+          onResume: () => _open(WorkoutSessionScreen(workoutId: _inProgressWorkout!.workout.id!)),
+          onChanged: _load,
+        );
+      });
     }
   }
 
@@ -172,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       UsageTelemetryService.instance.trackFeature('bus_board', 'tap');
       UsageTelemetryService.instance.enterPage('bus_board', source: 'push');
     } else if (page is BodyScreen) {
-      UsageTelemetryService.instance.trackFeature('log_weight', 'tap');
+      // 仅记录页面浏览，真正的 log_weight tap/success/cancel 在 BodyScreen._addRecord 内配对埋点
       UsageTelemetryService.instance.enterPage('body', source: 'push');
     } else if (page is SettingsScreen) {
       UsageTelemetryService.instance.enterPage('settings', source: 'push');
@@ -463,6 +481,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     _busCard(),
                     const SizedBox(height: AppSpacing.md),
                     _quickHeroBanner(),
+                    if (_inProgressWorkout != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      InProgressWorkoutCard(
+                        snapshot: _inProgressWorkout!,
+                        onResume: () => _open(
+                          WorkoutSessionScreen(workoutId: _inProgressWorkout!.workout.id!),
+                        ),
+                        onFinish: () async {
+                          await InProgressWorkoutHelper.finishAndSave(
+                            context,
+                            _inProgressWorkout!,
+                            weightKg: _userWeightKg,
+                          );
+                          _load();
+                        },
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     _quickMealInputCard(),
                     if (!_hasProfile) ...[

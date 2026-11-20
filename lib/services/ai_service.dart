@@ -108,13 +108,14 @@ class AiService {
   static Future<String> chat({
     required String systemPrompt,
     required List<ChatMessage> history,
+    int maxTokens = 2000,
   }) async {
     final cfg = await SettingsService.chatConfig();
     final messages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
       ...history.map((m) => {'role': m.role, 'content': m.content}),
     ];
-    return _complete(cfg, messages);
+    return _complete(cfg, messages, maxTokens: maxTokens);
   }
 
   /// 测试连接，返回模型回复
@@ -259,18 +260,28 @@ class AiService {
     return out;
   }
 
-  /// 从 AI 回复中容错地提取 JSON 对象
+  /// 从 AI 回复中容错地提取 JSON 对象（自动修复尾逗号等常见大模型输出瑕疵）
   static Map<String, dynamic>? extractJson(String s) {
     var t = s.trim();
-    t = t.replaceAll(RegExp(r'```(json)?', caseSensitive: false), '');
+    t = t.replaceAll(RegExp(r'```(?:json)?', caseSensitive: false), '');
     final start = t.indexOf('{');
     final end = t.lastIndexOf('}');
     if (start < 0 || end <= start) return null;
+    final candidate = t.substring(start, end + 1);
     try {
-      final v = jsonDecode(t.substring(start, end + 1));
+      final v = jsonDecode(candidate);
       return v is Map<String, dynamic> ? v : null;
     } catch (_) {
-      return null;
+      try {
+        final repaired = candidate
+            .replaceAllMapped(RegExp(r',\s*([}\]])'), (m) => m.group(1)!)
+            .replaceAll('“', '"')
+            .replaceAll('”', '"');
+        final v = jsonDecode(repaired);
+        return v is Map<String, dynamic> ? v : null;
+      } catch (_) {
+        return null;
+      }
     }
   }
 }

@@ -1946,6 +1946,144 @@ abstract class AppLocalizations {
   /// **'{date} · Latest strength session'**
   String workoutSingleDayVolumeSub(String date);
 
+  /// No description provided for @workoutInProgressBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout in Progress'**
+  String get workoutInProgressBadge;
+
+  /// No description provided for @workoutInProgressElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed {clock}'**
+  String workoutInProgressElapsed(String clock);
+
+  /// No description provided for @workoutResumeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get workoutResumeBtn;
+
+  /// No description provided for @workoutFinishSaveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish & Save'**
+  String get workoutFinishSaveBtn;
+
+  /// No description provided for @workoutStaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue this workout?'**
+  String get workoutStaleTitle;
+
+  /// No description provided for @workoutStaleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'An unfinished workout started {hours}h ago ({sets} sets logged). Would you like to resume it?'**
+  String workoutStaleDesc(int hours, int sets);
+
+  /// No description provided for @workoutDiscardBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get workoutDiscardBtn;
+
+  /// No description provided for @workoutExitDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout Still Running'**
+  String get workoutExitDialogTitle;
+
+  /// No description provided for @workoutExitDialogDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'You can step away while keeping the timer running, or finish and save now.'**
+  String get workoutExitDialogDesc;
+
+  /// No description provided for @workoutExitKeepRunningBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Running'**
+  String get workoutExitKeepRunningBtn;
+
+  /// No description provided for @workoutExitContinueBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay Here'**
+  String get workoutExitContinueBtn;
+
+  /// No description provided for @workoutPlanMenuRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Plan'**
+  String get workoutPlanMenuRename;
+
+  /// No description provided for @workoutPlanMenuReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Plan (AI Coach)'**
+  String get workoutPlanMenuReplace;
+
+  /// No description provided for @workoutPlanMenuDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Plan'**
+  String get workoutPlanMenuDelete;
+
+  /// No description provided for @workoutPlanRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Training Plan'**
+  String get workoutPlanRenameTitle;
+
+  /// No description provided for @workoutPlanRenameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan Name'**
+  String get workoutPlanRenameLabel;
+
+  /// No description provided for @workoutPlanDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String workoutPlanDeleteTitle(String name);
+
+  /// No description provided for @workoutPlanDeleteDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan will be removed, while your completed workout history remains intact.'**
+  String get workoutPlanDeleteDesc;
+
+  /// No description provided for @workoutPlanDeletedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Active training plan removed'**
+  String get workoutPlanDeletedToast;
+
+  /// No description provided for @workoutFreeTrainingBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip plan · Free workout'**
+  String get workoutFreeTrainingBtn;
+
+  /// No description provided for @mealQuickRecentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent meals (1-tap fill)'**
+  String get mealQuickRecentTitle;
+
+  /// No description provided for @mealExpandMacrosBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Show portion & macros (optional)'**
+  String get mealExpandMacrosBtn;
+
+  /// No description provided for @mealCollapseMacrosBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide macros'**
+  String get mealCollapseMacrosBtn;
+
   /// No description provided for @cardioDialogAddTitle.
   ///
   /// In en, this message translates to:
@@ -3167,7 +3305,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.7 · Co-developed with DaFeiYu'**
+  /// **'Version v2.1.8 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3453,7 +3591,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.7 (Build 13)'**
+  /// **'Version v2.1.8 (Build 14)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.

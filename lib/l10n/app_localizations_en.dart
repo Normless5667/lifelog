@@ -1111,6 +1111,83 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get workoutInProgressBadge => 'Workout in Progress';
+
+  @override
+  String workoutInProgressElapsed(String clock) {
+    return 'Elapsed $clock';
+  }
+
+  @override
+  String get workoutResumeBtn => 'Resume';
+
+  @override
+  String get workoutFinishSaveBtn => 'Finish & Save';
+
+  @override
+  String get workoutStaleTitle => 'Continue this workout?';
+
+  @override
+  String workoutStaleDesc(int hours, int sets) {
+    return 'An unfinished workout started ${hours}h ago ($sets sets logged). Would you like to resume it?';
+  }
+
+  @override
+  String get workoutDiscardBtn => 'Discard';
+
+  @override
+  String get workoutExitDialogTitle => 'Workout Still Running';
+
+  @override
+  String get workoutExitDialogDesc =>
+      'You can step away while keeping the timer running, or finish and save now.';
+
+  @override
+  String get workoutExitKeepRunningBtn => 'Keep Running';
+
+  @override
+  String get workoutExitContinueBtn => 'Stay Here';
+
+  @override
+  String get workoutPlanMenuRename => 'Rename Plan';
+
+  @override
+  String get workoutPlanMenuReplace => 'Replace Plan (AI Coach)';
+
+  @override
+  String get workoutPlanMenuDelete => 'Delete Plan';
+
+  @override
+  String get workoutPlanRenameTitle => 'Rename Training Plan';
+
+  @override
+  String get workoutPlanRenameLabel => 'Plan Name';
+
+  @override
+  String workoutPlanDeleteTitle(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get workoutPlanDeleteDesc =>
+      'This plan will be removed, while your completed workout history remains intact.';
+
+  @override
+  String get workoutPlanDeletedToast => 'Active training plan removed';
+
+  @override
+  String get workoutFreeTrainingBtn => 'Skip plan · Free workout';
+
+  @override
+  String get mealQuickRecentTitle => 'Recent meals (1-tap fill)';
+
+  @override
+  String get mealExpandMacrosBtn => 'Show portion & macros (optional)';
+
+  @override
+  String get mealCollapseMacrosBtn => 'Hide macros';
+
+  @override
   String get cardioDialogAddTitle => 'Log Cardio';
 
   @override
@@ -1787,7 +1864,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v2.1.7 · Co-developed with DaFeiYu';
+      'Version v2.1.8 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -1943,7 +2020,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v2.1.7 (Build 13)';
+  String get aboutVersion => 'Version v2.1.8 (Build 14)';
 
   @override
   String get aboutBadge =>

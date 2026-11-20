@@ -15,6 +15,9 @@ import 'utils/l10n_ext.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 限制 Flutter 图片解码缓存上限（32 MB / 60 张），避免食物拍照缩略图导致常驻内存膨胀
+  PaintingBinding.instance.imageCache.maximumSize = 60;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 32 * 1024 * 1024;
   await initializeDateFormatting('zh_CN');
   await initializeDateFormatting('en_US');
   await AppPrefsController.instance.load();

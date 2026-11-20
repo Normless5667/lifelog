@@ -41,8 +41,11 @@ class AiChatScreen extends StatefulWidget {
 }
 
 class _AiChatScreenState extends State<AiChatScreen> {
-  static final _markerReg = RegExp(r'<<<PLAN_JSON>>>([\s\S]*?)<<<END_PLAN>>>');
-  static final _fencedJsonReg = RegExp(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```');
+  static final _markerReg = RegExp(
+    r'<<<\s*PLAN_JSON\s*>>>([\s\S]*?)<<<\s*END_PLAN\s*>>>',
+    caseSensitive: false,
+  );
+  static final _fencedJsonReg = RegExp(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', caseSensitive: false);
 
   final _input = TextEditingController();
   final _scroll = ScrollController();
@@ -153,17 +156,46 @@ class _AiChatScreenState extends State<AiChatScreen> {
       }
     }
 
+    // 4. 兜底兼容：AI 未加标记与代码块但直接输出了含 plan_name 与 days 的 JSON 对象
+    if (content.contains('"plan_name"') && content.contains('"days"')) {
+      final startBrace = content.indexOf('{');
+      final endBrace = content.lastIndexOf('}');
+      if (startBrace >= 0 && endBrace > startBrace) {
+        final jsonCandidate = content.substring(startBrace, endBrace + 1);
+        final plan = _tryParsePlanJson(jsonCandidate);
+        if (plan != null) {
+          final cleanText = (content.substring(0, startBrace) + content.substring(endBrace + 1)).trim();
+          return _ParsedAiReply(displayText: cleanText, plan: plan);
+        }
+      }
+    }
+
     return _ParsedAiReply(displayText: content);
   }
 
   Future<void> _importPlan(TrainingPlan plan) async {
-    await Repo.saveTrainingPlan(plan);
-    UsageTelemetryService.instance.trackFeature('ai_plan_import', 'success');
-    if (!mounted) return;
-    setState(() {
-      _importedPlanNames.add(plan.planName);
-    });
-    toast(context, context.l10n.aiPlanImportedToast(plan.planName));
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    UsageTelemetryService.instance.trackFeature('ai_plan_import', 'tap');
+    try {
+      await Repo.saveTrainingPlan(plan);
+      final dur = DateTime.now().millisecondsSinceEpoch - t0;
+      UsageTelemetryService.instance.trackFeature('ai_plan_import', 'success', durationMs: dur);
+      if (!mounted) return;
+      setState(() {
+        _importedPlanNames.add(plan.planName);
+      });
+      toast(context, context.l10n.aiPlanImportedToast(plan.planName));
+    } catch (e) {
+      final dur = DateTime.now().millisecondsSinceEpoch - t0;
+      UsageTelemetryService.instance.trackFeature(
+        'ai_plan_import',
+        'fail',
+        durationMs: dur,
+        errorMsg: '$e',
+      );
+      if (!mounted) return;
+      showAiError(context, e);
+    }
   }
 
   void _showPlanDetailsSheet(TrainingPlan plan) {
@@ -313,12 +345,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     try {
       var sys = await ContextBuilder.buildSystemPrompt();
-      if (L10nHelper.isWorkoutPlanRequest(content)) {
-        UsageTelemetryService.instance.trackFeature('ai_plan_import', 'tap');
+      final isPlanReq = L10nHelper.isWorkoutPlanRequest(content);
+      if (isPlanReq) {
         sys += L10nHelper.planSchemaPromptInstruction;
       }
       final recent = _messages.length > 16 ? _messages.sublist(_messages.length - 16) : _messages;
-      final reply = await AiService.chat(systemPrompt: sys, history: recent);
+      final reply = await AiService.chat(
+        systemPrompt: sys,
+        history: recent,
+        maxTokens: isPlanReq ? 3500 : 2000,
+      );
       final aiMsg = ChatMessage(role: 'assistant', content: reply);
       await Repo.addChatMessage(aiMsg);
       if (!mounted) return;

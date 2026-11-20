@@ -664,6 +664,45 @@
       "date": { "type": "String" }
     }
   },
+  "workoutInProgressBadge": "Workout in Progress",
+  "workoutInProgressElapsed": "Elapsed {clock}",
+  "@workoutInProgressElapsed": {
+    "placeholders": {
+      "clock": { "type": "String" }
+    }
+  },
+  "workoutResumeBtn": "Resume",
+  "workoutFinishSaveBtn": "Finish & Save",
+  "workoutStaleTitle": "Continue this workout?",
+  "workoutStaleDesc": "An unfinished workout started {hours}h ago ({sets} sets logged). Would you like to resume it?",
+  "@workoutStaleDesc": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "sets": { "type": "int" }
+    }
+  },
+  "workoutDiscardBtn": "Discard",
+  "workoutExitDialogTitle": "Workout Still Running",
+  "workoutExitDialogDesc": "You can step away while keeping the timer running, or finish and save now.",
+  "workoutExitKeepRunningBtn": "Keep Running",
+  "workoutExitContinueBtn": "Stay Here",
+  "workoutPlanMenuRename": "Rename Plan",
+  "workoutPlanMenuReplace": "Replace Plan (AI Coach)",
+  "workoutPlanMenuDelete": "Delete Plan",
+  "workoutPlanRenameTitle": "Rename Training Plan",
+  "workoutPlanRenameLabel": "Plan Name",
+  "workoutPlanDeleteTitle": "Delete \"{name}\"?",
+  "@workoutPlanDeleteTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "workoutPlanDeleteDesc": "This plan will be removed, while your completed workout history remains intact.",
+  "workoutPlanDeletedToast": "Active training plan removed",
+  "workoutFreeTrainingBtn": "Skip plan · Free workout",
+  "mealQuickRecentTitle": "Recent meals (1-tap fill)",
+  "mealExpandMacrosBtn": "Show portion & macros (optional)",
+  "mealCollapseMacrosBtn": "Hide macros",
 
   "cardioDialogAddTitle": "Log Cardio",
   "cardioDialogEditTitle": "Edit Cardio",
@@ -987,7 +1026,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v2.1.7 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v2.1.8 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1052,7 +1091,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v2.1.7 (Build 13)",
+  "aboutVersion": "Version v2.1.8 (Build 14)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
 

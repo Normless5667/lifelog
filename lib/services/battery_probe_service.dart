@@ -110,7 +110,10 @@ class BatteryProbeService with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final b = _todayBucket();
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    // 仅在真正切后台 (paused/hidden/detached) 时结算，不在 inactive（下拉通知栏/手势边缘/来电）误停
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
       if (_fgResumeAtMs > 0) {
         final deltaSec = ((nowMs - _fgResumeAtMs) ~/ 1000).clamp(0, 86400);
         b.foregroundSec += deltaSec;
@@ -119,10 +122,19 @@ class BatteryProbeService with WidgetsBindingObserver {
       if (_bgPauseAtMs == 0) {
         _bgPauseAtMs = nowMs;
       }
-      // 结算所有仍在活跃的计时器
+      // 结算所有仍在活跃的计时器，并同步写入累计活跃秒数遥测，防止切后台前秒数丢失
       for (final key in _activeTimerStartsMs.keys.toList()) {
         final startMs = _activeTimerStartsMs[key]!;
-        b.timerActiveSec += ((nowMs - startMs) ~/ 1000).clamp(0, 86400);
+        final durMs = (nowMs - startMs).clamp(0, 86400000);
+        if (durMs >= 500) {
+          b.timerActiveSec += (durMs ~/ 1000).clamp(0, 86400);
+          UsageTelemetryService.instance.trackPerf(
+            'timer_active_sec',
+            durationMs: durMs,
+            value: double.parse((durMs / 1000.0).toStringAsFixed(1)),
+            extra: {'timer': key, 'reason': 'bg_settle'},
+          );
+        }
         _activeTimerStartsMs[key] = nowMs;
       }
       flush(force: true);
@@ -146,15 +158,28 @@ class BatteryProbeService with WidgetsBindingObserver {
     if (startMs != null) {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final durMs = (nowMs - startMs).clamp(0, 86400000);
-      _todayBucket().timerActiveSec += (durMs ~/ 1000).clamp(0, 86400);
-      UsageTelemetryService.instance.trackPerf(
-        'timer_tick',
-        durationMs: durMs,
-        value: (durMs / 1000.0),
-        extra: {'timer': tag},
-      );
+      if (durMs >= 500) {
+        _todayBucket().timerActiveSec += (durMs ~/ 1000).clamp(0, 86400);
+        UsageTelemetryService.instance.trackPerf(
+          'timer_active_sec',
+          durationMs: durMs,
+          value: double.parse((durMs / 1000.0).toStringAsFixed(1)),
+          extra: {'timer': tag},
+        );
+      }
       _maybeFlush();
     }
+  }
+
+  /// 当前仍在运行中的计时器尚未结算的累计活跃秒数
+  int get currentActiveTimerSeconds {
+    if (_activeTimerStartsMs.isEmpty) return 0;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    var totalSec = 0;
+    for (final startMs in _activeTimerStartsMs.values) {
+      totalSec += ((nowMs - startMs) ~/ 1000).clamp(0, 86400);
+    }
+    return totalSec;
   }
 
   void recordGpsCall() {

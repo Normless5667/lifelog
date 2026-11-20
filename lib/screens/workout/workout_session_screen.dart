@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -85,8 +86,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   double _userWeightKg = 65;
 
   Timer? _ticker;
+  Timer? _draftSaveTimer;
+  ModalRoute<void>? _subscribedRoute;
   bool _routeVisible = true;
   bool _appInForeground = true;
+  bool _finishing = false;
+  bool _wasInProgressAtOpen = false;
+  bool _sessionTelemetryLogged = false;
   final ValueNotifier<int> _elapsedNotifier = ValueNotifier<int>(0);
   final ValueNotifier<int> _restRemainingNotifier = ValueNotifier<int>(0);
   final ValueNotifier<({int sets, double volume, double kcal})> _statsNotifier =
@@ -94,6 +100,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   int _restTargetSeconds = 90;
   int? _restEndAtMs;
   bool _restPaused = false;
+
+  bool get _isActiveSession => widget.isNew || _workout?.endTime == null;
 
   @override
   void initState() {
@@ -107,7 +115,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
-    if (route != null) {
+    if (route != null && route != _subscribedRoute) {
+      _subscribedRoute = route;
       BatteryProbeService.routeObserver.subscribe(this, route);
     }
   }
@@ -116,6 +125,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     BatteryProbeService.routeObserver.unsubscribe(this);
+    _draftSaveTimer?.cancel();
     _stopTicker();
     _elapsedNotifier.dispose();
     _restRemainingNotifier.dispose();
@@ -134,22 +144,32 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   void didPushNext() {
     _routeVisible = false;
     _stopTicker();
+    _persistSetsDraft();
   }
 
   @override
   void didPopNext() {
     _routeVisible = true;
+    _appInForeground = true;
     _syncTimeFromWallClock();
     _ensureTickerIfVisible();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    // 不在 inactive 时停表（Android 下拉通知栏/来电/分屏/手势边缘都会触发 inactive，极易导致计时器卡停）
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
       _appInForeground = false;
       _stopTicker();
+      _persistSetsDraft();
     } else if (state == AppLifecycleState.resumed) {
       _appInForeground = true;
+      // 防止手势返回等异常路径把 _routeVisible 卡死在 false
+      if (_subscribedRoute == null || _subscribedRoute!.isCurrent) {
+        _routeVisible = true;
+      }
       _syncTimeFromWallClock();
       _ensureTickerIfVisible();
     }
@@ -183,6 +203,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
   }
 
   void _ensureTickerIfVisible() {
+    if (_subscribedRoute != null && _subscribedRoute!.isCurrent) {
+      _routeVisible = true;
+    }
     if (!_routeVisible || !_appInForeground || _ticker != null) return;
     BatteryProbeService.instance.onTimerStarted(_timerTag);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -199,9 +222,61 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     }
   }
 
+  List<WorkoutSet> _collectSanitizedSets(int workoutId) {
+    final allSets = <WorkoutSet>[];
+    for (final b in _blocks) {
+      final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
+      var idx = 1;
+      for (final s in b.sets) {
+        final rawW = Nutrition.parsePlainDouble(s.weight.text) ?? 0;
+        final rawR = Nutrition.parsePlainInt(s.reps.text) ?? 0;
+        final weight = isCardio
+            ? rawW.clamp(0.0, 1440.0).toDouble()
+            : (rawW <= Nutrition.maxSetWeightKg ? rawW : 0.0);
+        final reps = isCardio
+            ? rawR.clamp(0, 200000)
+            : (rawR <= Nutrition.maxSetReps ? rawR : 0);
+        if (isCardio) {
+          if (weight <= 0 && reps <= 0) continue;
+        } else {
+          if (weight <= 0 || reps <= 0) continue;
+        }
+        allSets.add(WorkoutSet(
+          workoutId: workoutId,
+          exerciseId: b.exercise.id!,
+          setIndex: idx++,
+          weight: weight,
+          reps: reps,
+          isWarmup: s.warmup,
+        ));
+      }
+    }
+    return allSets;
+  }
+
+  /// 即时将当前已填写/已完成的训练组落库（不写 endTime），保证切后台、误划退出或进程被杀后可完整恢复
+  Future<void> _persistSetsDraft() async {
+    if (widget.initialWorkoutForTest != null) return;
+    final w = _workout;
+    if (w == null || w.id == null) return;
+    final draftSets = _collectSanitizedSets(w.id!);
+    try {
+      await Repo.replaceSets(w.id!, draftSets);
+    } catch (_) {}
+  }
+
+  void _scheduleDraftSave() {
+    if (widget.initialWorkoutForTest != null) return;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      _persistSetsDraft();
+    });
+  }
+
   Future<void> _load() async {
     if (widget.initialWorkoutForTest != null) {
       _workout = widget.initialWorkoutForTest;
+      _wasInProgressAtOpen = _workout?.endTime == null;
       for (final item in widget.initialBlocksForTest ?? const <({Exercise exercise, List<WorkoutSet> sets})>[]) {
         _blocks.add(_ExerciseBlock(
           item.exercise,
@@ -212,6 +287,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
         ));
       }
       _syncTimeFromWallClock();
+      _ensureTickerIfVisible();
       _refreshLiveStats();
       if (!mounted) return;
       setState(() {
@@ -221,6 +297,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     }
 
     final w = await Repo.getWorkout(widget.workoutId);
+    _wasInProgressAtOpen = w?.endTime == null;
     final rec = await Repo.latestBodyRecordWithWeight();
     _userWeightKg = Nutrition.sanitizeWeightKg(rec?.weight) ?? 65;
     final sets = await Repo.getSets(widget.workoutId);
@@ -335,6 +412,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       _blocks.add(_ExerciseBlock(ex, [_SetRow(w: defW, r: defR)], lastWork));
     });
     _refreshLiveStats();
+    _persistSetsDraft();
   }
 
   void _addSet(_ExerciseBlock b) {
@@ -352,6 +430,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       b.sets.add(_SetRow(w: copyW, r: copyR, warmup: false, done: false));
     });
     _refreshLiveStats();
+    _persistSetsDraft();
   }
 
   void _removeBlock(int bi) {
@@ -363,6 +442,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
       s.dispose();
     }
     _refreshLiveStats();
+    _persistSetsDraft();
   }
 
   void _removeSet(_ExerciseBlock b, int si) {
@@ -372,6 +452,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     });
     removed.dispose();
     _refreshLiveStats();
+    _persistSetsDraft();
   }
 
   void _refreshLiveStats() {
@@ -408,57 +489,86 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     return (sets: strength.sets, volume: strength.volume, kcal: kcal);
   }
 
+  /// 处理系统返回键 / 边缘滑动手势：进行中的训练绝不静默丢数据，让用户选择暂离（保持计时）或结束保存
+  Future<void> _handleBackGesture() async {
+    if (_finishing) return;
+    if (!_isActiveSession) {
+      await _finish();
+      return;
+    }
+    final l = context.l10n;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.workoutExitDialogTitle, style: AppTypography.sectionTitle(ctx)),
+        content: Text(l.workoutExitDialogDesc, style: AppTypography.body(ctx)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'stay'),
+            child: Text(l.workoutExitContinueBtn),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'keep'),
+            child: Text(l.workoutExitKeepRunningBtn),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'finish'),
+            child: Text(l.workoutFinishSaveBtn),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null || choice == 'stay') return;
+    if (choice == 'keep') {
+      await _persistSetsDraft();
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    if (choice == 'finish') {
+      await _finish();
+    }
+  }
+
   Future<void> _finish() async {
+    if (_finishing) return;
     final w = _workout;
-    if (w == null) return;
+    if (w == null) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    _finishing = true;
+    _draftSaveTimer?.cancel();
     _stopTicker();
     ReminderService.cancelRestAlarm();
-    final allSets = <WorkoutSet>[];
-    for (final b in _blocks) {
-      final isCardio = L10nHelper.isCardioCategory(b.exercise.category);
-      var idx = 1;
-      for (final s in b.sets) {
-        final rawW = Nutrition.parsePlainDouble(s.weight.text) ?? 0;
-        final rawR = Nutrition.parsePlainInt(s.reps.text) ?? 0;
-        final weight = isCardio
-            ? rawW.clamp(0.0, 1440.0).toDouble()
-            : (rawW <= Nutrition.maxSetWeightKg ? rawW : 0.0);
-        final reps = isCardio
-            ? rawR.clamp(0, 200000)
-            : (rawR <= Nutrition.maxSetReps ? rawR : 0);
-        if (isCardio) {
-          if (weight <= 0 && reps <= 0) continue;
-        } else {
-          if (weight <= 0 || reps <= 0) continue;
-        }
-        allSets.add(WorkoutSet(
-          workoutId: w.id!,
-          exerciseId: b.exercise.id!,
-          setIndex: idx++,
-          weight: weight,
-          reps: reps,
-          isWarmup: s.warmup,
-        ));
+    final allSets = _collectSanitizedSets(w.id!);
+    final shouldTrackNewOutcome = (widget.isNew || _wasInProgressAtOpen) && !_sessionTelemetryLogged;
+    if (allSets.isEmpty && (widget.isNew || _wasInProgressAtOpen)) {
+      if (shouldTrackNewOutcome) {
+        _sessionTelemetryLogged = true;
+        UsageTelemetryService.instance.trackFeature(
+          'start_workout',
+          'cancel',
+          durationMs: _elapsedNotifier.value * 1000,
+        );
       }
-    }
-    if (allSets.isEmpty && widget.isNew) {
-      UsageTelemetryService.instance.trackFeature(
-        'start_workout',
-        'cancel',
-        durationMs: _elapsedNotifier.value * 1000,
-      );
       await Repo.deleteWorkout(w.id!);
       if (mounted) Navigator.pop(context);
       return;
     }
+    _syncTimeFromWallClock();
     final elapsedSecs = _elapsedNotifier.value;
-    UsageTelemetryService.instance.trackFeature(
-      'start_workout',
-      'success',
-      durationMs: elapsedSecs * 1000,
-    );
+    if (shouldTrackNewOutcome) {
+      _sessionTelemetryLogged = true;
+      UsageTelemetryService.instance.trackFeature(
+        'start_workout',
+        'success',
+        durationMs: elapsedSecs * 1000,
+      );
+    }
     w.date = dateOnlyStr(w.date);
-    w.endTime = w.startTime + (elapsedSecs * 1000);
+    if (widget.isNew || w.endTime == null) {
+      w.endTime = w.startTime + (elapsedSecs * 1000);
+    }
     await Repo.updateWorkout(w);
     await Repo.replaceSets(w.id!, allSets);
     if (!mounted) return;
@@ -485,7 +595,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _finish();
+        if (!didPop) _handleBackGesture();
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
@@ -511,7 +621,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                     ValueListenableBuilder<int>(
                       valueListenable: _elapsedNotifier,
                       builder: (ctx, secs, _) => Text(
-                        _fmtClock(secs),
+                        kDebugMode
+                            ? '${_fmtClock(secs)} · F${_appInForeground ? 1 : 0}R${_routeVisible ? 1 : 0}'
+                            : _fmtClock(secs),
                         style: AppTypography.metricMedium(ctx, color: workoutColor)
                             .copyWith(fontSize: 14),
                       ),
@@ -833,6 +945,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                           onTap: () {
                             setState(() => b.sets[si].warmup = !b.sets[si].warmup);
                             _refreshLiveStats();
+                            _scheduleDraftSave();
                           },
                           borderRadius: AppRadius.bSm,
                           child: Container(
@@ -875,7 +988,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                               LengthLimitingTextInputFormatter(6),
                             ],
                             style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
-                            onChanged: (_) => _refreshLiveStats(),
+                            onChanged: (_) {
+                              _refreshLiveStats();
+                              _scheduleDraftSave();
+                            },
                             decoration: InputDecoration(
                               isDense: true,
                               labelText: isCardio ? l.sessionCardioDuration : l.sessionStrengthWeight,
@@ -905,7 +1021,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                               LengthLimitingTextInputFormatter(isCardio ? 6 : 3),
                             ],
                             style: AppTypography.metricMedium(context).copyWith(fontSize: 14),
-                            onChanged: (_) => _refreshLiveStats(),
+                            onChanged: (_) {
+                              _refreshLiveStats();
+                              _scheduleDraftSave();
+                            },
                             decoration: InputDecoration(
                               isDense: true,
                               labelText: isCardio ? l.sessionCardioSteps : l.sessionStrengthReps,
@@ -944,6 +1063,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen>
                                 );
                               }
                             });
+                            _persistSetsDraft();
                           },
                         ),
                       IconButton(
