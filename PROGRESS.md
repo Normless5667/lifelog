@@ -22,7 +22,14 @@
   - 假期当天首页显示「今天是假期，没有课程」、课表页列与周头清晰标记、上课提醒与系统闹钟自动跳过。
 - [x] 验证：29/29 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v2.1.9_release.apk`。
 
-## 阶段 C：课程状态倒计时 + M3 动效（v3.0.0+16）⏳ 待阶段 B 验收后开始
-- [ ] **2.3 课程状态 + 倒计时**：今日课程三态（已上完 / 进行中含呼吸动画与下课倒计时 / 未开始含上课倒计时）+ 首页倒计时条。
-- [ ] **2.4 Material 3 动效**：底部导航 250ms 放大+变色+滑条（`easeInOutCubicEmphasized`）、页面切换 250–300ms 淡入+轻微横向位移、卡片按压 0.98 / 120ms，全局遵循 `MediaQuery.disableAnimations`。
-- [ ] 版本号跃升至 **`3.0.0+16`**，全量验收与出包。
+## 阶段 C：课程状态倒计时 + M3 动效（v3.0.0+16）✅ 已完成并出包
+- [x] **2.3 课程状态 + 倒计时**：
+  - 新增 `lib/utils/course_status.dart`（`CourseStatus` 三态评估、按节次实时倒计时与今日汇总 `summarizeTodayCourses`）。
+  - 首页「今日课程」顶部新增实时倒计时条（正在上课剩多久下课 / 下节课倒计时 / 今日课程已全部上完），使用轻量 30 秒生命周期感知定时器（`ValueNotifier<DateTime>` 局部刷新，切后台自动暂停，不重绘整页）。
+  - 课程卡片三态视觉区分：已上完（`Opacity(0.55)` + 删除线 + 灰标「已上完」）、进行中（模块色浅底高亮边框 + `BreathingDot` 克制呼吸圆点 +「还有 N 分钟下课」）、未开始（正常样式 +「N 分钟后开始」），并接入 `ScaleTap` 点击直达课表。
+- [x] **2.4 Material 3 动效**：
+  - 新增 `AppMotion` 动效 Token 与 `M3SubtlePageTransitionsBuilder`（路由切换 300ms 淡入 + 16dp 轻微横向位移，无夸张缩放/翻转）。
+  - 新增 `M3SlidingNavBar`：底部导航选中图标 `24 → 28` 平滑放大、图标/文案颜色过渡、64×32 `StadiumBorder` 药丸指示器横向滑动（**250ms**，`Curves.easeInOutCubicEmphasized`）。
+  - 首页 5 Tab 切换使用 `AnimatedSwitcher`（260ms 淡入 + 16dp 方向感知水平位移）。
+  - `ScaleTap` 校准至 `0.98` / `120ms` / `Curves.easeOut`；全局所有动效（含 `BreathingDot`、`ScaleTap`、`M3SlidingNavBar`、页面转场与 Tab 切换）均遵循 `MediaQuery.disableAnimationsOf(context)`。
+- [x] 验证：版本号跃升至 **`3.0.0+16`**，35/35 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.0.0_release.apk`。

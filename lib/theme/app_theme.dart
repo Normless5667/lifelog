@@ -11,6 +11,59 @@ export 'app_shadows.dart';
 export 'app_spacing.dart';
 export 'app_typography.dart';
 
+/// Material 3 克制动效规范 Token（所有动效严格 <= 400ms，自动遵循系统「减少动画」）
+abstract final class AppMotion {
+  static const Duration press = Duration(milliseconds: 120);
+  static const Duration short4 = Duration(milliseconds: 200);
+  static const Duration medium1 = Duration(milliseconds: 250);
+  static const Duration pageTransition = Duration(milliseconds: 260);
+  static const Duration medium2 = Duration(milliseconds: 300);
+
+  static const Curve pressCurve = Curves.easeOut;
+  static const Curve standardCurve = Curves.easeOutCubic;
+  static const Curve emphasizedCurve = Curves.easeInOutCubicEmphasized;
+
+  /// 页面/Tab 切换轻微水平位移幅度（约 16dp）
+  static const double subtleSlidePx = 16.0;
+}
+
+/// Material 3 克制页面转场：淡入淡出 + 16dp 轻微水平位移，减少动画模式下瞬间切换
+class M3SubtlePageTransitionsBuilder extends PageTransitionsBuilder {
+  const M3SubtlePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: AppMotion.standardCurve,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return AnimatedBuilder(
+      animation: curved,
+      child: child,
+      builder: (context, c) {
+        final t = curved.value;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(AppMotion.subtleSlidePx * (1.0 - t), 0),
+            child: c,
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// 组装浅色与深色 ThemeData
 abstract final class AppTheme {
   static ThemeData light() => _build(Brightness.light);
@@ -57,6 +110,16 @@ abstract final class AppTheme {
       colorScheme: cs,
       scaffoldBackgroundColor: bg,
       splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: M3SubtlePageTransitionsBuilder(),
+          TargetPlatform.iOS: M3SubtlePageTransitionsBuilder(),
+          TargetPlatform.macOS: M3SubtlePageTransitionsBuilder(),
+          TargetPlatform.windows: M3SubtlePageTransitionsBuilder(),
+          TargetPlatform.linux: M3SubtlePageTransitionsBuilder(),
+          TargetPlatform.fuchsia: M3SubtlePageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
         surfaceTintColor: Colors.transparent,

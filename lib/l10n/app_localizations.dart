@@ -1647,6 +1647,60 @@ abstract class AppLocalizations {
   /// **'Holiday'**
   String get holidayColumnLabel;
 
+  /// No description provided for @courseStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get courseStatusDone;
+
+  /// No description provided for @courseStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Class'**
+  String get courseStatusInProgress;
+
+  /// No description provided for @courseEndsInMins.
+  ///
+  /// In en, this message translates to:
+  /// **'{mins}m left'**
+  String courseEndsInMins(int mins);
+
+  /// No description provided for @courseEndsInHoursMins.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {mins}m left'**
+  String courseEndsInHoursMins(int hours, int mins);
+
+  /// No description provided for @courseStartsInMins.
+  ///
+  /// In en, this message translates to:
+  /// **'In {mins}m'**
+  String courseStartsInMins(int mins);
+
+  /// No description provided for @courseStartsInHoursMins.
+  ///
+  /// In en, this message translates to:
+  /// **'In {hours}h {mins}m'**
+  String courseStartsInHoursMins(int hours, int mins);
+
+  /// No description provided for @courseBannerInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In class: {name} · {remain}'**
+  String courseBannerInProgress(String name, String remain);
+
+  /// No description provided for @courseBannerNextClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {name} · {remain}'**
+  String courseBannerNextClass(String name, String remain);
+
+  /// No description provided for @courseBannerAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} classes done today'**
+  String courseBannerAllDone(int count);
+
   /// No description provided for @scheduleMonthHeader.
   ///
   /// In en, this message translates to:
@@ -3413,7 +3467,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.9 · Co-developed with DaFeiYu'**
+  /// **'Version v3.0.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3699,7 +3753,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.9 (Build 15)'**
+  /// **'Version v3.0.0 (Build 16)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.

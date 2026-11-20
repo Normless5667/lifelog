@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../db/repo.dart';
@@ -11,6 +13,7 @@ import '../services/targets.dart';
 import '../services/usage_telemetry_service.dart';
 import '../services/weather_service.dart';
 import '../services/widget_service.dart';
+import '../utils/course_status.dart';
 import '../utils/date_utils.dart';
 import '../widgets/common.dart';
 import '../widgets/in_progress_workout_card.dart';
@@ -34,9 +37,12 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _quickFoodCtrl = TextEditingController();
   late final AnimationController _weatherSpinCtrl;
+  final ValueNotifier<DateTime> _clockNotifier = ValueNotifier<DateTime>(DateTime.now());
+  Timer? _clockTimer;
   bool _loading = true;
   bool _busyQuickAi = false;
   bool _hasProfile = true;
@@ -71,13 +77,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _weatherSpinCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 650),
     );
+    _startClockTimer();
     WidgetService.init();
     Repo.dataVersion.addListener(_onRepoDataChanged);
     _load(checkOnboarding: true);
+  }
+
+  void _startClockTimer() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _clockNotifier.value = DateTime.now();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _clockNotifier.value = DateTime.now();
+        _startClockTimer();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        _clockTimer?.cancel();
+        _clockTimer = null;
+        break;
+      case AppLifecycleState.inactive:
+        break;
+    }
   }
 
   void _onRepoDataChanged() {
@@ -86,6 +119,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _clockTimer?.cancel();
+    _clockNotifier.dispose();
     Repo.dataVersion.removeListener(_onRepoDataChanged);
     _weatherSpinCtrl.dispose();
     _quickFoodCtrl.dispose();
@@ -132,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     ReminderService.syncAlarms();
 
     if (!mounted) return;
+    _clockNotifier.value = now;
     setState(() {
       _totals = totals;
       _targets = targets;
@@ -1492,143 +1529,301 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       );
     }
 
-    return Column(
-      children: _todayCourses.map((c) {
-        final st = ReminderService.sectionStartTime(c.startSection);
-        final et = ReminderService.sectionEndTime(c.endSection);
-        String two(int n) => n.toString().padLeft(2, '0');
-        final startStr = '${two(st.hour)}:${two(st.minute)}';
-        final endStr = '${two(et.hour)}:${two(et.minute)}';
-        final color = AppColors.adaptForDark(context, Color(c.color));
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: _clockNotifier,
+      builder: (context, now, _) {
+        final summary = summarizeTodayCourses(_todayCourses, now);
+        return Column(
+          children: [
+            _courseCountdownBanner(summary),
+            const SizedBox(height: AppSpacing.sm),
+            ...summary.items.map(_courseRowCard),
+          ],
+        );
+      },
+    );
+  }
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 48,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      startStr,
-                      style: AppTypography.metricMedium(context).copyWith(fontSize: 13),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(endStr, style: AppTypography.caption(context)),
-                  ],
-                ),
+  Widget _courseCountdownBanner(TodayCourseSummary summary) {
+    final l = context.l10n;
+    final scheduleColor = AppColors.moduleSchedule(context);
+    final successColor = AppColors.success(context);
+
+    late final Color accent;
+    late final String label;
+    late final Widget leading;
+
+    if (summary.current != null) {
+      final cur = summary.current!;
+      accent = AppColors.adaptForDark(context, Color(cur.course.color));
+      label = l.courseBannerInProgress(
+        cur.course.name,
+        formatRemainingMinutes(l, cur.minutesUntilEnd, isEnding: true),
+      );
+      leading = BreathingDot(color: accent, size: 8);
+    } else if (summary.next != null) {
+      final nxt = summary.next!;
+      accent = scheduleColor;
+      label = l.courseBannerNextClass(
+        nxt.course.name,
+        formatRemainingMinutes(l, nxt.minutesUntilStart, isEnding: false),
+      );
+      leading = Icon(Icons.schedule_rounded, size: 16, color: accent);
+    } else {
+      accent = successColor;
+      label = l.courseBannerAllDone(summary.items.length);
+      leading = Icon(Icons.check_circle_rounded, size: 16, color: accent);
+    }
+
+    return ScaleTap(
+      onTap: () => widget.onNavigate(1),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.softBg(context, accent, lightAlpha: 0.10, darkAlpha: 0.18),
+          borderRadius: AppRadius.bMd,
+          border: Border.all(
+            color: AppColors.softBorder(context, accent, lightAlpha: 0.28, darkAlpha: 0.36),
+          ),
+        ),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.body(context, color: accent)
+                    .copyWith(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface(context),
-                    borderRadius: AppRadius.bLg,
-                    border: Border.all(
-                      color: AppColors.border(context).withValues(
-                        alpha: AppColors.isDark(context) ? 0.75 : 0.85,
-                      ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 16, color: accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _courseRowCard(CourseStatusInfo info) {
+    final l = context.l10n;
+    final c = info.course;
+    final st = ReminderService.sectionStartTime(c.startSection);
+    final et = ReminderService.sectionEndTime(c.endSection);
+    String two(int n) => n.toString().padLeft(2, '0');
+    final startStr = '${two(st.hour)}:${two(st.minute)}';
+    final endStr = '${two(et.hour)}:${two(et.minute)}';
+    final baseColor = AppColors.adaptForDark(context, Color(c.color));
+    final mutedColor = AppColors.textTertiary(context);
+
+    final isDone = info.status == CourseStatus.completed;
+    final isNow = info.status == CourseStatus.inProgress;
+    final accent = isDone ? mutedColor : baseColor;
+
+    final cardBg = isNow
+        ? AppColors.softBg(context, baseColor, lightAlpha: 0.08, darkAlpha: 0.16)
+        : AppColors.surface(context);
+    final cardBorder = isNow
+        ? AppColors.softBorder(context, baseColor, lightAlpha: 0.45, darkAlpha: 0.55)
+        : AppColors.border(context).withValues(
+            alpha: AppColors.isDark(context) ? 0.75 : 0.85,
+          );
+
+    final Widget badge;
+    if (isDone) {
+      badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceSubtle(context),
+          borderRadius: AppRadius.bPill,
+        ),
+        child: Text(
+          l.courseStatusDone,
+          style: AppTypography.badge(context, color: AppColors.textSecondary(context))
+              .copyWith(fontSize: 10),
+        ),
+      );
+    } else if (isNow) {
+      badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.softBg(context, baseColor, lightAlpha: 0.18, darkAlpha: 0.28),
+          borderRadius: AppRadius.bPill,
+          border: Border.all(
+            color: AppColors.softBorder(context, baseColor, lightAlpha: 0.35, darkAlpha: 0.45),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BreathingDot(color: baseColor, size: 6.5),
+            const SizedBox(width: 5),
+            Text(
+              l.courseStatusInProgress,
+              style: AppTypography.badge(context, color: baseColor).copyWith(fontSize: 10),
+            ),
+          ],
+        ),
+      );
+    } else {
+      badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.softBg(context, baseColor),
+          borderRadius: AppRadius.bPill,
+        ),
+        child: Text(
+          formatCourseStatusLabel(l, info),
+          style: AppTypography.badge(context, color: baseColor).copyWith(fontSize: 10),
+        ),
+      );
+    }
+
+    final row = Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 48,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  startStr,
+                  style: AppTypography.metricMedium(
+                    context,
+                    color: isNow ? baseColor : null,
+                  ).copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(endStr, style: AppTypography.caption(context)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ScaleTap(
+              onTap: () => widget.onNavigate(1),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: AppRadius.bLg,
+                  border: Border.all(color: cardBorder, width: isNow ? 1.3 : 1),
+                  boxShadow: AppShadows.card(context),
+                ),
+                child: ClipRRect(
+                  borderRadius: AppRadius.bLg,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(left: BorderSide(color: accent, width: 4)),
                     ),
-                    boxShadow: AppShadows.card(context),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: AppRadius.bLg,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border(left: BorderSide(color: color, width: 4)),
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: isDone
+                                    ? AppColors.surfaceSubtle(context)
+                                    : AppColors.softBg(context, baseColor),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Icon(courseIcon(c.name), size: 16, color: accent),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                c.name,
+                                style: AppTypography.subtitle(
+                                  context,
+                                  color: isDone ? AppColors.textSecondary(context) : null,
+                                ).copyWith(
+                                  decoration: isDone ? TextDecoration.lineThrough : null,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            badge,
+                          ],
+                        ),
+                        if (isNow) ...[
+                          const SizedBox(height: AppSpacing.xs),
                           Row(
                             children: [
-                              Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.softBg(context, color),
-                                  borderRadius: AppRadius.bSm,
-                                ),
-                                child: Icon(courseIcon(c.name), size: 16, color: color),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  c.name,
-                                  style: AppTypography.subtitle(context),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.softBg(context, color),
-                                  borderRadius: AppRadius.bPill,
-                                ),
-                                child: Text(
-                                  'ACADEMIC',
-                                  style: AppTypography.badge(context, color: color)
-                                      .copyWith(fontSize: 9.5),
-                                ),
+                              Icon(Icons.timelapse_rounded, size: 13, color: baseColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                formatCourseStatusLabel(l, info),
+                                style: AppTypography.caption(context, color: baseColor)
+                                    .copyWith(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
-                          if (c.location?.isNotEmpty == true ||
-                              c.teacher?.isNotEmpty == true) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Wrap(
-                              spacing: AppSpacing.md,
-                              runSpacing: AppSpacing.xs,
-                              children: [
-                                if (c.location?.isNotEmpty == true)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.place_rounded, size: 13, color: color),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        c.location!,
-                                        style: AppTypography.bodySecondary(context),
-                                      ),
-                                    ],
-                                  ),
-                                if (c.teacher?.isNotEmpty == true)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.person_rounded,
-                                        size: 13,
-                                        color: AppColors.textTertiary(context),
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        c.teacher!,
-                                        style: AppTypography.bodySecondary(context),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ],
                         ],
-                      ),
+                        if (c.location?.isNotEmpty == true ||
+                            c.teacher?.isNotEmpty == true) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Wrap(
+                            spacing: AppSpacing.md,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              if (c.location?.isNotEmpty == true)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.place_rounded, size: 13, color: accent),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      c.location!,
+                                      style: AppTypography.bodySecondary(context),
+                                    ),
+                                  ],
+                                ),
+                              if (c.teacher?.isNotEmpty == true)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_rounded,
+                                      size: 13,
+                                      color: AppColors.textTertiary(context),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      c.teacher!,
+                                      style: AppTypography.bodySecondary(context),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
+
+    if (isDone) {
+      return Opacity(opacity: 0.55, child: row);
+    }
+    return row;
   }
 
   Widget _workoutCard() {

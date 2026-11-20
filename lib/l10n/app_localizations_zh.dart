@@ -887,6 +887,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get holidayColumnLabel => '假期无课';
 
   @override
+  String get courseStatusDone => '已上完';
+
+  @override
+  String get courseStatusInProgress => '进行中';
+
+  @override
+  String courseEndsInMins(int mins) {
+    return '还有 $mins 分钟下课';
+  }
+
+  @override
+  String courseEndsInHoursMins(int hours, int mins) {
+    return '还有 $hours 小时 $mins 分下课';
+  }
+
+  @override
+  String courseStartsInMins(int mins) {
+    return '$mins 分钟后开始';
+  }
+
+  @override
+  String courseStartsInHoursMins(int hours, int mins) {
+    return '$hours 小时 $mins 分后开始';
+  }
+
+  @override
+  String courseBannerInProgress(String name, String remain) {
+    return '正在上课：$name · $remain';
+  }
+
+  @override
+  String courseBannerNextClass(String name, String remain) {
+    return '下节课：$name · $remain';
+  }
+
+  @override
+  String courseBannerAllDone(int count) {
+    return '今日 $count 节课已全部上完';
+  }
+
+  @override
   String scheduleMonthHeader(int month) {
     return '$month\n月';
   }
@@ -1872,7 +1913,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v2.1.9 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.0.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2024,7 +2065,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v2.1.9 (Build 15)';
+  String get aboutVersion => '版本 v3.0.0 (Build 16)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';

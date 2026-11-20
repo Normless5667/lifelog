@@ -107,11 +107,95 @@ class _ScaleTapState extends State<ScaleTap> {
       },
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: (_pressed && !reduceMotion) ? 0.975 : 1.0,
-        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 130),
-        curve: Curves.easeOutCubic,
+        scale: (_pressed && !reduceMotion) ? 0.98 : 1.0,
+        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
         child: widget.child,
       ),
+    );
+  }
+}
+
+/// 克制的进行中呼吸圆点指示器（遵循系统「减少动画」设置，开启时自动退化为静态圆点）
+class BreathingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const BreathingDot({
+    super.key,
+    required this.color,
+    this.size = 7,
+  });
+
+  @override
+  State<BreathingDot> createState() => _BreathingDotState();
+}
+
+class _BreathingDotState extends State<BreathingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (reduceMotion) {
+      if (_ctrl.isAnimating) _ctrl.stop();
+      _ctrl.value = 1.0;
+    } else if (!_ctrl.isAnimating) {
+      _ctrl.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (reduceMotion) {
+      return Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, _) {
+        final t = _anim.value;
+        return Transform.scale(
+          scale: 0.86 + 0.14 * t,
+          child: Opacity(
+            opacity: 0.45 + 0.55 * t,
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: widget.color,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

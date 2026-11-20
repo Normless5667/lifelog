@@ -920,6 +920,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get holidayColumnLabel => 'Holiday';
 
   @override
+  String get courseStatusDone => 'Done';
+
+  @override
+  String get courseStatusInProgress => 'In Class';
+
+  @override
+  String courseEndsInMins(int mins) {
+    return '${mins}m left';
+  }
+
+  @override
+  String courseEndsInHoursMins(int hours, int mins) {
+    return '${hours}h ${mins}m left';
+  }
+
+  @override
+  String courseStartsInMins(int mins) {
+    return 'In ${mins}m';
+  }
+
+  @override
+  String courseStartsInHoursMins(int hours, int mins) {
+    return 'In ${hours}h ${mins}m';
+  }
+
+  @override
+  String courseBannerInProgress(String name, String remain) {
+    return 'In class: $name · $remain';
+  }
+
+  @override
+  String courseBannerNextClass(String name, String remain) {
+    return 'Next: $name · $remain';
+  }
+
+  @override
+  String courseBannerAllDone(int count) {
+    return 'All $count classes done today';
+  }
+
+  @override
   String scheduleMonthHeader(int month) {
     return 'M$month';
   }
@@ -1931,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v2.1.9 · Co-developed with DaFeiYu';
+      'Version v3.0.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2087,7 +2128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v2.1.9 (Build 15)';
+  String get aboutVersion => 'Version v3.0.0 (Build 16)';
 
   @override
   String get aboutBadge =>
