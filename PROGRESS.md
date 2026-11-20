@@ -33,3 +33,15 @@
   - 首页 5 Tab 切换使用 `AnimatedSwitcher`（260ms 淡入 + 16dp 方向感知水平位移）。
   - `ScaleTap` 校准至 `0.98` / `120ms` / `Curves.easeOut`；全局所有动效（含 `BreathingDot`、`ScaleTap`、`M3SlidingNavBar`、页面转场与 Tab 切换）均遵循 `MediaQuery.disableAnimationsOf(context)`。
 - [x] 验证：版本号跃升至 **`3.0.0+16`**，35/35 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.0.0_release.apk`。
+
+## v3.0.1：课表左右滑切周 + 学术日历周数 + 学期设置（v3.0.1+17）✅ 已完成并出包
+- [x] **学术日历驱动真实周数 (`AcademicCalendarService` + `assets/academic_calendar.json`)**：
+  - 周数统一按 `floor((date - week1Start) / 7) + 1` 计算（2026-09-28 起第 1 周，2026-11-20 精确为第 8 周；自动区分 2026 秋季 / 2027 春季学期）。
+  - `confidence: high` 日期（国庆、圣诞、元旦、寒假等）自动并入假期系统，隐藏当日课程并跳过闹钟；`confidence: low` 日期（如 2026-11-24）默认以「非教学日」中性提示且不含「假期」字样，可在设置中逐条手动修正（非教学日 / 设为假期 / 正常上课）。
+- [x] **课表 `PageView` 左右滑动切周 + 周数导航条 + 边界处理**：
+  - `ScheduleScreen` 升级为 `PageView.builder` 按真实周数逐页滑动（左滑下一周、右滑上一周），顶部实时联动显示周数与 `MM-dd ~ MM-dd` 日期范围。
+  - 新增顶部周数导航条（`← MM-dd ~ MM-dd [今天] →`），点「今天」一键跳回当前周；切到其他周时在今天对应星期列显示克制小圆点标记。
+  - 边界清晰处理：第 1 周前显示「学期未开始」（含迎新周提示），第 12 周后显示「学期结束，进入考试周」。
+- [x] **「学期设置」独立表单页 (`SemesterSettingsScreen`)**：
+  - 设置页与课表页均可进入，支持普通用户直接填写「学期名称 / 第 1 周开始日期 / 总周数」实时预览周数并保存；支持一键切换校历学期、手动修正低置信度日期、粘贴导入 `academic_calendar.json`（高级功能），并预留 iCal (`.ics`) 导入入口。
+- [x] 验证：版本号跃升至 **`3.0.1+17`**，39/39 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.0.1_release.apk`。

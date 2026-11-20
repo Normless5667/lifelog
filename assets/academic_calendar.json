@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "source": "BUV 2026/2027 Academic Calendar (Autumn intake)",
+  "institution": "British University Vietnam",
+  "academicYear": "2026/2027",
+  "intake": "Autumn",
+  "importedAt": "2026-11-20",
+  "note": "由大肥鱼从用户提供的 Academic Calendar 截图整理。标注 confidence=low 的条目需要用户确认。",
+
+  "terms": [
+    {
+      "id": "autumn-2026",
+      "name": "Autumn Semester 2026",
+      "nameZh": "2026 秋季学期",
+      "week1Start": "2026-09-28",
+      "totalWeeks": 12,
+      "teachingWeeks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "orientationWeekStart": "2026-09-21",
+      "assessmentPeriod": {
+        "start": "2026-12-21",
+        "end": "2027-01-03"
+      },
+      "semesterEnd": "2026-12-20",
+
+      "holidays": [
+        { "date": "2026-09-01", "name": "National Day (day 1)", "nameZh": "国庆日", "source": "calendar", "confidence": "high" },
+        { "date": "2026-09-02", "name": "National Day (day 2)", "nameZh": "国庆日", "source": "calendar", "confidence": "high" },
+        { "date": "2026-11-24", "name": "Institutional holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2026-12-24", "name": "Christmas Eve", "nameZh": "平安夜", "source": "calendar", "confidence": "high" },
+        { "date": "2026-12-25", "name": "Christmas Day", "nameZh": "圣诞节", "source": "calendar", "confidence": "high" },
+        { "date": "2026-12-28", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" },
+        { "date": "2026-12-29", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" },
+        { "date": "2026-12-30", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" },
+        { "date": "2026-12-31", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" },
+        { "date": "2027-01-01", "name": "New Year's Day", "nameZh": "元旦", "source": "calendar", "confidence": "high" },
+        { "date": "2027-01-02", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" },
+        { "date": "2027-01-03", "name": "Winter break", "nameZh": "寒假", "source": "calendar", "confidence": "high" }
+      ]
+    },
+    {
+      "id": "spring-2027",
+      "name": "Spring Semester 2027",
+      "nameZh": "2027 春季学期",
+      "week1Start": "2027-01-18",
+      "totalWeeks": 12,
+      "teachingWeeks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "assessmentPeriod": {
+        "start": "2027-04-19",
+        "end": "2027-05-02"
+      },
+      "holidays": [
+        { "date": "2027-02-05", "name": "Tết holiday (start)", "nameZh": "春节假期", "source": "calendar", "confidence": "low" },
+        { "date": "2027-03-08", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-03-09", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-03-10", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-04-15", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-04-16", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-04-17", "name": "Holiday", "nameZh": "校历标注假日", "source": "calendar", "confidence": "low" },
+        { "date": "2027-04-30", "name": "Reunification Day", "nameZh": "统一日", "source": "calendar", "confidence": "high" },
+        { "date": "2027-05-01", "name": "Labour Day", "nameZh": "劳动节", "source": "calendar", "confidence": "high" }
+      ]
+    }
+  ],
+
+  "weekNumbering": {
+    "description": "week1Start 是第 1 周的周一。某日期所在周 = floor((date - week1Start) / 7) + 1",
+    "weekStartWeekday": 1
+  }
+}

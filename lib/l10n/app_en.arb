@@ -1117,7 +1117,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.0.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.0.1 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1182,7 +1182,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.0.0 (Build 16)",
+  "aboutVersion": "Version v3.0.1 (Build 17)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1326,5 +1326,117 @@
       "dest": { "type": "String" }
     }
   },
-  "busSwapBtnShort": "Swap"
+  "busSwapBtnShort": "Swap",
+
+  "scheduleTodayBtn": "Today",
+  "scheduleWeekDateRange": "{start} ~ {end}",
+  "@scheduleWeekDateRange": {
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" }
+    }
+  },
+  "scheduleBeforeSemesterTitle": "Not Started",
+  "scheduleBeforeSemesterBanner": "Semester hasn't started · Week 1 begins {startDate}",
+  "@scheduleBeforeSemesterBanner": {
+    "placeholders": {
+      "startDate": { "type": "String" }
+    }
+  },
+  "scheduleOrientationBanner": "Semester hasn't started · Orientation Week",
+  "scheduleAfterSemesterTitle": "Post-Term · W{week}",
+  "@scheduleAfterSemesterTitle": {
+    "placeholders": {
+      "week": { "type": "int" }
+    }
+  },
+  "scheduleAssessmentBanner": "Semester ended — Assessment Period ({range})",
+  "@scheduleAssessmentBanner": {
+    "placeholders": {
+      "range": { "type": "String" }
+    }
+  },
+  "scheduleAfterSemesterBanner": "Semester ended — Assessment / Break Period",
+  "scheduleNonTeachingBadge": "Note",
+  "scheduleNonTeachingLabel": "Non-teaching day",
+  "scheduleNonTeachingBanner": "Calendar non-teaching day(s): {dates} (adjust in Semester Settings)",
+  "@scheduleNonTeachingBanner": {
+    "placeholders": {
+      "dates": { "type": "String" }
+    }
+  },
+  "scheduleSemesterSettingsAction": "Semester & Calendar",
+  "scheduleImportCalendarTitle": "Import Academic Calendar JSON",
+  "scheduleImportCalendarSub": "Paste academic_calendar.json to sync term dates, weeks & calendar",
+
+  "semesterSettingsTitle": "Semester Settings",
+  "semesterSettingsTileSub": "{term} · W1 {start} · {weeks} wks",
+  "@semesterSettingsTileSub": {
+    "placeholders": {
+      "term": { "type": "String" },
+      "start": { "type": "String" },
+      "weeks": { "type": "int" }
+    }
+  },
+  "semesterBasicSection": "Semester Basics",
+  "semesterNameLabel": "Semester Name",
+  "semesterNameHint": "e.g. Autumn Semester 2026",
+  "semesterWeek1StartLabel": "Week 1 Start Date (Monday)",
+  "semesterTotalWeeksLabel": "Total Weeks",
+  "semesterTotalWeeksSuffix": "wks",
+  "semesterPreviewCurrent": "Calculated: Today is Week {week} ({start} ~ {end})",
+  "@semesterPreviewCurrent": {
+    "placeholders": {
+      "week": { "type": "int" },
+      "start": { "type": "String" },
+      "end": { "type": "String" }
+    }
+  },
+  "semesterPreviewBefore": "Calculated: Semester hasn't started (W1 begins {start})",
+  "@semesterPreviewBefore": {
+    "placeholders": {
+      "start": { "type": "String" }
+    }
+  },
+  "semesterPreviewAfter": "Calculated: Semester ended (past Week {total})",
+  "@semesterPreviewAfter": {
+    "placeholders": {
+      "total": { "type": "int" }
+    }
+  },
+  "semesterSaveBtn": "Save Semester Settings",
+  "semesterSavedToast": "Semester settings saved — schedule updated",
+  "semesterTermsSection": "Academic Calendar Terms",
+  "semesterAutoTermBtn": "Auto-Match by Date",
+  "semesterTermItemSub": "Week 1 {start} · {weeks} weeks",
+  "@semesterTermItemSub": {
+    "placeholders": {
+      "start": { "type": "String" },
+      "weeks": { "type": "int" }
+    }
+  },
+  "semesterLowConfSection": "Dates to Confirm",
+  "semesterLowConfDesc": "Marked on the calendar with lower confidence. Shown neutrally as non-teaching days by default—update below if needed.",
+  "semesterLowConfNeutral": "Non-teaching",
+  "semesterLowConfHoliday": "Set Holiday",
+  "semesterLowConfNormal": "Normal Class",
+  "semesterAdvancedSection": "Advanced: Calendar Import",
+  "semesterImportJsonBtn": "Paste & Import Calendar JSON",
+  "semesterImportJsonHint": "Paste academic_calendar.json containing terms, week1Start & totalWeeks",
+  "semesterImportSuccessToast": "Imported academic calendar ({count} terms)",
+  "@semesterImportSuccessToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "semesterImportErrorToast": "Invalid calendar JSON: {error}",
+  "@semesterImportErrorToast": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "semesterResetBuiltinBtn": "Reset to Built-in BUV Calendar",
+  "semesterResetBuiltinToast": "Restored built-in BUV 2026/2027 calendar",
+  "semesterIcalSoonTitle": "Import iCal (.ics) Calendar",
+  "semesterIcalSoonSub": "Coming soon: standard .ics calendar import"
 }

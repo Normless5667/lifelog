@@ -3467,7 +3467,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.0.0 · Co-developed with DaFeiYu'**
+  /// **'Version v3.0.1 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3753,7 +3753,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.0.0 (Build 16)'**
+  /// **'Version v3.0.1 (Build 17)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -4218,6 +4218,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Swap'**
   String get busSwapBtnShort;
+
+  /// No description provided for @scheduleTodayBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get scheduleTodayBtn;
+
+  /// No description provided for @scheduleWeekDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{start} ~ {end}'**
+  String scheduleWeekDateRange(String start, String end);
+
+  /// No description provided for @scheduleBeforeSemesterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Started'**
+  String get scheduleBeforeSemesterTitle;
+
+  /// No description provided for @scheduleBeforeSemesterBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester hasn\'t started · Week 1 begins {startDate}'**
+  String scheduleBeforeSemesterBanner(String startDate);
+
+  /// No description provided for @scheduleOrientationBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester hasn\'t started · Orientation Week'**
+  String get scheduleOrientationBanner;
+
+  /// No description provided for @scheduleAfterSemesterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-Term · W{week}'**
+  String scheduleAfterSemesterTitle(int week);
+
+  /// No description provided for @scheduleAssessmentBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester ended — Assessment Period ({range})'**
+  String scheduleAssessmentBanner(String range);
+
+  /// No description provided for @scheduleAfterSemesterBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester ended — Assessment / Break Period'**
+  String get scheduleAfterSemesterBanner;
+
+  /// No description provided for @scheduleNonTeachingBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get scheduleNonTeachingBadge;
+
+  /// No description provided for @scheduleNonTeachingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-teaching day'**
+  String get scheduleNonTeachingLabel;
+
+  /// No description provided for @scheduleNonTeachingBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar non-teaching day(s): {dates} (adjust in Semester Settings)'**
+  String scheduleNonTeachingBanner(String dates);
+
+  /// No description provided for @scheduleSemesterSettingsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester & Calendar'**
+  String get scheduleSemesterSettingsAction;
+
+  /// No description provided for @scheduleImportCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Academic Calendar JSON'**
+  String get scheduleImportCalendarTitle;
+
+  /// No description provided for @scheduleImportCalendarSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste academic_calendar.json to sync term dates, weeks & calendar'**
+  String get scheduleImportCalendarSub;
+
+  /// No description provided for @semesterSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester Settings'**
+  String get semesterSettingsTitle;
+
+  /// No description provided for @semesterSettingsTileSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{term} · W1 {start} · {weeks} wks'**
+  String semesterSettingsTileSub(String term, String start, int weeks);
+
+  /// No description provided for @semesterBasicSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester Basics'**
+  String get semesterBasicSection;
+
+  /// No description provided for @semesterNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester Name'**
+  String get semesterNameLabel;
+
+  /// No description provided for @semesterNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Autumn Semester 2026'**
+  String get semesterNameHint;
+
+  /// No description provided for @semesterWeek1StartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 Start Date (Monday)'**
+  String get semesterWeek1StartLabel;
+
+  /// No description provided for @semesterTotalWeeksLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Weeks'**
+  String get semesterTotalWeeksLabel;
+
+  /// No description provided for @semesterTotalWeeksSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'wks'**
+  String get semesterTotalWeeksSuffix;
+
+  /// No description provided for @semesterPreviewCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated: Today is Week {week} ({start} ~ {end})'**
+  String semesterPreviewCurrent(int week, String start, String end);
+
+  /// No description provided for @semesterPreviewBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated: Semester hasn\'t started (W1 begins {start})'**
+  String semesterPreviewBefore(String start);
+
+  /// No description provided for @semesterPreviewAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated: Semester ended (past Week {total})'**
+  String semesterPreviewAfter(int total);
+
+  /// No description provided for @semesterSaveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Semester Settings'**
+  String get semesterSaveBtn;
+
+  /// No description provided for @semesterSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester settings saved — schedule updated'**
+  String get semesterSavedToast;
+
+  /// No description provided for @semesterTermsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Academic Calendar Terms'**
+  String get semesterTermsSection;
+
+  /// No description provided for @semesterAutoTermBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Match by Date'**
+  String get semesterAutoTermBtn;
+
+  /// No description provided for @semesterTermItemSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 {start} · {weeks} weeks'**
+  String semesterTermItemSub(String start, int weeks);
+
+  /// No description provided for @semesterLowConfSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates to Confirm'**
+  String get semesterLowConfSection;
+
+  /// No description provided for @semesterLowConfDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked on the calendar with lower confidence. Shown neutrally as non-teaching days by default—update below if needed.'**
+  String get semesterLowConfDesc;
+
+  /// No description provided for @semesterLowConfNeutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-teaching'**
+  String get semesterLowConfNeutral;
+
+  /// No description provided for @semesterLowConfHoliday.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Holiday'**
+  String get semesterLowConfHoliday;
+
+  /// No description provided for @semesterLowConfNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal Class'**
+  String get semesterLowConfNormal;
+
+  /// No description provided for @semesterAdvancedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced: Calendar Import'**
+  String get semesterAdvancedSection;
+
+  /// No description provided for @semesterImportJsonBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste & Import Calendar JSON'**
+  String get semesterImportJsonBtn;
+
+  /// No description provided for @semesterImportJsonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste academic_calendar.json containing terms, week1Start & totalWeeks'**
+  String get semesterImportJsonHint;
+
+  /// No description provided for @semesterImportSuccessToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported academic calendar ({count} terms)'**
+  String semesterImportSuccessToast(int count);
+
+  /// No description provided for @semesterImportErrorToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid calendar JSON: {error}'**
+  String semesterImportErrorToast(String error);
+
+  /// No description provided for @semesterResetBuiltinBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to Built-in BUV Calendar'**
+  String get semesterResetBuiltinBtn;
+
+  /// No description provided for @semesterResetBuiltinToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored built-in BUV 2026/2027 calendar'**
+  String get semesterResetBuiltinToast;
+
+  /// No description provided for @semesterIcalSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import iCal (.ics) Calendar'**
+  String get semesterIcalSoonTitle;
+
+  /// No description provided for @semesterIcalSoonSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon: standard .ics calendar import'**
+  String get semesterIcalSoonSub;
 }
 
 class _AppLocalizationsDelegate

@@ -1913,7 +1913,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.0.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.0.1 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2065,7 +2065,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.0.0 (Build 16)';
+  String get aboutVersion => '版本 v3.0.1 (Build 17)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2330,4 +2330,163 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get busSwapBtnShort => '对调起终点';
+
+  @override
+  String get scheduleTodayBtn => '今天';
+
+  @override
+  String scheduleWeekDateRange(String start, String end) {
+    return '$start ~ $end';
+  }
+
+  @override
+  String get scheduleBeforeSemesterTitle => '学期未开始';
+
+  @override
+  String scheduleBeforeSemesterBanner(String startDate) {
+    return '学期未开始 · 第 1 周将于 $startDate 开始';
+  }
+
+  @override
+  String get scheduleOrientationBanner => '学期未开始 · 迎新周（Orientation Week）';
+
+  @override
+  String scheduleAfterSemesterTitle(int week) {
+    return '学期结束 · 第 $week 周';
+  }
+
+  @override
+  String scheduleAssessmentBanner(String range) {
+    return '学期结束，进入考试周（$range）';
+  }
+
+  @override
+  String get scheduleAfterSemesterBanner => '学期结束，进入考试周';
+
+  @override
+  String get scheduleNonTeachingBadge => '非教学';
+
+  @override
+  String get scheduleNonTeachingLabel => '非教学日';
+
+  @override
+  String scheduleNonTeachingBanner(String dates) {
+    return '校历标注非教学日：$dates（可在「学期设置」中手动修正）';
+  }
+
+  @override
+  String get scheduleSemesterSettingsAction => '学期与校历设置';
+
+  @override
+  String get scheduleImportCalendarTitle => '导入学术日历 JSON';
+
+  @override
+  String get scheduleImportCalendarSub =>
+      '粘贴 academic_calendar.json 自动同步开学日、周数与日历安排';
+
+  @override
+  String get semesterSettingsTitle => '学期设置';
+
+  @override
+  String semesterSettingsTileSub(String term, String start, int weeks) {
+    return '$term · 第 1 周 $start · 共 $weeks 周';
+  }
+
+  @override
+  String get semesterBasicSection => '学期基础设置';
+
+  @override
+  String get semesterNameLabel => '学期名称';
+
+  @override
+  String get semesterNameHint => '例如：2026 秋季学期 / Autumn 2026';
+
+  @override
+  String get semesterWeek1StartLabel => '第 1 周开始日期（周一）';
+
+  @override
+  String get semesterTotalWeeksLabel => '总周数';
+
+  @override
+  String get semesterTotalWeeksSuffix => '周';
+
+  @override
+  String semesterPreviewCurrent(int week, String start, String end) {
+    return '当前计算：今天是第 $week 周（$start ~ $end）';
+  }
+
+  @override
+  String semesterPreviewBefore(String start) {
+    return '当前计算：学期未开始（第 1 周自 $start 起）';
+  }
+
+  @override
+  String semesterPreviewAfter(int total) {
+    return '当前计算：学期已结束（已超过第 $total 周）';
+  }
+
+  @override
+  String get semesterSaveBtn => '保存学期设置';
+
+  @override
+  String get semesterSavedToast => '学期设置已保存，课表与周数已同步';
+
+  @override
+  String get semesterTermsSection => '学术日历学期切换';
+
+  @override
+  String get semesterAutoTermBtn => '按当前日期自动匹配';
+
+  @override
+  String semesterTermItemSub(String start, int weeks) {
+    return '第 1 周 $start · 共 $weeks 周';
+  }
+
+  @override
+  String get semesterLowConfSection => '校历待确认日期';
+
+  @override
+  String get semesterLowConfDesc =>
+      '以下日期在校历上标红但未完全确认，默认仅以「非教学日」中性展示，可按学校实际安排手动修正。';
+
+  @override
+  String get semesterLowConfNeutral => '非教学日';
+
+  @override
+  String get semesterLowConfHoliday => '设为假期';
+
+  @override
+  String get semesterLowConfNormal => '正常上课';
+
+  @override
+  String get semesterAdvancedSection => '高级：日历导入';
+
+  @override
+  String get semesterImportJsonBtn => '粘贴并导入学术日历 JSON';
+
+  @override
+  String get semesterImportJsonHint =>
+      '粘贴包含 terms / week1Start / totalWeeks 的 academic_calendar.json 内容';
+
+  @override
+  String semesterImportSuccessToast(int count) {
+    return '已导入学术日历（共 $count 个学期）';
+  }
+
+  @override
+  String semesterImportErrorToast(String error) {
+    return '日历 JSON 格式有误：$error';
+  }
+
+  @override
+  String get semesterResetBuiltinBtn => '恢复默认 BUV 校历';
+
+  @override
+  String get semesterResetBuiltinToast => '已恢复内置 BUV 2026/2027 学术日历';
+
+  @override
+  String get semesterIcalSoonTitle => '导入 iCal (.ics) 校历';
+
+  @override
+  String get semesterIcalSoonSub => '即将支持标准 .ics 校历文件导入';
 }

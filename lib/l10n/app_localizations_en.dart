@@ -1972,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.0.0 · Co-developed with DaFeiYu';
+      'Version v3.0.1 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2128,7 +2128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.0.0 (Build 16)';
+  String get aboutVersion => 'Version v3.0.1 (Build 17)';
 
   @override
   String get aboutBadge =>
@@ -2408,4 +2408,167 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get busSwapBtnShort => 'Swap';
+
+  @override
+  String get scheduleTodayBtn => 'Today';
+
+  @override
+  String scheduleWeekDateRange(String start, String end) {
+    return '$start ~ $end';
+  }
+
+  @override
+  String get scheduleBeforeSemesterTitle => 'Not Started';
+
+  @override
+  String scheduleBeforeSemesterBanner(String startDate) {
+    return 'Semester hasn\'t started · Week 1 begins $startDate';
+  }
+
+  @override
+  String get scheduleOrientationBanner =>
+      'Semester hasn\'t started · Orientation Week';
+
+  @override
+  String scheduleAfterSemesterTitle(int week) {
+    return 'Post-Term · W$week';
+  }
+
+  @override
+  String scheduleAssessmentBanner(String range) {
+    return 'Semester ended — Assessment Period ($range)';
+  }
+
+  @override
+  String get scheduleAfterSemesterBanner =>
+      'Semester ended — Assessment / Break Period';
+
+  @override
+  String get scheduleNonTeachingBadge => 'Note';
+
+  @override
+  String get scheduleNonTeachingLabel => 'Non-teaching day';
+
+  @override
+  String scheduleNonTeachingBanner(String dates) {
+    return 'Calendar non-teaching day(s): $dates (adjust in Semester Settings)';
+  }
+
+  @override
+  String get scheduleSemesterSettingsAction => 'Semester & Calendar';
+
+  @override
+  String get scheduleImportCalendarTitle => 'Import Academic Calendar JSON';
+
+  @override
+  String get scheduleImportCalendarSub =>
+      'Paste academic_calendar.json to sync term dates, weeks & calendar';
+
+  @override
+  String get semesterSettingsTitle => 'Semester Settings';
+
+  @override
+  String semesterSettingsTileSub(String term, String start, int weeks) {
+    return '$term · W1 $start · $weeks wks';
+  }
+
+  @override
+  String get semesterBasicSection => 'Semester Basics';
+
+  @override
+  String get semesterNameLabel => 'Semester Name';
+
+  @override
+  String get semesterNameHint => 'e.g. Autumn Semester 2026';
+
+  @override
+  String get semesterWeek1StartLabel => 'Week 1 Start Date (Monday)';
+
+  @override
+  String get semesterTotalWeeksLabel => 'Total Weeks';
+
+  @override
+  String get semesterTotalWeeksSuffix => 'wks';
+
+  @override
+  String semesterPreviewCurrent(int week, String start, String end) {
+    return 'Calculated: Today is Week $week ($start ~ $end)';
+  }
+
+  @override
+  String semesterPreviewBefore(String start) {
+    return 'Calculated: Semester hasn\'t started (W1 begins $start)';
+  }
+
+  @override
+  String semesterPreviewAfter(int total) {
+    return 'Calculated: Semester ended (past Week $total)';
+  }
+
+  @override
+  String get semesterSaveBtn => 'Save Semester Settings';
+
+  @override
+  String get semesterSavedToast => 'Semester settings saved — schedule updated';
+
+  @override
+  String get semesterTermsSection => 'Academic Calendar Terms';
+
+  @override
+  String get semesterAutoTermBtn => 'Auto-Match by Date';
+
+  @override
+  String semesterTermItemSub(String start, int weeks) {
+    return 'Week 1 $start · $weeks weeks';
+  }
+
+  @override
+  String get semesterLowConfSection => 'Dates to Confirm';
+
+  @override
+  String get semesterLowConfDesc =>
+      'Marked on the calendar with lower confidence. Shown neutrally as non-teaching days by default—update below if needed.';
+
+  @override
+  String get semesterLowConfNeutral => 'Non-teaching';
+
+  @override
+  String get semesterLowConfHoliday => 'Set Holiday';
+
+  @override
+  String get semesterLowConfNormal => 'Normal Class';
+
+  @override
+  String get semesterAdvancedSection => 'Advanced: Calendar Import';
+
+  @override
+  String get semesterImportJsonBtn => 'Paste & Import Calendar JSON';
+
+  @override
+  String get semesterImportJsonHint =>
+      'Paste academic_calendar.json containing terms, week1Start & totalWeeks';
+
+  @override
+  String semesterImportSuccessToast(int count) {
+    return 'Imported academic calendar ($count terms)';
+  }
+
+  @override
+  String semesterImportErrorToast(String error) {
+    return 'Invalid calendar JSON: $error';
+  }
+
+  @override
+  String get semesterResetBuiltinBtn => 'Reset to Built-in BUV Calendar';
+
+  @override
+  String get semesterResetBuiltinToast =>
+      'Restored built-in BUV 2026/2027 calendar';
+
+  @override
+  String get semesterIcalSoonTitle => 'Import iCal (.ics) Calendar';
+
+  @override
+  String get semesterIcalSoonSub =>
+      'Coming soon: standard .ics calendar import';
 }

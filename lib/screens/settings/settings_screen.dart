@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../db/repo.dart';
+import '../../services/academic_calendar_service.dart';
 import '../../services/ai_service.dart';
 import '../../services/app_prefs.dart';
 import '../../services/settings_service.dart';
@@ -16,6 +17,7 @@ import '../../widgets/common.dart';
 import 'about_screen.dart';
 import 'battery_diagnostics_screen.dart';
 import 'notification_diagnostics_screen.dart';
+import 'semester_settings_screen.dart';
 
 /// 设置页（v2.0）：
 /// - 外观与语言（跟随系统 / 简体中文 / English，三档字号调节）
@@ -49,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _searchingCity = false;
   bool _usageEnabled = true;
   int _usageEventCount = 0;
+  AcademicTerm? _activeTerm;
 
   static const _chatModelPresets = <String>[
     'deepseek-chat',
@@ -88,6 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final vis = await SettingsService.visionConfig(raw: true);
     final manualCity = await WeatherService.getManualCity();
     final usageCount = await UsageTelemetryService.instance.getEventCount();
+    final activeTerm = await AcademicCalendarService.getActiveTerm();
     if (!mounted) return;
     setState(() {
       _chatUrl.text = chat.baseUrl;
@@ -101,6 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _customCityCtrl.text = manualCity?.city ?? '';
       _usageEnabled = UsageTelemetryService.instance.isEnabled;
       _usageEventCount = usageCount;
+      _activeTerm = activeTerm;
       _loading = false;
     });
   }
@@ -897,6 +902,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
+                          _systemTile(
+                            icon: Icons.calendar_month_rounded,
+                            color: scheduleColor,
+                            title: l.semesterSettingsTitle,
+                            subtitle: _activeTerm != null
+                                ? l.semesterSettingsTileSub(
+                                    _activeTerm!.localizedName(isEn: context.isEnLocale),
+                                    fmtDate(_activeTerm!.week1Start),
+                                    _activeTerm!.totalWeeks,
+                                  )
+                                : l.scheduleSemesterSettingsAction,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SemesterSettingsScreen(),
+                                ),
+                              );
+                              if (mounted) _load();
+                            },
+                          ),
+                          const Divider(height: 1),
                           _systemTile(
                             icon: Icons.battery_charging_full_rounded,
                             color: teal,

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../services/academic_calendar_service.dart';
 import '../services/battery_probe_service.dart';
 import '../services/reminder_service.dart';
 import '../services/widget_service.dart';
@@ -145,14 +146,10 @@ class Repo {
     ReminderService.syncAlarms();
   }
 
-  /// 学期第一周的周一日期
+  /// 学期第一周的周一日期（优先用户学期设置，其次自动从 academic_calendar.json 对应学期读取）
   static Future<DateTime> getSemesterStart() async {
-    final s = await getKv('semester_start');
-    if (s != null) {
-      final d = DateTime.tryParse(s);
-      if (d != null) return d;
-    }
-    return mondayOf(DateTime.now());
+    final term = await AcademicCalendarService.getActiveTerm();
+    return term.week1Start;
   }
 
   static Future<void> setSemesterStart(DateTime d) =>

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../db/repo.dart';
 import '../utils/date_utils.dart';
+import 'academic_calendar_service.dart';
 import 'weather_service.dart';
 
 /// 单日公共假期信息
@@ -318,21 +319,36 @@ class HolidayService {
     return merged;
   }
 
-  /// 判断某天是否为公共假期
+  /// 判断某天是否为公共假期或校历已确认假期（绝不包含未确认的 confidence=low 条目）
   static Future<HolidayInfo?> getHolidayForDate(
     DateTime day, {
     String? countryCode,
     bool allowNetwork = true,
   }) async {
+    final d = dateOnly(day);
+    final key = fmtDate(d);
     final map = await getHolidaysForYear(
-      day.year,
+      d.year,
       countryCode: countryCode,
       allowNetwork: allowNetwork,
     );
-    return map[fmtDate(day)];
+    final hit = map[key];
+    if (hit != null) return hit;
+
+    // 补充校历中已确认的假期（confidence=high 或用户手动确认为假期）
+    final calConfirmed = await AcademicCalendarService.getConfirmedHolidaysInRange(d, d);
+    final calHit = calConfirmed[key];
+    if (calHit == null) return null;
+    return HolidayInfo(
+      date: calHit.date,
+      nameZh: calHit.nameZh,
+      nameEn: calHit.name,
+      countryCode: (countryCode ?? 'CAL').toUpperCase(),
+      fromBuiltin: true,
+    );
   }
 
-  /// 批量查询日期区间内的全部公共假期（跨年自动合并）
+  /// 批量查询日期区间内的全部公共假期 + 校历已确认假期（跨年自动合并）
   static Future<Map<String, HolidayInfo>> getHolidaysForRange(
     DateTime start,
     DateTime end, {
@@ -349,10 +365,25 @@ class HolidayService {
     final sStr = fmtDate(start);
     final eStr = fmtDate(end);
     out.removeWhere((k, _) => k.compareTo(sStr) < 0 || k.compareTo(eStr) > 0);
+
+    // 合并校历已确认假期（圣诞、元旦、寒假等 high 条目及用户手动确认条目；low 默认不进入此处）
+    final calConfirmed = await AcademicCalendarService.getConfirmedHolidaysInRange(start, end);
+    for (final entry in calConfirmed.entries) {
+      out.putIfAbsent(
+        entry.key,
+        () => HolidayInfo(
+          date: entry.value.date,
+          nameZh: entry.value.nameZh,
+          nameEn: entry.value.name,
+          countryCode: cc,
+          fromBuiltin: true,
+        ),
+      );
+    }
     return out;
   }
 
-  @visibleForTesting
+  /// 清空内存缓存（测试或校历/假期设置变更后调用）
   static void clearMemoryCache() {
     _builtinCache = null;
     _mergedYearCache.clear();

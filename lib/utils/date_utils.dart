@@ -45,8 +45,8 @@ String fmtNum(double v, {int digits = 0}) {
   return s.contains('.') ? s.replaceFirst(RegExp(r'\.?0+$'), '') : s;
 }
 
-/// 学期第几周（从 1 开始）
+/// 学期第几周（week1Start 所在周为第 1 周，公式：floor((date - week1Start) / 7) + 1；第 1 周之前返回 <= 0）
 int weekOfSemester(DateTime semesterStart, DateTime day) {
   final diff = dateOnly(day).difference(mondayOf(semesterStart)).inDays;
-  return diff < 0 ? 0 : diff ~/ 7 + 1;
+  return (diff / 7).floor() + 1;
 }
