@@ -287,6 +287,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _confirmClearAllCourses() async {
+    final l = context.l10n;
+    final courses = await Repo.getCourses();
+    if (!mounted) return;
+    if (courses.isEmpty) {
+      toast(context, l.scheduleAlreadyEmptyToast);
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.scheduleClearConfirmTitle, style: AppTypography.sectionTitle(ctx)),
+        content: Text(l.scheduleClearConfirmDesc(courses.length), style: AppTypography.body(ctx)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger(ctx),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.scheduleClearConfirmBtn),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted = await Repo.clearAllCourses();
+    if (!mounted) return;
+    toast(context, l.scheduleClearedToast(deleted));
+  }
+
   Widget _systemTile({
     required IconData icon,
     required Color color,
@@ -922,6 +954,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             subtitle: l.settingsExportCsvSub,
                             trailingIcon: Icons.ios_share_rounded,
                             onTap: _exportCsv,
+                          ),
+                          const Divider(height: 1),
+                          _systemTile(
+                            icon: Icons.delete_sweep_rounded,
+                            color: AppColors.danger(context),
+                            title: l.scheduleClearAllTitle,
+                            subtitle: l.scheduleClearAllSub,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: _confirmClearAllCourses,
                           ),
                           const Divider(height: 1),
                           _systemTile(

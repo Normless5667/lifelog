@@ -823,6 +823,70 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scheduleEmptyImportBtn => '截图 / 文本一键导入课表';
 
   @override
+  String get scheduleClearAllTitle => '清空所有课程';
+
+  @override
+  String get scheduleClearAllSub => '删除课表中所有课程并取消对应上课提醒';
+
+  @override
+  String get scheduleClearConfirmTitle => '确定清空所有课程？';
+
+  @override
+  String scheduleClearConfirmDesc(int count) {
+    return '这会删除 $count 节课程和相关的上课提醒。\n这个操作不能撤销。';
+  }
+
+  @override
+  String get scheduleClearConfirmBtn => '清空';
+
+  @override
+  String scheduleClearedToast(int count) {
+    return '已清空 $count 节课程并取消相关提醒';
+  }
+
+  @override
+  String get scheduleAlreadyEmptyToast => '当前课表已经是空的';
+
+  @override
+  String get scheduleSeedPromptTitle => '要不要导入 BUV 示例课表？';
+
+  @override
+  String get scheduleSeedPromptDesc => '如果你不是 BUV 的学生，可以跳过，之后随时手动添加或导入自己的课程。';
+
+  @override
+  String get scheduleSeedImportBtn => '导入示例';
+
+  @override
+  String get scheduleSeedSkipBtn => '跳过，自己添加';
+
+  @override
+  String get scheduleManualAddBtn => '手动添加';
+
+  @override
+  String get courseEditMultiWeekdayHint => '支持多选，例如周一、三、五一次添加';
+
+  @override
+  String courseEditAddedMultiToast(int count) {
+    return '已添加 $count 节课程';
+  }
+
+  @override
+  String holidayTodayNoClass(String name) {
+    return '今天是假期（$name），没有课程';
+  }
+
+  @override
+  String get holidayShortBadge => '假';
+
+  @override
+  String holidayWeekBanner(String items) {
+    return '本周假期：$items（假期当天不上课、不提醒）';
+  }
+
+  @override
+  String get holidayColumnLabel => '假期无课';
+
+  @override
   String scheduleMonthHeader(int month) {
     return '$month\n月';
   }
@@ -1808,7 +1872,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v2.1.8 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v2.1.9 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -1960,7 +2024,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v2.1.8 (Build 14)';
+  String get aboutVersion => '版本 v2.1.9 (Build 15)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -1968,6 +2032,24 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get aboutDesc =>
       '集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。';
+
+  @override
+  String get aboutCreditsTitle => '协作开发';
+
+  @override
+  String get aboutCreditsBody => '本应用由以下三方协作完成：';
+
+  @override
+  String get aboutCreditOwner => '产品设计与需求';
+
+  @override
+  String get aboutCreditGemini => '代码开发（Antigravity）';
+
+  @override
+  String get aboutCreditDeepSeek => '监工与验证（大肥鱼）';
+
+  @override
+  String get aboutCreditsNote => '所有功能均经过真实设备测试验证。';
 
   @override
   String get batteryDiagTitle => '耗电与性能诊断';

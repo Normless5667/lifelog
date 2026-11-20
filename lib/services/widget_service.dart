@@ -4,6 +4,7 @@ import '../db/repo.dart';
 import '../models/models.dart';
 import '../utils/date_utils.dart';
 import 'battery_probe_service.dart';
+import 'holiday_service.dart';
 import 'reminder_service.dart';
 import 'step_service.dart';
 import 'targets.dart';
@@ -82,17 +83,21 @@ class WidgetService {
 
       final courses = await Repo.getCourses();
       final start = await Repo.getSemesterStart();
-      final week = weekOfSemester(start, DateTime.now());
-      final wd = DateTime.now().weekday;
-      final todayCourses = courses
-          .where((c) => c.weekday == wd && c.activeInWeek(week))
-          .toList()
-        ..sort((a, b) => a.startSection.compareTo(b.startSection));
+      final now = DateTime.now();
+      final todayHoliday = await HolidayService.getHolidayForDate(now);
+      final week = weekOfSemester(start, now);
+      final wd = now.weekday;
+      final todayCourses = todayHoliday != null
+          ? <Course>[]
+          : (courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
+            ..sort((a, b) => a.startSection.compareTo(b.startSection)));
 
       final totals = DayTotals.of(meals);
       final remKcal = (targets.calories - totals.calories).round();
 
-      final courseLine = formatCoursesLine(todayCourses);
+      final courseLine = todayHoliday != null
+          ? '🎉 今日假期：${todayHoliday.nameZh} · 无课'
+          : formatCoursesLine(todayCourses);
       final calorieLine = remKcal >= 0
           ? '🔥 剩余热量：$remKcal kcal（已吃 ${totals.calories.round()}）'
           : '🔥 超出热量：${remKcal.abs()} kcal（已吃 ${totals.calories.round()}）';

@@ -4,6 +4,7 @@ import '../db/repo.dart';
 import '../models/models.dart';
 import '../services/ai_service.dart';
 import '../services/bus_service.dart';
+import '../services/holiday_service.dart';
 import '../services/reminder_service.dart';
 import '../services/step_service.dart';
 import '../services/targets.dart';
@@ -44,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   DayTotals _totals = DayTotals.of(const []);
   DailyTargets _targets = const DailyTargets(2000, 100, 250, 55);
   List<Course> _todayCourses = [];
+  HolidayInfo? _todayHoliday;
   int _week = 0;
   List<Workout> _todayWorkouts = [];
   List<CardioRecord> _todayCardios = [];
@@ -104,11 +106,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final streak = await Repo.calculateStreak();
     final courses = await Repo.getCourses();
     final start = await Repo.getSemesterStart();
-    final week = weekOfSemester(start, DateTime.now());
-    final wd = DateTime.now().weekday;
-    final todayCourses =
-        courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
-          ..sort((a, b) => a.startSection.compareTo(b.startSection));
+    final now = DateTime.now();
+    final todayHoliday = await HolidayService.getHolidayForDate(now);
+    final week = weekOfSemester(start, now);
+    final wd = now.weekday;
+    final todayCourses = todayHoliday != null
+        ? <Course>[]
+        : (courses.where((c) => c.weekday == wd && c.activeInWeek(week)).toList()
+          ..sort((a, b) => a.startSection.compareTo(b.startSection)));
     final workouts = await Repo.getWorkouts(date: t);
     final cardios = await Repo.getCardioRecords(date: t);
     var sets = 0;
@@ -134,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _profile = profile;
       _streak = streak;
       _todayCourses = todayCourses;
+      _todayHoliday = todayHoliday;
       _week = week;
       _todayWorkouts = workouts;
       _todayCardios = cardios;
@@ -1434,6 +1440,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _coursesCard() {
     final l = context.l10n;
     final teal = AppColors.teal(context);
+    final warning = AppColors.warning(context);
+    if (_todayHoliday != null) {
+      final hName = _todayHoliday!.localizedName(isEn: context.isEnLocale);
+      return SurfaceCard(
+        backgroundColor: AppColors.softBg(context, warning, lightAlpha: 0.08, darkAlpha: 0.16),
+        borderColor: AppColors.softBorder(context, warning),
+        padding: AppSpacing.cardCompactPadding,
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, warning, lightAlpha: 0.18, darkAlpha: 0.28),
+                borderRadius: AppRadius.bMd,
+              ),
+              child: Icon(Icons.celebration_rounded, color: warning, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                l.holidayTodayNoClass(hName),
+                style: AppTypography.subtitle(context),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (_todayCourses.isEmpty) {
       return SurfaceCard(
         padding: AppSpacing.cardCompactPadding,

@@ -16,12 +16,16 @@ class CourseEditScreen extends StatefulWidget {
   final int? initialSection;
   final int sectionsPerDay;
 
+  @visibleForTesting
+  final Future<void> Function(List<Course> courses)? onSaveOverrideForTest;
+
   const CourseEditScreen({
     super.key,
     this.course,
     this.initialWeekday,
     this.initialSection,
     this.sectionsPerDay = 12,
+    this.onSaveOverrideForTest,
   });
 
   @override
@@ -33,12 +37,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   late final TextEditingController _name;
   late final TextEditingController _teacher;
   late final TextEditingController _location;
-  late int _weekday;
+  late final Set<int> _selectedWeekdays;
   late int _start;
   late int _end;
   late RangeValues _weeks;
   late int _weekType;
   late int _color;
+
+  bool get _isCreateMode => widget.course == null;
 
   @override
   void initState() {
@@ -47,7 +53,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     _name = TextEditingController(text: c?.name ?? '');
     _teacher = TextEditingController(text: c?.teacher ?? '');
     _location = TextEditingController(text: c?.location ?? '');
-    _weekday = c?.weekday ?? widget.initialWeekday ?? DateTime.now().weekday;
+    _selectedWeekdays = {c?.weekday ?? widget.initialWeekday ?? DateTime.now().weekday};
     _start = c?.startSection ?? widget.initialSection ?? 1;
     _end = c?.endSection ?? (_start + 1).clamp(1, widget.sectionsPerDay);
     _weeks = RangeValues((c?.startWeek ?? 1).toDouble(), (c?.endWeek ?? 16).toDouble());
@@ -69,19 +75,36 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
       toast(context, context.l10n.courseEditSectionOrderError);
       return;
     }
-    await Repo.saveCourse(Course(
-      id: widget.course?.id,
-      name: _name.text.trim(),
-      teacher: _teacher.text.trim(),
-      location: _location.text.trim(),
-      weekday: _weekday,
-      startSection: _start,
-      endSection: _end,
-      startWeek: _weeks.start.round(),
-      endWeek: _weeks.end.round(),
-      weekType: _weekType,
-      color: _color,
-    ));
+    final days = _selectedWeekdays.toList()..sort();
+    if (days.isEmpty) return;
+
+    final toSave = days
+        .map(
+          (wd) => Course(
+            id: _isCreateMode ? null : widget.course?.id,
+            name: _name.text.trim(),
+            teacher: _teacher.text.trim(),
+            location: _location.text.trim(),
+            weekday: wd,
+            startSection: _start,
+            endSection: _end,
+            startWeek: _weeks.start.round(),
+            endWeek: _weeks.end.round(),
+            weekType: _weekType,
+            color: _color,
+            source: Course.sourceUser,
+          ),
+        )
+        .toList();
+
+    if (widget.onSaveOverrideForTest != null) {
+      await widget.onSaveOverrideForTest!(toSave);
+    } else if (_isCreateMode && toSave.length > 1) {
+      await Repo.saveCourses(toSave);
+      if (mounted) toast(context, context.l10n.courseEditAddedMultiToast(toSave.length));
+    } else {
+      await Repo.saveCourse(toSave.first);
+    }
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -162,16 +185,46 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
               ),
             ]),
             SectionTitle(l.courseEditWeekdayTitle, icon: Icons.calendar_today_rounded, iconColor: AppColors.moduleSchedule(context)),
+            if (_isCreateMode)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: Text(l.courseEditMultiWeekdayHint, style: AppTypography.caption(context)),
+              ),
             Wrap(
               spacing: 6,
               children: [
                 for (var i = 1; i <= 7; i++)
-                  ChoiceChip(
-                    avatar: Icon(Icons.event_rounded, size: 16, color: _weekday == i ? Color(_color) : null),
-                    label: Text(L10nHelper.weekdayLabel(context, i)),
-                    selected: _weekday == i,
-                    onSelected: (_) => setState(() => _weekday = i),
-                  ),
+                  _isCreateMode
+                      ? FilterChip(
+                          avatar: Icon(
+                            Icons.event_rounded,
+                            size: 16,
+                            color: _selectedWeekdays.contains(i) ? Color(_color) : null,
+                          ),
+                          label: Text(L10nHelper.weekdayLabel(context, i)),
+                          selected: _selectedWeekdays.contains(i),
+                          onSelected: (sel) => setState(() {
+                            if (sel) {
+                              _selectedWeekdays.add(i);
+                            } else if (_selectedWeekdays.length > 1) {
+                              _selectedWeekdays.remove(i);
+                            }
+                          }),
+                        )
+                      : ChoiceChip(
+                          avatar: Icon(
+                            Icons.event_rounded,
+                            size: 16,
+                            color: _selectedWeekdays.contains(i) ? Color(_color) : null,
+                          ),
+                          label: Text(L10nHelper.weekdayLabel(context, i)),
+                          selected: _selectedWeekdays.contains(i),
+                          onSelected: (_) => setState(() {
+                            _selectedWeekdays
+                              ..clear()
+                              ..add(i);
+                          }),
+                        ),
               ],
             ),
             SectionTitle(l.courseEditSectionTitle, icon: Icons.access_time_rounded, iconColor: AppColors.warning(context)),

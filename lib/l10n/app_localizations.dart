@@ -1539,6 +1539,114 @@ abstract class AppLocalizations {
   /// **'Import from Screenshot / Text'**
   String get scheduleEmptyImportBtn;
 
+  /// No description provided for @scheduleClearAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All Courses'**
+  String get scheduleClearAllTitle;
+
+  /// No description provided for @scheduleClearAllSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all courses and cancel class reminders'**
+  String get scheduleClearAllSub;
+
+  /// No description provided for @scheduleClearConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all courses?'**
+  String get scheduleClearConfirmTitle;
+
+  /// No description provided for @scheduleClearConfirmDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete {count} courses and cancel their class reminders.\nThis action cannot be undone.'**
+  String scheduleClearConfirmDesc(int count);
+
+  /// No description provided for @scheduleClearConfirmBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get scheduleClearConfirmBtn;
+
+  /// No description provided for @scheduleClearedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared {count} courses and cancelled reminders'**
+  String scheduleClearedToast(int count);
+
+  /// No description provided for @scheduleAlreadyEmptyToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule is already empty'**
+  String get scheduleAlreadyEmptyToast;
+
+  /// No description provided for @scheduleSeedPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import BUV sample schedule?'**
+  String get scheduleSeedPromptTitle;
+
+  /// No description provided for @scheduleSeedPromptDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'If you\'re not a BUV student, skip this and add or import your own classes anytime.'**
+  String get scheduleSeedPromptDesc;
+
+  /// No description provided for @scheduleSeedImportBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Sample'**
+  String get scheduleSeedImportBtn;
+
+  /// No description provided for @scheduleSeedSkipBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip & Add My Own'**
+  String get scheduleSeedSkipBtn;
+
+  /// No description provided for @scheduleManualAddBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Course'**
+  String get scheduleManualAddBtn;
+
+  /// No description provided for @courseEditMultiWeekdayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select one or more days (e.g. Mon/Wed/Fri)'**
+  String get courseEditMultiWeekdayHint;
+
+  /// No description provided for @courseEditAddedMultiToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count} courses'**
+  String courseEditAddedMultiToast(int count);
+
+  /// No description provided for @holidayTodayNoClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Today is a public holiday ({name}) — no classes'**
+  String holidayTodayNoClass(String name);
+
+  /// No description provided for @holidayShortBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Hol'**
+  String get holidayShortBadge;
+
+  /// No description provided for @holidayWeekBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Public holiday this week: {items} (no classes or reminders)'**
+  String holidayWeekBanner(String items);
+
+  /// No description provided for @holidayColumnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Holiday'**
+  String get holidayColumnLabel;
+
   /// No description provided for @scheduleMonthHeader.
   ///
   /// In en, this message translates to:
@@ -3305,7 +3413,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.8 · Co-developed with DaFeiYu'**
+  /// **'Version v2.1.9 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3591,7 +3699,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v2.1.8 (Build 14)'**
+  /// **'Version v2.1.9 (Build 15)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -3605,6 +3713,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.'**
   String get aboutDesc;
+
+  /// No description provided for @aboutCreditsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Built Together'**
+  String get aboutCreditsTitle;
+
+  /// No description provided for @aboutCreditsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This app was created through collaboration between:'**
+  String get aboutCreditsBody;
+
+  /// No description provided for @aboutCreditOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Product design & requirements'**
+  String get aboutCreditOwner;
+
+  /// No description provided for @aboutCreditGemini.
+  ///
+  /// In en, this message translates to:
+  /// **'Development (Antigravity)'**
+  String get aboutCreditGemini;
+
+  /// No description provided for @aboutCreditDeepSeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Supervision & verification (DaFeiyu)'**
+  String get aboutCreditDeepSeek;
+
+  /// No description provided for @aboutCreditsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'All features verified on real devices.'**
+  String get aboutCreditsNote;
 
   /// No description provided for @batteryDiagTitle.
   ///

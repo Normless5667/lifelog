@@ -72,11 +72,61 @@ class AboutScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: AppTypography.body(context),
                 ),
+                const SizedBox(height: AppSpacing.xl),
+                Divider(color: AppColors.border(context)),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  l.aboutCreditsTitle,
+                  style: AppTypography.sectionTitle(context),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l.aboutCreditsBody,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption(context),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _creditRow(context, Icons.person_rounded, l.aboutCreditOwner, null),
+                const SizedBox(height: AppSpacing.md),
+                _creditRow(context, Icons.auto_awesome_rounded, l.aboutCreditGemini,
+                    'assets/icon/gemini_avatar.png'),
+                const SizedBox(height: AppSpacing.md),
+                _creditRow(context, Icons.pets_rounded, l.aboutCreditDeepSeek,
+                    'assets/icon/dafeiyu_mascot.png'),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  l.aboutCreditsNote,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption(context).copyWith(
+                    color: AppColors.textTertiary(context),
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _creditRow(BuildContext context, IconData icon, String label, String? avatarAsset) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (avatarAsset != null)
+          ClipOval(
+            child: Image.asset(
+              avatarAsset,
+              width: 28,
+              height: 28,
+              fit: BoxFit.cover,
+            ),
+          )
+        else
+          Icon(icon, size: 20, color: AppColors.textSecondary(context)),
+        const SizedBox(width: AppSpacing.sm + 2),
+        Text(label, style: AppTypography.body(context)),
+      ],
     );
   }
 }

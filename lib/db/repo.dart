@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
 import '../services/battery_probe_service.dart';
+import '../services/reminder_service.dart';
 import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import 'database.dart';
@@ -60,6 +61,11 @@ class Repo {
     return rows.map(Course.fromMap).toList();
   }
 
+  static Future<bool> hasCourseSeedPrompted() async =>
+      (await getKv('course_seed_prompted')) == '1';
+
+  static Future<void> setCourseSeedPrompted() => setKv('course_seed_prompted', '1');
+
   static Future<int> saveCourse(Course c) async {
     BatteryProbeService.instance.recordDbWrite();
     final db = await _db;
@@ -70,14 +76,56 @@ class Repo {
       await db.update('courses', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
       res = c.id!;
     }
+    await setCourseSeedPrompted();
+    notifyDataChanged();
     WidgetService.sync(force: true);
+    ReminderService.syncAlarms();
     return res;
+  }
+
+  /// 一次保存多节课程（例如表单多选周一/三/五同时添加）
+  static Future<void> saveCourses(List<Course> courses) async {
+    if (courses.isEmpty) return;
+    BatteryProbeService.instance.recordDbWrite();
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (final c in courses) {
+        await txn.insert('courses', c.toMap()..remove('id'));
+      }
+    });
+    await setCourseSeedPrompted();
+    notifyDataChanged();
+    WidgetService.sync(force: true);
+    ReminderService.syncAlarms();
   }
 
   static Future<void> deleteCourse(int id) async {
     BatteryProbeService.instance.recordDbWrite();
     await (await _db).delete('courses', where: 'id = ?', whereArgs: [id]);
+    notifyDataChanged();
     WidgetService.sync(force: true);
+    ReminderService.syncAlarms();
+  }
+
+  /// 清空所有课程并立即取消对应上课提醒闹钟（返回被删除的课程数量）
+  static Future<int> clearAllCourses() async {
+    BatteryProbeService.instance.recordDbWrite();
+    final db = await _db;
+    final deleted = await db.delete('courses');
+    await setCourseSeedPrompted();
+    await ReminderService.syncAlarms();
+    notifyDataChanged();
+    WidgetService.sync(force: true);
+    return deleted;
+  }
+
+  /// 将内置 BUV 示例课表复制到数据库并标记 source = 'builtin'
+  static Future<int> importBuiltinSampleCourses({bool replaceAll = false}) async {
+    final samples = AppDatabase.defaultScheduleCourses
+        .map((m) => Course.fromMap({...m, 'source': Course.sourceBuiltin}))
+        .toList();
+    await importCourses(samples, replaceAll: replaceAll);
+    return samples.length;
   }
 
   static Future<void> importCourses(List<Course> courses, {bool replaceAll = false}) async {
@@ -91,7 +139,10 @@ class Repo {
         await txn.insert('courses', c.toMap()..remove('id'));
       }
     });
+    await setCourseSeedPrompted();
+    notifyDataChanged();
     WidgetService.sync(force: true);
+    ReminderService.syncAlarms();
   }
 
   /// 学期第一周的周一日期

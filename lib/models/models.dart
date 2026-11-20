@@ -1,6 +1,9 @@
 // 所有数据模型。字段与 lib/db/database.dart 的表结构一一对应。
 
 class Course {
+  static const sourceBuiltin = 'builtin';
+  static const sourceUser = 'user';
+
   int? id;
   String name;
   String? teacher;
@@ -12,6 +15,7 @@ class Course {
   int endWeek;
   int weekType; // 0=每周 1=单周 2=双周
   int color;
+  String source; // 'builtin' (导入的示例课表) | 'user' (用户自建/导入)
 
   Course({
     this.id,
@@ -25,7 +29,10 @@ class Course {
     this.endWeek = 16,
     this.weekType = 0,
     required this.color,
+    this.source = sourceUser,
   });
+
+  bool get isBuiltin => source == sourceBuiltin;
 
   bool activeInWeek(int week) {
     if (week < startWeek || week > endWeek) return false;
@@ -46,6 +53,7 @@ class Course {
         'end_week': endWeek,
         'week_type': weekType,
         'color': color,
+        'source': source,
       };
 
   factory Course.fromMap(Map<String, Object?> m) => Course(
@@ -60,6 +68,9 @@ class Course {
         endWeek: m['end_week'] as int,
         weekType: m['week_type'] as int,
         color: m['color'] as int,
+        source: (m['source'] as String?)?.isNotEmpty == true
+            ? (m['source'] as String)
+            : sourceUser,
       );
 }
 

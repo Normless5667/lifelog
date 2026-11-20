@@ -473,6 +473,49 @@
   },
   "scheduleEmptyTapHint": "Tap any cell to add, or ",
   "scheduleEmptyImportBtn": "Import from Screenshot / Text",
+  "scheduleClearAllTitle": "Clear All Courses",
+  "scheduleClearAllSub": "Remove all courses and cancel class reminders",
+  "scheduleClearConfirmTitle": "Clear all courses?",
+  "scheduleClearConfirmDesc": "This will delete {count} courses and cancel their class reminders.\nThis action cannot be undone.",
+  "@scheduleClearConfirmDesc": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scheduleClearConfirmBtn": "Clear",
+  "scheduleClearedToast": "Cleared {count} courses and cancelled reminders",
+  "@scheduleClearedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scheduleAlreadyEmptyToast": "Schedule is already empty",
+  "scheduleSeedPromptTitle": "Import BUV sample schedule?",
+  "scheduleSeedPromptDesc": "If you're not a BUV student, skip this and add or import your own classes anytime.",
+  "scheduleSeedImportBtn": "Import Sample",
+  "scheduleSeedSkipBtn": "Skip & Add My Own",
+  "scheduleManualAddBtn": "Add Course",
+  "courseEditMultiWeekdayHint": "Select one or more days (e.g. Mon/Wed/Fri)",
+  "courseEditAddedMultiToast": "Added {count} courses",
+  "@courseEditAddedMultiToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "holidayTodayNoClass": "Today is a public holiday ({name}) — no classes",
+  "@holidayTodayNoClass": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "holidayShortBadge": "Hol",
+  "holidayWeekBanner": "Public holiday this week: {items} (no classes or reminders)",
+  "@holidayWeekBanner": {
+    "placeholders": {
+      "items": { "type": "String" }
+    }
+  },
+  "holidayColumnLabel": "Holiday",
   "scheduleMonthHeader": "M{month}",
   "@scheduleMonthHeader": {
     "placeholders": {
@@ -1026,7 +1069,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v2.1.8 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v2.1.9 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1091,9 +1134,15 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v2.1.8 (Build 14)",
+  "aboutVersion": "Version v2.1.9 (Build 15)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
+  "aboutCreditsTitle": "Built Together",
+  "aboutCreditsBody": "This app was created through collaboration between:",
+  "aboutCreditOwner": "Product design & requirements",
+  "aboutCreditGemini": "Development (Antigravity)",
+  "aboutCreditDeepSeek": "Supervision & verification (DaFeiyu)",
+  "aboutCreditsNote": "All features verified on real devices.",
 
   "batteryDiagTitle": "Battery & Performance Diagnostics",
   "batteryDiagTileSub": "7-day foreground/background time, timer activity, GPS, DB writes & widget syncs",

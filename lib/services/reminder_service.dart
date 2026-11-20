@@ -4,6 +4,7 @@ import '../db/repo.dart';
 import '../models/models.dart';
 import '../utils/date_utils.dart';
 import 'bus_service.dart';
+import 'holiday_service.dart';
 import 'weather_service.dart';
 
 /// 课程时间映射 + 原生 Android 闹钟提醒 + 组间休息倒计时后台闹钟 + 系统时钟联动服务。
@@ -124,8 +125,15 @@ class ReminderService {
     final semesterStart = await Repo.getSemesterStart();
     final now = DateTime.now();
 
+    final holidays = await HolidayService.getHolidaysForRange(
+      dateOnly(now),
+      dateOnly(now).add(const Duration(days: 7)),
+    );
+
     for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
       final day = dateOnly(now).add(Duration(days: dayOffset));
+      // 公共假期当天不写入上课系统闹钟
+      if (holidays.containsKey(fmtDate(day))) continue;
       final week = weekOfSemester(semesterStart, day);
       final wd = day.weekday;
       final dayCourses = courses
@@ -215,9 +223,15 @@ class ReminderService {
         final minsBefore = await minutesBefore();
         final courses = await Repo.getCourses();
         final semesterStart = await Repo.getSemesterStart();
+        final holidays = await HolidayService.getHolidaysForRange(
+          dateOnly(now),
+          dateOnly(now).add(const Duration(days: 10)),
+        );
 
         for (var dayOffset = 0; dayOffset < 10; dayOffset++) {
           final day = dateOnly(now).add(Duration(days: dayOffset));
+          // 公共假期当天不触发上课提醒
+          if (holidays.containsKey(fmtDate(day))) continue;
           final week = weekOfSemester(semesterStart, day);
           final wd = day.weekday;
           for (final Course c in courses) {

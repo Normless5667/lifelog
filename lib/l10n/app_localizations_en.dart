@@ -853,6 +853,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduleEmptyImportBtn => 'Import from Screenshot / Text';
 
   @override
+  String get scheduleClearAllTitle => 'Clear All Courses';
+
+  @override
+  String get scheduleClearAllSub =>
+      'Remove all courses and cancel class reminders';
+
+  @override
+  String get scheduleClearConfirmTitle => 'Clear all courses?';
+
+  @override
+  String scheduleClearConfirmDesc(int count) {
+    return 'This will delete $count courses and cancel their class reminders.\nThis action cannot be undone.';
+  }
+
+  @override
+  String get scheduleClearConfirmBtn => 'Clear';
+
+  @override
+  String scheduleClearedToast(int count) {
+    return 'Cleared $count courses and cancelled reminders';
+  }
+
+  @override
+  String get scheduleAlreadyEmptyToast => 'Schedule is already empty';
+
+  @override
+  String get scheduleSeedPromptTitle => 'Import BUV sample schedule?';
+
+  @override
+  String get scheduleSeedPromptDesc =>
+      'If you\'re not a BUV student, skip this and add or import your own classes anytime.';
+
+  @override
+  String get scheduleSeedImportBtn => 'Import Sample';
+
+  @override
+  String get scheduleSeedSkipBtn => 'Skip & Add My Own';
+
+  @override
+  String get scheduleManualAddBtn => 'Add Course';
+
+  @override
+  String get courseEditMultiWeekdayHint =>
+      'Select one or more days (e.g. Mon/Wed/Fri)';
+
+  @override
+  String courseEditAddedMultiToast(int count) {
+    return 'Added $count courses';
+  }
+
+  @override
+  String holidayTodayNoClass(String name) {
+    return 'Today is a public holiday ($name) — no classes';
+  }
+
+  @override
+  String get holidayShortBadge => 'Hol';
+
+  @override
+  String holidayWeekBanner(String items) {
+    return 'Public holiday this week: $items (no classes or reminders)';
+  }
+
+  @override
+  String get holidayColumnLabel => 'Holiday';
+
+  @override
   String scheduleMonthHeader(int month) {
     return 'M$month';
   }
@@ -1864,7 +1931,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v2.1.8 · Co-developed with DaFeiYu';
+      'Version v2.1.9 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2020,7 +2087,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v2.1.8 (Build 14)';
+  String get aboutVersion => 'Version v2.1.9 (Build 15)';
 
   @override
   String get aboutBadge =>
@@ -2029,6 +2096,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutDesc =>
       'All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.';
+
+  @override
+  String get aboutCreditsTitle => 'Built Together';
+
+  @override
+  String get aboutCreditsBody =>
+      'This app was created through collaboration between:';
+
+  @override
+  String get aboutCreditOwner => 'Product design & requirements';
+
+  @override
+  String get aboutCreditGemini => 'Development (Antigravity)';
+
+  @override
+  String get aboutCreditDeepSeek => 'Supervision & verification (DaFeiyu)';
+
+  @override
+  String get aboutCreditsNote => 'All features verified on real devices.';
 
   @override
   String get batteryDiagTitle => 'Battery & Performance Diagnostics';

@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'lifelog.db';
-  static const _dbVersion = 5;
+  static const _dbVersion = 6;
 
   Database? _db;
 
@@ -41,7 +41,8 @@ class AppDatabase {
         start_week INTEGER NOT NULL DEFAULT 1,
         end_week INTEGER NOT NULL DEFAULT 16,
         week_type INTEGER NOT NULL DEFAULT 0,
-        color INTEGER NOT NULL
+        color INTEGER NOT NULL,
+        source TEXT NOT NULL DEFAULT 'user'
       )''');
     b.execute('''
       CREATE TABLE meals (
@@ -137,9 +138,7 @@ class AppDatabase {
         b.insert('exercises', {'name': name, 'category': entry.key, 'is_custom': 0});
       }
     }
-    for (final c in defaultScheduleCourses) {
-      b.insert('courses', c);
-    }
+    // 全新安装不再自动塞入 BUV 个人课表，改为首次打开课表时由用户选择「导入示例」或「跳过，自己添加」
     await b.commit(noResult: true);
   }
 
@@ -189,6 +188,30 @@ class AppDatabase {
       await _addColumnIfMissing(db, 'workouts', 'manual_burn_kcal', 'REAL');
       await _addColumnIfMissing(db, 'cardio_records', 'manual_duration_min', 'REAL');
       await _addColumnIfMissing(db, 'cardio_records', 'manual_burn_kcal', 'REAL');
+    }
+    if (oldVersion < 6) {
+      await _addColumnIfMissing(db, 'courses', 'source', "TEXT NOT NULL DEFAULT 'user'");
+      // 老用户升级时若已有课程，保留全部现有课表且不重复弹首次示例引导；并标记匹配的内置示例课
+      final existingCourses = await db.query('courses', columns: ['id', 'name']);
+      if (existingCourses.isNotEmpty) {
+        await db.insert(
+          'kv',
+          {'key': 'course_seed_prompted', 'value': '1'},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        final builtinNames =
+            defaultScheduleCourses.map((e) => (e['name'] ?? '').toString()).toSet();
+        for (final row in existingCourses) {
+          if (builtinNames.contains((row['name'] ?? '').toString())) {
+            await db.update(
+              'courses',
+              {'source': 'builtin'},
+              where: 'id = ?',
+              whereArgs: [row['id']],
+            );
+          }
+        }
+      }
     }
   }
 

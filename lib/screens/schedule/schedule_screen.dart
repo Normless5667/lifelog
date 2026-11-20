@@ -7,6 +7,7 @@ import '../../db/database.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
+import '../../services/holiday_service.dart';
 import '../../services/reminder_service.dart';
 import '../../services/weather_service.dart';
 import '../../utils/date_utils.dart';
@@ -36,11 +37,37 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _loading = true;
   bool _busyAi = false;
   WeatherInfo? _weather;
+  Map<String, HolidayInfo> _weekHolidays = const {};
+
+  static bool _seedPromptOpen = false;
 
   @override
   void initState() {
     super.initState();
+    Repo.dataVersion.addListener(_onRepoDataChanged);
     _load(resetWeek: true);
+  }
+
+  @override
+  void dispose() {
+    Repo.dataVersion.removeListener(_onRepoDataChanged);
+    super.dispose();
+  }
+
+  void _onRepoDataChanged() {
+    if (mounted) _load();
+  }
+
+  Future<void> _loadWeekHolidays({DateTime? start, int? week}) async {
+    final baseStart = start ?? _semesterStart;
+    final targetWeek = week ?? _week;
+    final monday = mondayOf(baseStart).add(Duration(days: (targetWeek - 1) * 7));
+    final holidays = await HolidayService.getHolidaysForRange(
+      monday,
+      monday.add(const Duration(days: 6)),
+    );
+    if (!mounted) return;
+    setState(() => _weekHolidays = holidays);
   }
 
   Future<void> _load({bool resetWeek = false}) async {
@@ -48,17 +75,103 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final start = await Repo.getSemesterStart();
     final sections = await Repo.getSectionsPerDay();
     final weather = await WeatherService.getWeather();
+    final currentWeek = weekOfSemester(start, DateTime.now()).clamp(1, 30);
+    final displayWeek = resetWeek ? currentWeek : _week;
+    final monday = mondayOf(start).add(Duration(days: (displayWeek - 1) * 7));
+    final weekHolidays = await HolidayService.getHolidaysForRange(
+      monday,
+      monday.add(const Duration(days: 6)),
+    );
+    final prompted = await Repo.hasCourseSeedPrompted();
     if (!mounted) return;
     setState(() {
       _courses = courses;
       _semesterStart = start;
       _sections = sections;
       _weather = weather;
-      _currentWeek = weekOfSemester(start, DateTime.now()).clamp(1, 30);
-      if (resetWeek) _week = _currentWeek;
+      _currentWeek = currentWeek;
+      _week = displayWeek;
+      _weekHolidays = weekHolidays;
       _loading = false;
     });
     ReminderService.syncAlarms();
+    if (courses.isEmpty && !prompted && !_seedPromptOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybePromptSeedSample();
+      });
+    }
+  }
+
+  /// 全新安装首次进入空课表时询问是否导入 BUV 示例课表
+  Future<void> _maybePromptSeedSample() async {
+    if (_seedPromptOpen || !mounted) return;
+    _seedPromptOpen = true;
+    try {
+      final l = context.l10n;
+      final importSample = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text(l.scheduleSeedPromptTitle, style: AppTypography.sectionTitle(ctx)),
+          content: Text(l.scheduleSeedPromptDesc, style: AppTypography.body(ctx)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l.scheduleSeedSkipBtn),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.school_rounded, size: 17),
+              label: Text(l.scheduleSeedImportBtn),
+            ),
+          ],
+        ),
+      );
+      if (importSample == true) {
+        final count = await Repo.importBuiltinSampleCourses();
+        if (mounted) {
+          toast(context, context.l10n.scheduleImportedToast(count));
+          _load();
+        }
+      } else {
+        await Repo.setCourseSeedPrompted();
+      }
+    } finally {
+      _seedPromptOpen = false;
+    }
+  }
+
+  /// 二次确认清空全部课程并取消对应上课提醒闹钟
+  Future<void> _confirmClearAllCourses() async {
+    final l = context.l10n;
+    if (_courses.isEmpty) {
+      toast(context, l.scheduleAlreadyEmptyToast);
+      return;
+    }
+    final count = _courses.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.scheduleClearConfirmTitle, style: AppTypography.sectionTitle(ctx)),
+        content: Text(l.scheduleClearConfirmDesc(count), style: AppTypography.body(ctx)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger(ctx),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.scheduleClearConfirmBtn),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted = await Repo.clearAllCourses();
+    if (!mounted) return;
+    toast(context, l.scheduleClearedToast(deleted));
+    _load();
   }
 
   Future<void> _edit({Course? course, int? weekday, int? section}) async {
@@ -120,7 +233,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
     if (!mounted || action == null) return;
     if (action == 'preset') {
-      final preset = AppDatabase.defaultScheduleCourses.map(Course.fromMap).toList();
+      final preset = AppDatabase.defaultScheduleCourses
+          .map((m) => Course.fromMap({...m, 'source': Course.sourceBuiltin}))
+          .toList();
       await _confirmImportCourses(preset);
     } else if (action == 'gallery') {
       await _importFromImage(ImageSource.gallery);
@@ -454,6 +569,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     onChanged: (v) => setD(() => sections = v ?? sections),
                   ),
                 ),
+                const Divider(height: 22),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger(ctx),
+                    side: BorderSide(color: AppColors.softBorder(ctx, AppColors.danger(ctx))),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx, false);
+                    _confirmClearAllCourses();
+                  },
+                  icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                  label: Text(l.scheduleClearAllTitle),
+                ),
               ],
             ),
           ),
@@ -485,10 +613,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.chevron_left),
-              onPressed: _week > 1 ? () => setState(() => _week--) : null,
+              onPressed: _week > 1
+                  ? () {
+                      setState(() => _week--);
+                      _loadWeekHolidays(week: _week);
+                    }
+                  : null,
             ),
             GestureDetector(
-              onTap: () => setState(() => _week = _currentWeek),
+              onTap: () {
+                setState(() => _week = _currentWeek);
+                _loadWeekHolidays(week: _currentWeek);
+              },
               child: Column(
                 children: [
                   Text(l.scheduleWeekTitle(_week)),
@@ -501,7 +637,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.chevron_right),
-              onPressed: _week < 30 ? () => setState(() => _week++) : null,
+              onPressed: _week < 30
+                  ? () {
+                      setState(() => _week++);
+                      _loadWeekHolidays(week: _week);
+                    }
+                  : null,
             ),
           ],
         ),
@@ -515,7 +656,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             },
           ),
           IconButton(tooltip: l.scheduleImportTitle, icon: const Icon(Icons.file_upload_outlined), onPressed: _openImportMenu),
-          IconButton(tooltip: l.scheduleSettingsTitle, icon: const Icon(Icons.tune), onPressed: _openSettings),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_horiz_rounded),
+            onSelected: (v) {
+              if (v == 'settings') {
+                _openSettings();
+              } else if (v == 'clear') {
+                _confirmClearAllCourses();
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    const Icon(Icons.tune_rounded, size: 18),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(l.scheduleSettingsTitle),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.danger(ctx)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      l.scheduleClearAllTitle,
+                      style: TextStyle(color: AppColors.danger(ctx)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -552,16 +727,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ],
                     ),
                   ),
+                if (_weekHolidays.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xs + 2,
+                    ),
+                    color: AppColors.softBg(context, AppColors.warning(context), lightAlpha: 0.14, darkAlpha: 0.22),
+                    child: Row(
+                      children: [
+                        Icon(Icons.celebration_rounded, size: 16, color: AppColors.warning(context)),
+                        const SizedBox(width: AppSpacing.xs + 2),
+                        Expanded(
+                          child: Text(
+                            l.holidayWeekBanner(
+                              _weekHolidays.entries
+                                  .map((e) => '${e.key.substring(5)} ${e.value.localizedName(isEn: context.isEnLocale)}')
+                                  .join(' · '),
+                            ),
+                            style: AppTypography.badge(context, color: AppColors.textPrimary(context))
+                                .copyWith(fontSize: 11.5),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _header(),
                 const Divider(height: 1),
                 Expanded(child: SingleChildScrollView(child: _grid())),
                 if (_courses.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(l.scheduleEmptyTapHint),
+                        FilledButton.icon(
+                          onPressed: () => _edit(),
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: Text(l.scheduleManualAddBtn),
+                        ),
                         FilledButton.tonalIcon(
                           onPressed: _openImportMenu,
                           icon: const Icon(Icons.auto_awesome, size: 16),
@@ -619,11 +829,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             Builder(builder: (_) {
               final d = monday.add(Duration(days: i));
               final isToday = d == todayD;
+              final holiday = _weekHolidays[fmtDate(d)];
+              final warning = AppColors.warning(context);
               return Expanded(
                 child: Container(
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: isToday ? cs.primaryContainer : null,
+                    color: holiday != null
+                        ? AppColors.softBg(context, warning, lightAlpha: 0.20, darkAlpha: 0.28)
+                        : (isToday ? cs.primaryContainer : null),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Column(
@@ -631,9 +845,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       Text(
                         L10nHelper.weekdayLabel(context, i + 1),
-                        style: TextStyle(fontSize: 12, fontWeight: isToday ? FontWeight.bold : null),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: (isToday || holiday != null) ? FontWeight.bold : null,
+                          color: holiday != null ? warning : null,
+                        ),
                       ),
-                      Text('${d.day}', style: const TextStyle(fontSize: 10)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('${d.day}', style: const TextStyle(fontSize: 10)),
+                          if (holiday != null) ...[
+                            const SizedBox(width: 2),
+                            Text(
+                              l.holidayShortBadge,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: warning,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -645,7 +879,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _grid() {
+    final l = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final warning = AppColors.warning(context);
+    final monday = mondayOf(_semesterStart).add(Duration(days: (_week - 1) * 7));
     return LayoutBuilder(builder: (context, constraints) {
       final colWidth = (constraints.maxWidth - _leftWidth) / 7;
       final height = _sections * _cellHeight;
@@ -682,34 +919,72 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     onTap: () => _edit(weekday: d + 1, section: s + 1),
                     child: Container(
                       decoration: BoxDecoration(
+                        color: _weekHolidays.containsKey(fmtDate(monday.add(Duration(days: d))))
+                            ? AppColors.softBg(context, warning, lightAlpha: 0.08, darkAlpha: 0.12)
+                            : null,
                         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3), width: 0.5),
                       ),
                     ),
                   ),
                 ),
             for (final c in visible)
-              Positioned(
-                left: _leftWidth + (c.weekday - 1) * colWidth + 1.5,
-                top: (c.startSection - 1) * _cellHeight + 1.5,
-                width: colWidth - 3,
-                height: (c.endSection - c.startSection + 1) * _cellHeight - 3,
-                child: Material(
-                  color: Color(c.color),
-                  borderRadius: BorderRadius.circular(6),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: () => _showCourse(c),
-                    child: Padding(
-                      padding: const EdgeInsets.all(3),
+              Builder(builder: (_) {
+                final dayDate = fmtDate(monday.add(Duration(days: c.weekday - 1)));
+                final isHoliday = _weekHolidays.containsKey(dayDate);
+                return Positioned(
+                  left: _leftWidth + (c.weekday - 1) * colWidth + 1.5,
+                  top: (c.startSection - 1) * _cellHeight + 1.5,
+                  width: colWidth - 3,
+                  height: (c.endSection - c.startSection + 1) * _cellHeight - 3,
+                  child: Opacity(
+                    opacity: isHoliday ? 0.25 : 1.0,
+                    child: Material(
+                      color: Color(c.color),
+                      borderRadius: BorderRadius.circular(6),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: () => _showCourse(c),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Text(
+                            '${c.name}${c.location?.isNotEmpty == true ? '\n@${c.location}' : ''}',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.2),
+                            overflow: TextOverflow.fade,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            for (var d = 0; d < 7; d++)
+              if (_weekHolidays.containsKey(fmtDate(monday.add(Duration(days: d)))))
+                Positioned(
+                  left: _leftWidth + d * colWidth + 2,
+                  top: 4,
+                  width: colWidth - 4,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.softBg(context, warning, lightAlpha: 0.88, darkAlpha: 0.85),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: Text(
-                        '${c.name}${c.location?.isNotEmpty == true ? '\n@${c.location}' : ''}',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.2),
-                        overflow: TextOverflow.fade,
+                        '${_weekHolidays[fmtDate(monday.add(Duration(days: d)))]!.localizedName(isEn: context.isEnLocale)}\n${l.holidayColumnLabel}',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary(context),
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                 ),
-              ),
           ],
         ),
       );
