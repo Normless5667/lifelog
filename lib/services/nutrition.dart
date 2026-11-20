@@ -237,7 +237,7 @@ class Nutrition {
     'gym': '健身房全套',
   };
 
-  /// 有氧运动 MET 表（kcal = MET × 体重kg × 小时）
+  /// 有氧运动 MET 表（kcal = MET × 体重kg × 小时；兼容新统一英文 key 与历史中文 key）
   static final cardioMets = <String, double>{
     '走路': 3.5,
     '快走': 4.3,
@@ -247,7 +247,52 @@ class Nutrition {
     '游泳': 8.0,
     '跳绳': 12.3,
     '其他': 5.0,
+    CardioType.walk: 3.5,
+    CardioType.run: 8.0,
+    CardioType.cycle: 7.5,
+    CardioType.swim: 8.0,
+    CardioType.jumpRope: 12.3,
+    CardioType.other: 5.0,
   };
+
+  /// 跑步热量估算（runs 与 cardio_records 唯一权威口径）：
+  /// - 有 GPS 距离时按配速分档：kcal = distanceKm × weightKg × factor
+  ///   配速 < 5.0 分/公里 -> 1.15（快跑）
+  ///   配速 < 6.5 分/公里 -> 1.08（中速）
+  ///   配速 > 8.0 分/公里 -> 0.95（慢跑/走跑交替）
+  ///   其余 -> 1.036
+  /// - 无 GPS 距离（室内跑或信号差）时退回 MET 7.0 兜底，不为 0
+  static double estimateRunKcal({
+    required double distanceKm,
+    required double weightKg,
+    required int durationSecs,
+  }) {
+    if (!weightKg.isFinite || weightKg <= 0) return 0;
+    final w = weightKg.clamp(20.0, 300.0).toDouble();
+    if (distanceKm.isFinite && distanceKm > 0.02) {
+      double factor = 1.036;
+      if (durationSecs > 0) {
+        final paceMinPerKm = (durationSecs / 60.0) / distanceKm;
+        if (paceMinPerKm < 5.0) {
+          factor = 1.15;
+        } else if (paceMinPerKm < 6.5) {
+          factor = 1.08;
+        } else if (paceMinPerKm > 8.0) {
+          factor = 0.95;
+        }
+      }
+      return (distanceKm * w * factor)
+          .roundToDouble()
+          .clamp(0.0, maxSingleActivityBurnKcal)
+          .toDouble();
+    }
+    if (durationSecs <= 0) return 0;
+    return calcMetCalories(
+      met: 7.0,
+      weightKg: w,
+      minutes: durationSecs / 60.0,
+    ).roundToDouble();
+  }
 
   static const strengthMet = 5.0;
 

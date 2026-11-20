@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../models/models.dart';
 import '../services/bus_service.dart';
 import '../services/weather_service.dart';
 import 'date_utils.dart';
@@ -215,6 +216,7 @@ class L10nHelper {
     final l = context.l10n;
     switch (rawType) {
       case '走路':
+      case CardioType.walk:
         return l.cardioTypeWalk;
       case '快走':
         return l.cardioTypeBriskWalk;
@@ -222,11 +224,17 @@ class L10nHelper {
         return l.cardioTypeJog;
       case '中速跑':
         return l.cardioTypeRun;
+      case CardioType.run:
+      case '跑步':
+        return l.cardioTypeRunning;
       case '骑行':
+      case CardioType.cycle:
         return l.cardioTypeCycle;
       case '游泳':
+      case CardioType.swim:
         return l.cardioTypeSwim;
       case '跳绳':
+      case CardioType.jumpRope:
         return l.cardioTypeJumpRope;
       default:
         return l.cardioTypeOther;

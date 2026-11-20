@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import '../../db/repo.dart';
 import '../../models/models.dart';
 import '../../services/nutrition.dart';
+import '../../services/running_tracker.dart';
 import '../../services/usage_telemetry_service.dart';
 import '../../services/widget_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import '../../widgets/in_progress_workout_card.dart';
 import '../ai/ai_chat_screen.dart';
+import '../running/run_detail_screen.dart';
 import '../running/running_home_screen.dart';
 import 'exercise_library_screen.dart';
 import 'workout_session_screen.dart';
@@ -742,10 +744,44 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         final effDur = c.effectiveDurationMinutes;
         final effBurn = Nutrition.burnForCardio(c, weightKg: _userWeightKg);
         final warning = AppColors.warning(context);
+        final primary = AppColors.primary(context);
+        final isRunningLinked = c.isFromRun || c.type == CardioType.run;
+        final accent = isRunningLinked ? primary : cardioColor;
+
+        int? runPaceSecs;
+        if (isRunningLinked && c.distanceKm != null && c.distanceKm! >= 0.02 && effDur > 0) {
+          runPaceSecs = ((effDur * 60.0) / c.distanceKm!).round();
+        }
+        final durText = isRunningLinked
+            ? formatRunDuration((effDur * 60).round())
+            : l.workoutCardioItemTitle(typeLabel, fmtNum(effDur));
+        final titleText = isRunningLinked
+            ? '$typeLabel${c.distanceKm != null && c.distanceKm! > 0 ? ' · ${c.distanceKm!.toStringAsFixed(2)} km' : ''} · $durText'
+            : '${l.workoutCardioItemTitle(typeLabel, fmtNum(effDur))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}';
+        final subtitleText = isRunningLinked
+            ? '${L10nHelper.friendlyDateL10n(context, c.date)}${runPaceSecs != null ? ' · ${l.runMetricPace} ${formatRunPace(runPaceSecs)}' : ''}'
+            : '${L10nHelper.friendlyDateL10n(context, c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}';
+
+        Future<void> onCardTap() async {
+          if (c.sourceRunId != null) {
+            final run = await Repo.getRunById(c.sourceRunId!);
+            if (!mounted) return;
+            if (run != null) {
+              final deleted = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => RunDetailScreen(run: run)),
+              );
+              if (deleted == true && mounted) _load();
+              return;
+            }
+          }
+          _addOrEditCardio(c);
+        }
+
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: SurfaceCard(
-            onTap: () => _addOrEditCardio(c),
+            onTap: onCardTap,
             padding: AppSpacing.cardCompactPadding,
             child: Row(
               children: [
@@ -753,10 +789,10 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.softBg(context, cardioColor),
+                    color: AppColors.softBg(context, accent),
                     borderRadius: AppRadius.bMd,
                   ),
-                  child: Icon(Icons.directions_run_rounded, color: cardioColor, size: 22),
+                  child: Icon(Icons.directions_run_rounded, color: accent, size: 22),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -767,13 +803,27 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                         children: [
                           Flexible(
                             child: Text(
-                              '${l.workoutCardioItemTitle(typeLabel, fmtNum(effDur))}${c.distanceKm != null ? ' · ${fmtNum(c.distanceKm!, digits: 2)} km' : ''}',
+                              titleText,
                               style: AppTypography.cardTitle(context),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (c.isManuallyAdjusted) ...[
+                          if (c.isFromRun) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.softBg(context, primary),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Text(
+                                l.workoutCardioRouteTag,
+                                style: AppTypography.badge(context, color: primary)
+                                    .copyWith(fontSize: 10),
+                              ),
+                            ),
+                          ] else if (c.isManuallyAdjusted) ...[
                             const SizedBox(width: AppSpacing.xs),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -792,7 +842,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${L10nHelper.friendlyDateL10n(context, c.date)} · MET ${Nutrition.cardioMets[c.type] ?? 5.0}',
+                        subtitleText,
                         style: AppTypography.bodySecondary(context),
                       ),
                     ],
@@ -802,24 +852,25 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.softBg(context, cardioColor),
+                    color: AppColors.softBg(context, accent),
                     borderRadius: AppRadius.bSm,
                   ),
                   child: Text(
                     '-${fmtNum(effBurn)} kcal',
-                    style: AppTypography.badge(context, color: cardioColor),
+                    style: AppTypography.badge(context, color: accent),
                   ),
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: l.workoutAdjustTooltip,
-                  icon: Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: AppColors.textSecondary(context),
+                if (!c.isFromRun)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: l.workoutAdjustTooltip,
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: AppColors.textSecondary(context),
+                    ),
+                    onPressed: () => _addOrEditCardio(c),
                   ),
-                  onPressed: () => _addOrEditCardio(c),
-                ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   icon: Icon(

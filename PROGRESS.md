@@ -67,7 +67,11 @@
 - [x] **跑步中实时指导 UI & 分段持久化**：
   - 跑步中新增：切段滑入横幅（2.4s 自动收起）+ `HapticFeedback.mediumImpact()` 震动 + 醒目当前段卡片（中文名 / 进度条 / 还剩几分几秒或还剩多少米 / `第 X 段 / 共 Y 段` 总进度 / 语音文案 / 手动跳段）+ 底部「下一段预告」。
   - 跑步首页支持全部 11 门课（含按距离/按时间标签），点击课程先弹出完整分段一览再开跑；跑步结束同步写入 `runs` 与 `run_segments` 并在详情页完整展示已完成/未完成标签与每段明细。
-- [x] 验证：48/48 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.1_release.apk`。
+- [x] **跑步→有氧双写闭环 + 配速分档热量 + 删除联动（DB v8）**：
+  - `Nutrition.estimateRunKcal` 统一热量口径：按配速分档（`<5'00"` ×1.15 / `<6'30"` ×1.08 / `>8'00"` ×0.95 / 其余 ×1.036），室内/无 GPS 距离时退回 MET 7.0 兜底绝不为 0。
+  - SQLite v8 为 `cardio_records` 新增 `source_run_id INTEGER` 与索引（并自动补齐历史老数据）；`Repo.saveRun()` 同事务双写 `type='running'` 有氧记录并直接复用 `runs` 数值，保证 `runs` / 有氧页 / 饮食页热量 100% 一致且绝不重复计算；删除跑步或有氧记录双向同步删除。
+  - 新增 `CardioType` 统一常量；有氧记录页支持 `running`（「跑步」+ `directions_run_rounded` + 距离/时长/配速/热量），点击直达 `RunDetailScreen` 查看轨迹。
+- [x] 验证：50/50 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.1_release.apk`。
 
 ### 第三批：Gemini 深夜黑皮肤 + 生图插画/图标 + 轨迹回放与配速曲线（待 P0 验收后开始）⏳
 - [ ] 使用 `image-generator` 生成 4 张课程插画 + 空状态大肥鱼插画 + 模块图标（1024×1024 透明 PNG，存 `assets/icons/generated/`）

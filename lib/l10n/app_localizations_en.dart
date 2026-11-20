@@ -1334,6 +1334,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cardioTypeRun => 'Running';
 
   @override
+  String get cardioTypeRunning => 'Running';
+
+  @override
+  String get workoutCardioRouteTag => 'Route';
+
+  @override
   String get cardioTypeCycle => 'Cycling';
 
   @override

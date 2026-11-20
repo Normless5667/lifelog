@@ -1297,6 +1297,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cardioTypeRun => '中速跑';
 
   @override
+  String get cardioTypeRunning => '跑步';
+
+  @override
+  String get workoutCardioRouteTag => '查看轨迹';
+
+  @override
   String get cardioTypeCycle => '骑行';
 
   @override

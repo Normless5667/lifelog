@@ -2318,6 +2318,18 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get cardioTypeRun;
 
+  /// No description provided for @cardioTypeRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get cardioTypeRunning;
+
+  /// No description provided for @workoutCardioRouteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get workoutCardioRouteTag;
+
   /// No description provided for @cardioTypeCycle.
   ///
   /// In en, this message translates to:

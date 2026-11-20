@@ -33,16 +33,18 @@ class DailyTargets {
     final rec = await Repo.latestBodyRecordWithWeight();
     final w = Nutrition.sanitizeWeightKg(rec?.weight) ?? 60.0;
 
-    // 1) 当日有氧消耗（遵循 manualBurnKcal > manualDurationMin > calories/MET）
+    // 1) 当日有氧消耗（含跑步模块双写关联记录 source_run_id，遵循 manualBurnKcal > manualDurationMin > calories/MET）
     final cardios = await Repo.getCardioRecords(date: targetDate);
     var burn = cardios.fold<double>(
       0,
       (s, c) => s + Nutrition.burnForCardio(c, weightKg: w),
     );
 
-    // 1.5) 当日跑步模块消耗（runs 表自动同步至饮食页）
+    // 兼容兜底：若有尚未关联 cardio_records 的历史孤立 runs 记录，补齐计算（已关联的绝不重复计入）
+    final linkedRunIds = cardios.map((c) => c.sourceRunId).whereType<int>().toSet();
     final runs = await Repo.getRuns(date: targetDate);
     for (final r in runs) {
+      if (r.id != null && linkedRunIds.contains(r.id)) continue;
       if (r.caloriesKcal > 0) {
         burn += r.caloriesKcal.toDouble();
       }

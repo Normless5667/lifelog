@@ -8,6 +8,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/run_models.dart';
 import '../utils/date_utils.dart';
+import 'nutrition.dart';
 import 'reminder_service.dart';
 import 'run_course_engine.dart';
 import 'run_voice_coach.dart';
@@ -49,22 +50,17 @@ String formatRunPace(int? secsPerKm) {
   return "$m'${s.toString().padLeft(2, '0')}\"";
 }
 
-/// 根据距离（米）与体重（kg）估算跑步热量消耗（kcal）
+/// 根据真实距离、配速与体重估算跑步热量（直接复用 Nutrition.estimateRunKcal 唯一口径；无 GPS 距离时 MET 7.0 兜底）
 int estimateRunCalories({
   required double distanceMeters,
   required double weightKg,
   required int activeDurationSecs,
 }) {
-  final w = weightKg.clamp(30.0, 200.0);
-  if (distanceMeters >= 50) {
-    // 经典跑步能量公式：约 1.036 kcal / kg / km
-    return (1.036 * w * (distanceMeters / 1000.0)).round().clamp(0, 5000);
-  }
-  if (activeDurationSecs >= 30) {
-    // 距离极短时的低速兜底估算
-    return (w * 6.0 * (activeDurationSecs / 3600.0)).round().clamp(0, 500);
-  }
-  return 0;
+  return Nutrition.estimateRunKcal(
+    distanceKm: distanceMeters / 1000.0,
+    weightKg: weightKg,
+    durationSecs: activeDurationSecs,
+  ).round();
 }
 
 /// 纯 GPS 轨迹过滤、平滑与距离累计引擎（零平台依赖，便于单元测试验证误差 < 5%）

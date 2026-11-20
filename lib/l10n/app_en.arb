@@ -813,6 +813,8 @@
   "cardioTypeBriskWalk": "Brisk Walk",
   "cardioTypeJog": "Jogging",
   "cardioTypeRun": "Running",
+  "cardioTypeRunning": "Running",
+  "workoutCardioRouteTag": "Route",
   "cardioTypeCycle": "Cycling",
   "cardioTypeSwim": "Swimming",
   "cardioTypeJumpRope": "Jump Rope",

@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lifelog/db/repo.dart';
 import 'package:lifelog/l10n/app_localizations.dart';
+import 'package:lifelog/models/models.dart';
 import 'package:lifelog/models/run_models.dart';
 import 'package:lifelog/screens/running/run_detail_screen.dart';
 import 'package:lifelog/screens/running/running_active_screen.dart';
+import 'package:lifelog/services/nutrition.dart';
 import 'package:lifelog/services/run_course_engine.dart';
 import 'package:lifelog/services/running_tracker.dart';
 import 'package:lifelog/widgets/common.dart';
@@ -255,6 +258,67 @@ void main() {
       expect(find.text('已完成课程'), findsOneWidget);
 
       ctrl.dispose();
+    });
+  });
+
+  group('v3.1.1 P0 Run -> Cardio dual-write, pace-tiered calories & CardioType', () {
+    test('Nutrition.estimateRunKcal applies pace-tiered factors and MET 7.0 indoor fallback', () {
+      // 快跑：3km / 13min -> 配速 4.33 < 5.0 -> factor 1.15 -> 3 * 65 * 1.15 = 224.25 -> 224
+      expect(
+        Nutrition.estimateRunKcal(distanceKm: 3.0, weightKg: 65, durationSecs: 13 * 60),
+        224.0,
+      );
+      // 中速：3km / 18min -> 配速 6.0 < 6.5 -> factor 1.08 -> 3 * 65 * 1.08 = 210.6 -> 211
+      expect(
+        Nutrition.estimateRunKcal(distanceKm: 3.0, weightKg: 65, durationSecs: 18 * 60),
+        211.0,
+      );
+      // 标准：3km / 21min -> 配速 7.0 -> factor 1.036 -> 3 * 65 * 1.036 = 202.02 -> 202
+      expect(
+        Nutrition.estimateRunKcal(distanceKm: 3.0, weightKg: 65, durationSecs: 21 * 60),
+        202.0,
+      );
+      // 慢跑/走跑交替：3km / 27min -> 配速 9.0 > 8.0 -> factor 0.95 -> 3 * 65 * 0.95 = 185.25 -> 185
+      expect(
+        Nutrition.estimateRunKcal(distanceKm: 3.0, weightKg: 65, durationSecs: 27 * 60),
+        185.0,
+      );
+      // 室内无 GPS 距离兜底：MET 7.0 × 65kg × 0.5h = 227.5 -> 228（绝不为 0）
+      expect(
+        Nutrition.estimateRunKcal(distanceKm: 0.0, weightKg: 65, durationSecs: 30 * 60),
+        228.0,
+      );
+    });
+
+    test('buildLinkedCardioForRun preserves exact calories/duration/distance & source_run_id', () {
+      final run = RunRecord(
+        id: 19,
+        date: '2026-11-20',
+        startTime: 1760000000000,
+        endTime: 1760001080000,
+        durationSecs: 1080, // 18 min
+        totalSecs: 1120,
+        distanceM: 3000.0,
+        avgPaceSecsPerKm: 360,
+        caloriesKcal: 211,
+        courseId: 'distance_3k',
+      );
+      final cardio = Repo.buildLinkedCardioForRun(run, runId: 19);
+      expect(cardio.type, CardioType.run);
+      expect(cardio.type, 'running');
+      expect(CardioType.labelZh(cardio.type), '跑步');
+      expect(cardio.sourceRunId, 19);
+      expect(cardio.isFromRun, isTrue);
+      expect(cardio.durationMinutes, closeTo(18.0, 0.001));
+      expect(cardio.distanceKm, closeTo(3.0, 0.001));
+      expect(cardio.calories, 211.0);
+      // 饮食页走 Nutrition.burnForCardio() 取出的数字必须与 runs.caloriesKcal 完全一致
+      expect(Nutrition.burnForCardio(cardio, weightKg: 65), 211.0);
+
+      // toMap/fromMap 完整保留 source_run_id
+      final restored = CardioRecord.fromMap(cardio.toMap());
+      expect(restored.sourceRunId, 19);
+      expect(restored.calories, 211.0);
     });
   });
 }

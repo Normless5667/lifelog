@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'lifelog.db';
-  static const _dbVersion = 7;
+  static const _dbVersion = 8;
 
   Database? _db;
 
@@ -114,9 +114,11 @@ class AppDatabase {
         calories REAL NOT NULL DEFAULT 0,
         manual_duration_min REAL,
         manual_burn_kcal REAL,
+        source_run_id INTEGER,
         created_at INTEGER NOT NULL
       )''');
     b.execute('CREATE INDEX idx_cardio_date ON cardio_records(date)');
+    b.execute('CREATE INDEX IF NOT EXISTS idx_cardio_source_run ON cardio_records(source_run_id)');
     b.execute('''
       CREATE TABLE IF NOT EXISTS usage_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,6 +272,40 @@ class AppDatabase {
           FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
         )''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_run_segments_run ON run_segments(run_id)');
+    }
+    if (oldVersion < 8) {
+      await _addColumnIfMissing(db, 'cardio_records', 'source_run_id', 'INTEGER');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_cardio_source_run ON cardio_records(source_run_id)',
+      );
+      // 补齐 v3.1.0 已有跑步记录到 cardio_records，避免老数据在有氧页缺失
+      final existingRuns = await db.query('runs');
+      for (final r in existingRuns) {
+        final runId = (r['id'] as num?)?.toInt();
+        if (runId == null) continue;
+        final linked = await db.query(
+          'cardio_records',
+          columns: ['id'],
+          where: 'source_run_id = ?',
+          whereArgs: [runId],
+          limit: 1,
+        );
+        if (linked.isNotEmpty) continue;
+        final durSecs = (r['duration_secs'] as num?)?.toInt() ?? 0;
+        final distM = (r['distance_m'] as num?)?.toDouble() ?? 0;
+        final kcal = (r['calories_kcal'] as num?)?.toDouble() ?? 0;
+        await db.insert('cardio_records', {
+          'date': (r['date'] ?? '').toString(),
+          'type': 'running',
+          'duration_minutes': durSecs / 60.0,
+          'distance_km': distM / 1000.0,
+          'calories': kcal,
+          'source_run_id': runId,
+          'created_at': (r['end_time'] as num?)?.toInt() ??
+              (r['start_time'] as num?)?.toInt() ??
+              DateTime.now().millisecondsSinceEpoch,
+        });
+      }
     }
   }
 

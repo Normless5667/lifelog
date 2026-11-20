@@ -397,16 +397,39 @@ class Profile {
       );
 }
 
-/// 独立有氧运动记录（MET 消耗计算：kcal = MET × weightKg × hours）
+/// 统一有氧运动类型常量（跑步双写与有氧记录页共用）
+class CardioType {
+  static const walk = 'walk';
+  static const run = 'running';
+  static const cycle = 'cycling';
+  static const swim = 'swimming';
+  static const jumpRope = 'jump_rope';
+  static const other = 'other';
+
+  static String labelZh(String type) => switch (type) {
+        walk || '走路' => '走路',
+        '快走' => '快走',
+        run || '跑步' => '跑步',
+        '慢跑' => '慢跑',
+        '中速跑' => '中速跑',
+        cycle || '骑行' => '骑行',
+        swim || '游泳' => '游泳',
+        jumpRope || '跳绳' => '跳绳',
+        _ => '有氧',
+      };
+}
+
+/// 独立有氧运动记录（支持手动 MET 有氧与跑步模块双写关联 source_run_id）
 class CardioRecord {
   int? id;
   String date;
-  String type; // 走路 / 快走 / 慢跑 / 中速跑 / 骑行 / 游泳 / 跳绳 / 其他
+  String type; // running / walk / cycling / swimming / jump_rope 或旧版中文类型
   double durationMinutes;
   double? distanceKm;
   double calories;
   double? manualDurationMin;
   double? manualBurnKcal;
+  int? sourceRunId;
   int createdAt;
 
   CardioRecord({
@@ -418,8 +441,11 @@ class CardioRecord {
     required this.calories,
     this.manualDurationMin,
     this.manualBurnKcal,
+    this.sourceRunId,
     int? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
+
+  bool get isFromRun => sourceRunId != null;
 
   bool get isManuallyAdjusted =>
       (manualDurationMin != null && manualDurationMin! > 0) ||
@@ -439,6 +465,7 @@ class CardioRecord {
         'calories': calories,
         'manual_duration_min': manualDurationMin,
         'manual_burn_kcal': manualBurnKcal,
+        'source_run_id': sourceRunId,
         'created_at': createdAt,
       };
 
@@ -451,6 +478,7 @@ class CardioRecord {
         calories: (m['calories'] as num).toDouble(),
         manualDurationMin: (m['manual_duration_min'] as num?)?.toDouble(),
         manualBurnKcal: (m['manual_burn_kcal'] as num?)?.toDouble(),
+        sourceRunId: (m['source_run_id'] as num?)?.toInt(),
         createdAt: m['created_at'] as int,
       );
 }

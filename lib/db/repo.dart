@@ -401,7 +401,23 @@ class Repo {
 
   static Future<void> deleteCardioRecord(int id) async {
     BatteryProbeService.instance.recordDbWrite();
-    await (await _db).delete('cardio_records', where: 'id = ?', whereArgs: [id]);
+    final db = await _db;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'cardio_records',
+        columns: ['source_run_id'],
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      final sourceRunId =
+          rows.isNotEmpty ? (rows.first['source_run_id'] as num?)?.toInt() : null;
+      await txn.delete('cardio_records', where: 'id = ?', whereArgs: [id]);
+      if (sourceRunId != null) {
+        await txn.delete('run_segments', where: 'run_id = ?', whereArgs: [sourceRunId]);
+        await txn.delete('runs', where: 'id = ?', whereArgs: [sourceRunId]);
+      }
+    });
     notifyDataChanged();
     WidgetService.sync(force: true);
   }
@@ -474,7 +490,20 @@ class Repo {
     return ex;
   }
 
-  // ---------------- 跑步（runs + run_segments）----------------
+  // ---------------- 跑步（runs + run_segments + 双写 cardio_records）----------------
+  /// 纯辅助函数：根据 RunRecord 构造与 runs 数值完全一致的关联 CardioRecord（不重算热量）
+  static CardioRecord buildLinkedCardioForRun(RunRecord run, {required int runId}) {
+    return CardioRecord(
+      date: dateOnlyStr(run.date),
+      type: CardioType.run,
+      durationMinutes: run.durationSecs / 60.0,
+      distanceKm: run.distanceM / 1000.0,
+      calories: run.caloriesKcal.toDouble(),
+      sourceRunId: runId,
+      createdAt: run.endTime ?? DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
   static Future<int> saveRun(
     RunRecord run, {
     List<RunSegmentRecord> segments = const [],
@@ -495,6 +524,10 @@ class Repo {
         m['run_id'] = id;
         await txn.insert('run_segments', m);
       }
+      // 双写关联有氧记录：type='running'，直接复用 runs 数值（绝不各算各的），并携带 source_run_id
+      await txn.delete('cardio_records', where: 'source_run_id = ?', whereArgs: [id]);
+      final linkedCardio = buildLinkedCardioForRun(run, runId: id);
+      await txn.insert('cardio_records', linkedCardio.toMap()..remove('id'));
       return id;
     });
     run.id = runId;
@@ -535,6 +568,7 @@ class Repo {
     final db = await _db;
     await db.transaction((txn) async {
       await txn.delete('run_segments', where: 'run_id = ?', whereArgs: [id]);
+      await txn.delete('cardio_records', where: 'source_run_id = ?', whereArgs: [id]);
       await txn.delete('runs', where: 'id = ?', whereArgs: [id]);
     });
     notifyDataChanged();

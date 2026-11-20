@@ -383,6 +383,8 @@
   "cardioTypeBriskWalk": "快走",
   "cardioTypeJog": "慢跑",
   "cardioTypeRun": "中速跑",
+  "cardioTypeRunning": "跑步",
+  "workoutCardioRouteTag": "查看轨迹",
   "cardioTypeCycle": "骑行",
   "cardioTypeSwim": "游泳",
   "cardioTypeJumpRope": "跳绳",
