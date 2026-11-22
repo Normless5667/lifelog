@@ -7,12 +7,16 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../db/repo.dart';
 import '../../debug/debug_server.dart';
+import '../../models/models.dart';
 import '../../services/ai_service.dart';
 import '../../services/menu_ocr_service.dart';
+import '../../services/nutrition.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common.dart';
 import '../settings/settings_screen.dart';
+import 'food_confirm_sheet.dart';
 
 /// v3.3.1 第二批：AR 菜单相机（ML Kit 端侧英/越 OCR + 仅发文字 AI 翻译 + 可调汇率 + 红绿灯菜品卡片列表）。
 /// - 端侧实时 OCR 免费不耗 Token；仅在用户点击「翻译菜单」时把 OCR 文字发给 AI（默认 15s 超时）
@@ -58,9 +62,14 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   bool _processingFrame = false;
   bool _busyStillOcr = false;
   bool _translating = false;
+  bool _autoTranslateOnStable = true;
   int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
   int _ocrRunCount = 0;
   int _liveCaptureAttempt = 0;
+
+  String? _lastStableRefText;
+  DateTime? _stableSince;
+  String? _lastAutoTranslatedText;
 
   String? _cameraError;
   String? _streamError;
@@ -275,6 +284,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
           _resultTab = 1;
         }
       });
+      _evaluateAutoTranslateOnStability(res);
     } catch (e, st) {
       DebugServer.instance.logError(
         'OCR',
@@ -479,12 +489,229 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
 
   void _togglePause() {
     final next = !_paused;
-    setState(() => _paused = next);
+    setState(() {
+      _paused = next;
+      if (!next) {
+        _lastStableRefText = null;
+        _stableSince = null;
+      }
+    });
     if (next) {
       _stopLivePolling();
     } else if (_cameraCtrl != null && _cameraCtrl!.value.isInitialized) {
       _startLivePolling();
     }
+  }
+
+  /// 2.2 画面稳定 1.5 秒自动触发 AI 翻译（端侧先对比连续帧相似度 >= 0.70，零额外 Token 浪费）
+  void _evaluateAutoTranslateOnStability(MenuOcrFrameResult res) {
+    if (!_autoTranslateOnStable || _paused || _translating || _busyStillOcr || !mounted) {
+      return;
+    }
+    if (res.blocks.length < 2 || res.fullText.trim().length < 8) {
+      _lastStableRefText = null;
+      _stableSince = null;
+      return;
+    }
+    final now = DateTime.now();
+    final ref = _lastStableRefText;
+    if (ref == null || MenuOcrService.computeOcrTextSimilarity(ref, res.fullText) < 0.70) {
+      _lastStableRefText = res.fullText;
+      _stableSince = now;
+      return;
+    }
+    final since = _stableSince ?? now;
+    if (now.difference(since) < const Duration(milliseconds: 1500)) {
+      return;
+    }
+    if (_lastAutoTranslatedText != null &&
+        MenuOcrService.computeOcrTextSimilarity(_lastAutoTranslatedText!, res.fullText) >= 0.75) {
+      return;
+    }
+    _lastAutoTranslatedText = res.fullText;
+    DebugServer.instance.log(
+      'OCR frame stable >= 1.5s (${res.blocks.length} blocks), auto-triggering menu translation',
+      tag: 'OCR',
+    );
+    _translateCurrentMenu();
+  }
+
+  int _guessMealType() {
+    final h = DateTime.now().hour;
+    if (h < 10) return 0;
+    if (h < 15) return 1;
+    if (h < 21) return 2;
+    return 3;
+  }
+
+  /// 一键将识别出的菜单菜品记入今日饮食
+  Future<void> _logDishToDiet(MenuDishItem item) async {
+    final meal = Meal(
+      date: today(),
+      mealType: _guessMealType(),
+      name: item.cn.trim().isNotEmpty ? item.cn.trim() : item.vn.trim(),
+      amount: item.vn.trim(),
+      calories: Nutrition.clampMealCalories((item.kcal ?? 0).toDouble()),
+      protein: Nutrition.clampMealMacro(item.proteinG ?? 0),
+      carbs: Nutrition.clampMealMacro(item.carbsG ?? 0),
+      fat: Nutrition.clampMealMacro(item.fatG ?? 0),
+    );
+    await Repo.saveMeal(meal);
+    DebugServer.instance.log(
+      'Logged menu dish to today diet: ${meal.name} (${meal.calories.round()} kcal)',
+      tag: 'Diet',
+    );
+    if (!mounted) return;
+    toast(
+      context,
+      context.l10n.menuLogDishToast(meal.name, meal.calories.round().toString()),
+    );
+  }
+
+  /// 2.4 生鲜识别模式：无文本时（拍水果摊/实物菜品），将图像缩放至长边 512px、JPEG 质量 60% 发给视觉模型估算热量
+  Future<void> _scanFreshProduce() async {
+    if (_busyStillOcr || _translating) return;
+    _stopLivePolling();
+    setState(() {
+      _busyStillOcr = true;
+      _paused = true;
+    });
+
+    String? rawPath;
+    String? compressedPath;
+    try {
+      final ctrl = _cameraCtrl;
+      if (ctrl != null && ctrl.value.isInitialized) {
+        var waited = 0;
+        while ((_processingFrame || ctrl.value.isTakingPicture) && waited < 25) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          waited++;
+          if (!mounted) return;
+        }
+        final photo = await ctrl.takePicture();
+        rawPath = photo.path;
+      } else {
+        final picked = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 512,
+          maxHeight: 512,
+          imageQuality: 60,
+        );
+        if (picked == null || !mounted) {
+          if (mounted) setState(() => _busyStillOcr = false);
+          return;
+        }
+        rawPath = picked.path;
+      }
+
+      // 严格按 REQUIREMENTS_v3.3 2.4 规范：长边 512px、JPEG 质量 60%
+      final prep = await MenuOcrService.compressImageForOcr(
+        rawPath,
+        maxEdge: 512,
+        quality: 60,
+      );
+      compressedPath = prep.path;
+      DebugServer.instance.log(
+        'Fresh produce scan: ${prep.summary()} (target 512px / Q60)',
+        tag: 'OCR',
+      );
+
+      final res = await AiService.analyzeFoodImage(File(prep.path));
+      if (!mounted) return;
+      setState(() => _busyStillOcr = false);
+
+      await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => FoodConfirmSheet(
+          date: today(),
+          initialMealType: _guessMealType(),
+          estimates: res.foods,
+          aiNote: res.note,
+        ),
+      );
+    } catch (e, st) {
+      DebugServer.instance.logError('OCR', e, st, 'Fresh produce scan failed');
+      if (!mounted) return;
+      setState(() => _busyStillOcr = false);
+      showAiError(
+        context,
+        e,
+        onOpenSettings: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          );
+        },
+      );
+    } finally {
+      if (rawPath != null && ctrlHasTempCapture) {
+        try {
+          final f = File(rawPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+      if (compressedPath != null && compressedPath != rawPath) {
+        try {
+          final f = File(compressedPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  bool get ctrlHasTempCapture =>
+      _cameraCtrl != null && _cameraCtrl!.value.isInitialized;
+
+  /// 2.5 当识别菜品超过 5 项时，点击浮层折叠胶囊弹出 ModalBottomSheet 查看全部菜品
+  void _openAllDishesBottomSheet(BuildContext context) {
+    final trans = _translation;
+    if (trans == null || trans.items.isEmpty) return;
+    final l = context.l10n;
+    final effectiveFx = _activeFxRate ?? trans.fxRate;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        key: const ValueKey('menu_ar_all_dishes_sheet'),
+        expand: false,
+        initialChildSize: 0.72,
+        maxChildSize: 0.92,
+        minChildSize: 0.45,
+        builder: (ctx, scrollCtrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.menuArSheetTitle(trans.items.length),
+                style: AppTypography.sectionTitle(ctx),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollCtrl,
+                  itemCount: trans.items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                  itemBuilder: (_, idx) =>
+                      _buildDishCard(ctx, trans.items[idx], effectiveFx),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _copyText() async {
@@ -638,6 +865,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                         ),
                       ),
                     ),
+                    // 2.5 AR 实时浮层（Stack + Positioned 坐标映射，红绿灯配色，超过 5 项收进 ModalBottomSheet）
+                    if (_translation != null &&
+                        !_translation!.parseFailed &&
+                        _translation!.items.isNotEmpty)
+                      Positioned.fill(
+                        child: LayoutBuilder(
+                          builder: (ctx, constraints) => _buildArOverlayLayer(
+                            ctx,
+                            Size(constraints.maxWidth, constraints.maxHeight),
+                          ),
+                        ),
+                      ),
                     if (_busyStillOcr)
                       Container(
                         color: Colors.black.withValues(alpha: 0.38),
@@ -717,6 +956,20 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                     onPressed: _busyStillOcr ? null : _pickGalleryPhoto,
                     icon: const Icon(Icons.photo_library_rounded, size: 18),
                     label: Text(l.menuOcrGalleryBtn),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    key: const ValueKey('menu_fresh_produce_btn'),
+                    onPressed: (_busyStillOcr || _translating) ? null : _scanFreshProduce,
+                    icon: const Icon(Icons.eco_rounded, size: 18),
+                    label: Text(l.menuFreshModeBtn),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilterChip(
+                    key: const ValueKey('menu_auto_translate_chip'),
+                    label: Text(l.menuAutoTranslateChip),
+                    selected: _autoTranslateOnStable,
+                    onSelected: (v) => setState(() => _autoTranslateOnStable = v),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   IconButton.filledTonal(
@@ -824,6 +1077,132 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         ],
       ),
     );
+  }
+
+  /// 2.5 在取景框上方渲染半透明红绿灯 AR 浮层标签卡；超过 5 项时顶部渲染前 5 项并在底部提供 ModalBottomSheet 展开入口
+  Widget _buildArOverlayLayer(BuildContext context, Size viewSize) {
+    final trans = _translation;
+    if (trans == null || trans.items.isEmpty) return const SizedBox.shrink();
+    final l = context.l10n;
+    final effectiveFx = _activeFxRate ?? trans.fxRate;
+    final anchors = MenuOcrService.computeArOverlayAnchors(
+      dishes: trans.items,
+      blocks: _latest?.blocks ?? const [],
+      imageSize: _latest?.imageSize ?? Size.zero,
+      viewSize: viewSize,
+      maxOverlayCount: 5,
+    );
+    final extraCount = trans.items.length - anchors.length;
+
+    return Stack(
+      children: [
+        for (final a in anchors)
+          Positioned(
+            left: a.left,
+            top: a.top,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: a.maxWidth),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  key: ValueKey('menu_ar_tag_${a.dish.id}'),
+                  borderRadius: AppRadius.bMd,
+                  onTap: () => _logDishToDiet(a.dish),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context).withValues(alpha: 0.90),
+                      borderRadius: AppRadius.bMd,
+                      border: Border.all(
+                        color: _lightColor(context, a.dish.light),
+                        width: 1.4,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _lightColor(context, a.dish.light),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            _formatArTagLabel(context, a.dish, effectiveFx),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.badge(
+                              context,
+                              color: AppColors.textPrimary(context),
+                            ).copyWith(fontSize: 11.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (extraCount > 0)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 10,
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  key: const ValueKey('menu_ar_more_sheet_btn'),
+                  borderRadius: AppRadius.bPill,
+                  onTap: () => _openAllDishesBottomSheet(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary(context).withValues(alpha: 0.92),
+                      borderRadius: AppRadius.bPill,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.layers_rounded, size: 15, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            l.menuArMoreCollapsePill(trans.items.length, extraCount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.badge(context, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatArTagLabel(
+    BuildContext context,
+    MenuDishItem dish,
+    double? effectiveFx,
+  ) {
+    final l = context.l10n;
+    final rmb = dish.effectiveRmb(effectiveFx);
+    final parts = <String>[
+      dish.cn,
+      if (rmb != null) l.menuPriceRmb(rmb.toStringAsFixed(1)),
+      if (dish.kcal != null) '${dish.kcal}kcal',
+    ];
+    return parts.join(' · ');
   }
 
   Widget _buildTranslatedArea(BuildContext context) {
@@ -1052,6 +1431,16 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                   ),
                 ),
               ],
+              const SizedBox(width: AppSpacing.xs),
+              IconButton(
+                key: ValueKey('menu_dish_log_btn_${item.id}'),
+                tooltip: l.menuLogDishBtn,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                icon: Icon(Icons.add_circle_outline_rounded, size: 20, color: primary),
+                onPressed: () => _logDishToDiet(item),
+              ),
             ],
           ),
           if (priceText.isNotEmpty || hasMacros) ...[
@@ -1099,10 +1488,26 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
           ? Center(
               child: Padding(
                 padding: AppSpacing.cardPadding,
-                child: Text(
-                  l.menuOcrEmptyHint,
-                  style: AppTypography.bodySecondary(context),
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      res != null && res.isEmpty
+                          ? l.menuFreshEmptyPrompt
+                          : l.menuOcrEmptyHint,
+                      style: AppTypography.bodySecondary(context),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (res != null && res.isEmpty) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      FilledButton.tonalIcon(
+                        key: const ValueKey('menu_fresh_empty_cta'),
+                        onPressed: (_busyStillOcr || _translating) ? null : _scanFreshProduce,
+                        icon: const Icon(Icons.eco_rounded, size: 18),
+                        label: Text(l.menuFreshModeBtn),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             )

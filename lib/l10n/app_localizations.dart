@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.5.2 · Co-developed with DaFeiYu'**
+  /// **'Version v3.6.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.5.2 (Build 34)'**
+  /// **'Version v3.6.0 (Build 35)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5592,6 +5592,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to save body record: {error}'**
   String bodySaveFailed(String error);
+
+  /// No description provided for @menuAutoTranslateChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Translate'**
+  String get menuAutoTranslateChip;
+
+  /// No description provided for @menuArMoreCollapsePill.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} dishes ({extra} more) · Tap for all'**
+  String menuArMoreCollapsePill(int total, int extra);
+
+  /// No description provided for @menuArSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All Translated Dishes ({count})'**
+  String menuArSheetTitle(int count);
+
+  /// No description provided for @menuFreshModeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh Scan'**
+  String get menuFreshModeBtn;
+
+  /// No description provided for @menuFreshEmptyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'No menu text detected? Tap \"Fresh Scan\" (512px / Q60) to recognize fresh produce or dishes.'**
+  String get menuFreshEmptyPrompt;
+
+  /// No description provided for @menuFreshAnalyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing fresh produce (512px · Q60)…'**
+  String get menuFreshAnalyzing;
+
+  /// No description provided for @menuLogDishBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Meal'**
+  String get menuLogDishBtn;
+
+  /// No description provided for @menuLogDishToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged to today\'s diet: {name} ({kcal} kcal)'**
+  String menuLogDishToast(String name, String kcal);
 }
 
 class _AppLocalizationsDelegate

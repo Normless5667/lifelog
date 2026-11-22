@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.5.2 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.6.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.5.2 (Build 34)';
+  String get aboutVersion => '版本 v3.6.0 (Build 35)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -3127,5 +3127,36 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String bodySaveFailed(String error) {
     return '保存身体记录失败：$error';
+  }
+
+  @override
+  String get menuAutoTranslateChip => '稳定自动翻';
+
+  @override
+  String menuArMoreCollapsePill(int total, int extra) {
+    return '共 $total 道菜（已折叠 $extra 项）· 点击展开全部';
+  }
+
+  @override
+  String menuArSheetTitle(int count) {
+    return '全部识别菜品（$count）';
+  }
+
+  @override
+  String get menuFreshModeBtn => '生鲜识图';
+
+  @override
+  String get menuFreshEmptyPrompt =>
+      '未检测到菜单文字？点击「生鲜识图」将画面按 512px / Q60 压缩后直接识别水果摊或实物热量。';
+
+  @override
+  String get menuFreshAnalyzing => '正在按生鲜模式（512px · Q60）识别食物热量…';
+
+  @override
+  String get menuLogDishBtn => '记入饮食';
+
+  @override
+  String menuLogDishToast(String name, String kcal) {
+    return '已记入今日饮食：$name（$kcal kcal）';
   }
 }

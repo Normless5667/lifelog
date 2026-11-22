@@ -587,7 +587,7 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v3.5.2 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v3.6.0 · 由大肥鱼协助开发",
 
   "usageSectionTitle": "使用数据与性能分析",
   "usageSwitchTitle": "记录使用情况与性能探针",
@@ -637,7 +637,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v3.5.2 (Build 34)",
+  "aboutVersion": "版本 v3.6.0 (Build 35)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
   "aboutCreditsTitle": "协作开发",
@@ -953,5 +953,13 @@
   "quickMealSaveBtn": "确认保存",
   "quickMealSavedToast": "已记录：{name} · {kcal} kcal",
   "quickMealFallbackToast": "未能自动估算，已为你打开手动表单",
-  "bodySaveFailed": "保存身体记录失败：{error}"
+  "bodySaveFailed": "保存身体记录失败：{error}",
+  "menuAutoTranslateChip": "稳定自动翻",
+  "menuArMoreCollapsePill": "共 {total} 道菜（已折叠 {extra} 项）· 点击展开全部",
+  "menuArSheetTitle": "全部识别菜品（{count}）",
+  "menuFreshModeBtn": "生鲜识图",
+  "menuFreshEmptyPrompt": "未检测到菜单文字？点击「生鲜识图」将画面按 512px / Q60 压缩后直接识别水果摊或实物热量。",
+  "menuFreshAnalyzing": "正在按生鲜模式（512px · Q60）识别食物热量…",
+  "menuLogDishBtn": "记入饮食",
+  "menuLogDishToast": "已记入今日饮食：{name}（{kcal} kcal）"
 }

@@ -1,8 +1,28 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+
+import 'ai_service.dart';
+
+/// AR 浮层单个菜品标签在取景框内的定位结果（最多渲染前 5 项，超出部分折叠进 ModalBottomSheet）
+class MenuArOverlayAnchor {
+  final MenuDishItem dish;
+  final double left;
+  final double top;
+  final double maxWidth;
+  final bool matchedBox;
+
+  const MenuArOverlayAnchor({
+    required this.dish,
+    required this.left,
+    required this.top,
+    required this.maxWidth,
+    required this.matchedBox,
+  });
+}
 
 /// 单帧抓拍图压缩前后的诊断信息（长边 <= 1280px, JPEG Q80）
 class OcrImagePrepResult {
@@ -432,4 +452,176 @@ class MenuOcrService {
   /// 便捷接口：返回清洗与价格规范化后的菜单文本
   static String cleanMenuOcrTextForAi(String rawText) =>
       cleanMenuOcrWithStats(rawText).cleanedText;
+
+  // ── v3.6.0 AR 浮层坐标映射、越南语变音符归一与 1.5s 画面稳定度检测 ──
+
+  static const Map<String, String> _vnFoldMap = {
+    'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+    'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+    'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+    'đ': 'd',
+    'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+    'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+    'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+    'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+    'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+    'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+    'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+    'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+    'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+  };
+
+  /// 折叠越南语声调与变音字母为 ASCII 小写基底，用于 OCR 框模糊匹配与稳定度对比
+  static String foldVietnameseToAscii(String input) {
+    final lower = input.toLowerCase();
+    final sb = StringBuffer();
+    for (var i = 0; i < lower.length; i++) {
+      final ch = lower[i];
+      sb.write(_vnFoldMap[ch] ?? ch);
+    }
+    return sb.toString();
+  }
+
+  /// 计算两帧 OCR 文本的词集 Jaccard 相似度（0.0 ~ 1.0），用于判定画面是否稳定 >= 1.5 秒
+  static double computeOcrTextSimilarity(String a, String b) {
+    Set<String> tokenize(String s) {
+      final cleaned = foldVietnameseToAscii(cleanMenuOcrTextForAi(s));
+      return cleaned
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((t) => t.length >= 2)
+          .toSet();
+    }
+
+    final setA = tokenize(a);
+    final setB = tokenize(b);
+    if (setA.isEmpty || setB.isEmpty) return 0.0;
+    final inter = setA.intersection(setB).length;
+    final union = setA.union(setB).length;
+    return union == 0 ? 0.0 : inter / union;
+  }
+
+  /// 将 AI 翻译出的菜品列表映射为取景框内的 Positioned AR 浮层坐标（最多返回 [maxOverlayCount] = 5 项）
+  static List<MenuArOverlayAnchor> computeArOverlayAnchors({
+    required List<MenuDishItem> dishes,
+    required List<OcrTextItem> blocks,
+    required Size imageSize,
+    required Size viewSize,
+    int maxOverlayCount = 5,
+  }) {
+    if (dishes.isEmpty || viewSize.width <= 0 || viewSize.height <= 0) {
+      return const [];
+    }
+
+    // 推断原始图像尺寸（若未传则由 OCR 边界框包络推断，兜底 720x1280）
+    var imgW = imageSize.width;
+    var imgH = imageSize.height;
+    if (imgW <= 1 || imgH <= 1) {
+      var maxR = 720.0;
+      var maxB = 1280.0;
+      for (final b in blocks) {
+        if (b.boundingBox.right > maxR) maxR = b.boundingBox.right * 1.05;
+        if (b.boundingBox.bottom > maxB) maxB = b.boundingBox.bottom * 1.05;
+      }
+      imgW = maxR;
+      imgH = maxB;
+    }
+
+    final scaleX = viewSize.width / imgW;
+    final scaleY = viewSize.height / imgH;
+    final minTop = 40.0;
+    final maxTop = math.max(minTop, viewSize.height - 46.0);
+    final tagMaxW = math.min(240.0, math.max(130.0, viewSize.width - 20.0));
+
+    final foldedBlocks = <({OcrTextItem block, String folded, List<String> words})>[
+      for (final b in blocks)
+        (
+          block: b,
+          folded: foldVietnameseToAscii(b.text),
+          words: foldVietnameseToAscii(b.text)
+              .split(RegExp(r'[^a-z0-9]+'))
+              .where((w) => w.length >= 2)
+              .toList(),
+        ),
+    ];
+
+    final limit = math.min(dishes.length, maxOverlayCount);
+    final usedBlockIndices = <int>{};
+    final placedTops = <double>[];
+    final anchors = <MenuArOverlayAnchor>[];
+
+    for (var i = 0; i < limit; i++) {
+      final dish = dishes[i];
+      final dishFolded = foldVietnameseToAscii(dish.vn).trim();
+      final dishWords = dishFolded
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((w) => w.length >= 2)
+          .toList();
+
+      int? bestIdx;
+      var bestScore = 0.0;
+      for (var bIdx = 0; bIdx < foldedBlocks.length; bIdx++) {
+        final fb = foldedBlocks[bIdx];
+        if (fb.folded.isEmpty) continue;
+        var score = 0.0;
+        if (dishFolded.isNotEmpty && fb.folded.contains(dishFolded)) {
+          score = 10.0;
+        } else if (dishWords.isNotEmpty) {
+          var hits = 0;
+          for (final w in dishWords) {
+            if (fb.words.contains(w) || fb.folded.contains(w)) hits++;
+          }
+          score = hits / dishWords.length;
+        }
+        if (usedBlockIndices.contains(bIdx)) {
+          score *= 0.4;
+        }
+        if (score > bestScore && score >= 0.45) {
+          bestScore = score;
+          bestIdx = bIdx;
+        }
+      }
+
+      double rawLeft;
+      double rawTop;
+      final bool matched;
+      if (bestIdx != null) {
+        usedBlockIndices.add(bestIdx);
+        final rect = foldedBlocks[bestIdx].block.boundingBox;
+        rawLeft = rect.left * scaleX;
+        rawTop = rect.top * scaleY;
+        matched = true;
+      } else {
+        rawLeft = 12.0;
+        final span = math.max(1.0, maxTop - minTop);
+        rawTop = minTop + (span * (i + 0.5) / (limit + 0.5));
+        matched = false;
+      }
+
+      var left = rawLeft.clamp(8.0, math.max(8.0, viewSize.width - tagMaxW - 8.0)).toDouble();
+      var top = rawTop.clamp(minTop, maxTop).toDouble();
+
+      // 垂直防重叠避让（间距 >= 32px）
+      for (var attempt = 0; attempt < 6; attempt++) {
+        final conflict = placedTops.any((t) => (t - top).abs() < 32.0);
+        if (!conflict) break;
+        top += 34.0;
+        if (top > maxTop) {
+          top = minTop + (attempt * 17.0).clamp(0.0, maxTop - minTop).toDouble();
+        }
+      }
+      placedTops.add(top);
+
+      anchors.add(
+        MenuArOverlayAnchor(
+          dish: dish,
+          left: left,
+          top: top,
+          maxWidth: tagMaxW,
+          matchedBox: matched,
+        ),
+      );
+    }
+
+    return anchors;
+  }
 }

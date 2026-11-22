@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.5.2 · Co-developed with DaFeiYu';
+      'Version v3.6.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.5.2 (Build 34)';
+  String get aboutVersion => 'Version v3.6.0 (Build 35)';
 
   @override
   String get aboutBadge =>
@@ -3227,5 +3227,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String bodySaveFailed(String error) {
     return 'Failed to save body record: $error';
+  }
+
+  @override
+  String get menuAutoTranslateChip => 'Auto-Translate';
+
+  @override
+  String menuArMoreCollapsePill(int total, int extra) {
+    return '$total dishes ($extra more) · Tap for all';
+  }
+
+  @override
+  String menuArSheetTitle(int count) {
+    return 'All Translated Dishes ($count)';
+  }
+
+  @override
+  String get menuFreshModeBtn => 'Fresh Scan';
+
+  @override
+  String get menuFreshEmptyPrompt =>
+      'No menu text detected? Tap \"Fresh Scan\" (512px / Q60) to recognize fresh produce or dishes.';
+
+  @override
+  String get menuFreshAnalyzing => 'Analyzing fresh produce (512px · Q60)…';
+
+  @override
+  String get menuLogDishBtn => 'Log Meal';
+
+  @override
+  String menuLogDishToast(String name, String kcal) {
+    return 'Logged to today\'s diet: $name ($kcal kcal)';
   }
 }
