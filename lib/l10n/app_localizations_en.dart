@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.3.1 · Co-developed with DaFeiYu';
+      'Version v3.3.2 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.3.1 (Build 24)';
+  String get aboutVersion => 'Version v3.3.2 (Build 25)';
 
   @override
   String get aboutBadge =>
@@ -3114,4 +3114,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuLightRed => 'Heavy';
+
+  @override
+  String get menuOcrStatusWaiting => 'Waiting for frames…';
+
+  @override
+  String menuOcrStreamError(String error) {
+    return 'Live stream OCR error (try HD Shot): $error';
+  }
 }

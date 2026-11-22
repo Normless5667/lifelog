@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.3.1 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.3.2 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.3.1 (Build 24)';
+  String get aboutVersion => '版本 v3.3.2 (Build 25)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -3016,4 +3016,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get menuLightRed => '高热';
+
+  @override
+  String get menuOcrStatusWaiting => '等待相机帧…';
+
+  @override
+  String menuOcrStreamError(String error) {
+    return '实时流识别异常（可改用「拍高清帧」）：$error';
+  }
 }

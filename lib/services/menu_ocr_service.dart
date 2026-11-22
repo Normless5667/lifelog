@@ -65,7 +65,8 @@ class MenuOcrService {
     return (sensorOrientation - comp + 360) % 360;
   }
 
-  /// 将 Android 3-plane YUV_420_888 字节流安全转换为标准单平面 NV21（当部分 OEM 忽略 NV21 请求时兜底）
+  /// 将 Android 3-plane YUV_420_888 字节流安全转换为标准单平面 NV21。
+  /// 规避 camera_android_camerax 0.6.x 在 ImageFormatGroup.nv21 下的内部异常，全机型通用。
   static Uint8List convertYuv420ToNv21({
     required int width,
     required int height,
@@ -75,41 +76,55 @@ class MenuOcrService {
     required Uint8List vBytes,
     required int uvRowStride,
     required int uvPixelStride,
+    int? vRowStride,
+    int? vPixelStride,
   }) {
     final ySize = width * height;
-    final out = Uint8List(ySize + (ySize ~/ 2));
+    final uvHeight = height ~/ 2;
+    final uvWidth = width ~/ 2;
+    final out = Uint8List(ySize + uvWidth * uvHeight * 2);
 
-    // 复制 Y 平面（去除行末 stride padding）
-    var dst = 0;
-    for (var row = 0; row < height; row++) {
-      final srcStart = row * yRowStride;
-      if (srcStart + width <= yBytes.length) {
-        out.setRange(dst, dst + width, yBytes, srcStart);
+    // 复制 Y 平面（无 padding 时整块拷贝，有 stride padding 时逐行去尾）
+    if (yRowStride == width && yBytes.length >= ySize) {
+      out.setRange(0, ySize, yBytes, 0);
+    } else {
+      var dst = 0;
+      for (var row = 0; row < height; row++) {
+        final srcStart = row * yRowStride;
+        final copyLen = (srcStart + width <= yBytes.length)
+            ? width
+            : (yBytes.length - srcStart).clamp(0, width);
+        if (copyLen > 0) {
+          out.setRange(dst, dst + copyLen, yBytes, srcStart);
+        }
+        dst += width;
       }
-      dst += width;
     }
 
     // 交错写入 V/U 平面（NV21 = YYYYYYYY VUVU）
-    final uvHeight = height ~/ 2;
-    final uvWidth = width ~/ 2;
+    final effVRowStride = vRowStride ?? uvRowStride;
+    final effVPixelStride = vPixelStride ?? uvPixelStride;
+    var dst = ySize;
     for (var row = 0; row < uvHeight; row++) {
-      final rowOffset = row * uvRowStride;
+      final uRowOffset = row * uvRowStride;
+      final vRowOffset = row * effVRowStride;
       for (var col = 0; col < uvWidth; col++) {
-        final idx = rowOffset + col * uvPixelStride;
-        out[dst++] = idx < vBytes.length ? vBytes[idx] : 128;
-        out[dst++] = idx < uBytes.length ? uBytes[idx] : 128;
+        final vIdx = vRowOffset + col * effVPixelStride;
+        final uIdx = uRowOffset + col * uvPixelStride;
+        out[dst++] = vIdx < vBytes.length ? vBytes[vIdx] : 128;
+        out[dst++] = uIdx < uBytes.length ? uBytes[uIdx] : 128;
       }
     }
     return out;
   }
 
-  /// 将 CameraImage 转换为 ML Kit InputImage（Android 优先 NV21，自动兜底 YUV420；iOS 用 BGRA8888）
+  /// 将 CameraImage 转换为 ML Kit InputImage（Android 统一优先安全 YUV420→NV21，兼容单平面 NV21；iOS 用 BGRA8888）
   static InputImage? buildInputImageFromCameraImage({
     required CameraImage image,
     required CameraDescription camera,
     required DeviceOrientation deviceOrientation,
   }) {
-    if (image.planes.isEmpty) return null;
+    if (image.planes.isEmpty || image.width <= 0 || image.height <= 0) return null;
 
     final int rotationDeg;
     if (Platform.isIOS) {
@@ -139,22 +154,7 @@ class MenuOcrService {
       );
     }
 
-    // Android 快路径：标准单平面 NV21
-    final rawFormat = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (rawFormat == InputImageFormat.nv21 && image.planes.length == 1) {
-      final plane = image.planes.first;
-      return InputImage.fromBytes(
-        bytes: plane.bytes,
-        metadata: InputImageMetadata(
-          size: size,
-          rotation: rotation,
-          format: InputImageFormat.nv21,
-          bytesPerRow: plane.bytesPerRow,
-        ),
-      );
-    }
-
-    // Android 兼容路径：部分机型仍吐 3-plane YUV_420_888，转换为紧凑 NV21
+    // Android 3-plane YUV_420_888（最稳妥通用路径：主动转为紧凑 NV21 再交给 ML Kit）
     if (image.planes.length >= 3) {
       final yPlane = image.planes[0];
       final uPlane = image.planes[1];
@@ -168,6 +168,8 @@ class MenuOcrService {
         vBytes: vPlane.bytes,
         uvRowStride: uPlane.bytesPerRow,
         uvPixelStride: uPlane.bytesPerPixel ?? 1,
+        vRowStride: vPlane.bytesPerRow,
+        vPixelStride: vPlane.bytesPerPixel ?? (uPlane.bytesPerPixel ?? 1),
       );
       return InputImage.fromBytes(
         bytes: nv21,
@@ -176,6 +178,20 @@ class MenuOcrService {
           rotation: rotation,
           format: InputImageFormat.nv21,
           bytesPerRow: image.width,
+        ),
+      );
+    }
+
+    // Android 单平面 NV21 兜底
+    if (image.planes.length == 1) {
+      final plane = image.planes.first;
+      return InputImage.fromBytes(
+        bytes: plane.bytes,
+        metadata: InputImageMetadata(
+          size: size,
+          rotation: rotation,
+          format: InputImageFormat.nv21,
+          bytesPerRow: plane.bytesPerRow,
         ),
       );
     }

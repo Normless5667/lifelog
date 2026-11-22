@@ -131,3 +131,11 @@
   - 完整加载与异常兜底：请求中 loading、AI 未配置时提示并带「去设置配置 API」按钮、超时支持一键「重试翻译」、非合法 JSON 时安全展示原始回复绝不崩溃。
   - 严格遵守分批边界：AR 浮层（Positioned）留到第三批，调试后端留到第四批。
 - [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.1_release.apk`。
+
+### P0 实时流热修：修复 CameraX `ImageFormatGroup.nv21` 导致 0 ms / 0 块不识别（v3.3.2+25）✅ 已完成并出包
+- [x] **根因定位（已查源码实锤）**：`camera_android_camerax 0.6.30` 在 Android 上使用 `ImageFormatGroup.nv21` 时，会将 `OUTPUT_IMAGE_FORMAT_NV21 (3)` 传给 `ImageAnalysis`，随后调用内部 `ImageProxyUtils.planesToNV21()` 并因平面数校验/布局不匹配抛异常，导致 `startImageStream` 一帧都吐不出来（界面始终停在 `0 ms · 0 块`）。
+- [x] **彻底修复 (`menu_ocr_lab_screen.dart` + `menu_ocr_service.dart`)**：
+  - Android 统一改用全机型通用的 **`ImageFormatGroup.yuv420`**，彻底绕开 CameraX 内部有坑的 `ImageProxyUtils`，由自研 `MenuOcrService.convertYuv420ToNv21()`（支持 `yRowStride == width` 快路径与独立 U/V stride）安全转换为紧凑 `NV21` 喂给 ML Kit。
+  - 若高分辨率 `high` 并发绑定 `ImageAnalysis` 失败，自动降级 `medium` 重试一次。
+  - 消灭静默失败：默认进入先显示实时 OCR 原文区；未出首帧前显示「等待相机帧…」而非误导性的 `0 ms · 0 块`；流启动或帧 OCR 发生任何异常直接在取景框底部显示红色错误条。
+- [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.2_release.apk`。

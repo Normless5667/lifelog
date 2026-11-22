@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.1 · Co-developed with DaFeiYu'**
+  /// **'Version v3.3.2 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.1 (Build 24)'**
+  /// **'Version v3.3.2 (Build 25)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5406,6 +5406,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Heavy'**
   String get menuLightRed;
+
+  /// No description provided for @menuOcrStatusWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for frames…'**
+  String get menuOcrStatusWaiting;
+
+  /// No description provided for @menuOcrStreamError.
+  ///
+  /// In en, this message translates to:
+  /// **'Live stream OCR error (try HD Shot): {error}'**
+  String menuOcrStreamError(String error);
 }
 
 class _AppLocalizationsDelegate

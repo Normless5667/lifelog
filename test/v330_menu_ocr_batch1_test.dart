@@ -60,6 +60,21 @@ void main() {
       expect(nv21.sublist(0, 8), [10, 11, 12, 13, 20, 21, 22, 23]);
       // NV21 order: V0, U0, V1, U1
       expect(nv21.sublist(8, 12), [200, 100, 201, 101]);
+
+      // Fast path (yRowStride == width) with separate vRowStride/vPixelStride
+      final fastNv21 = MenuOcrService.convertYuv420ToNv21(
+        width: 4,
+        height: 2,
+        yBytes: Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8]),
+        yRowStride: 4,
+        uBytes: Uint8List.fromList([50, 51]),
+        vBytes: Uint8List.fromList([60, 0, 61, 0]),
+        uvRowStride: 2,
+        uvPixelStride: 1,
+        vRowStride: 4,
+        vPixelStride: 2,
+      );
+      expect(fastNv21, [1, 2, 3, 4, 5, 6, 7, 8, 60, 50, 61, 51]);
     });
   });
 

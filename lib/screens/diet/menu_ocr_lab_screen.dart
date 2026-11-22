@@ -54,10 +54,12 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   bool _processingFrame = false;
   bool _busyStillOcr = false;
   bool _translating = false;
-  int _resultTab = 0; // 0 = 翻译卡片, 1 = OCR 原文
+  int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
+  int _ocrRunCount = 0;
 
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _cameraError;
+  String? _streamError;
   MenuOcrFrameResult? _latest;
   MenuTranslationResult? _translation;
   String? _translateError;
@@ -127,10 +129,11 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } catch (_) {}
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _initCamera({ResolutionPreset preset = ResolutionPreset.high}) async {
     setState(() {
       _initializing = true;
       _cameraError = null;
+      _streamError = null;
     });
     try {
       final cameras = await availableCameras();
@@ -141,12 +144,15 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
+      // Android 必须用 ImageFormatGroup.yuv420：
+      // camera_android_camerax 0.6.x 使用 ImageFormatGroup.nv21 时会在内部 ImageProxyUtils 抛异常导致 0 帧！
       final ctrl = CameraController(
         back,
-        ResolutionPreset.high,
+        preset,
         enableAudio: false,
-        imageFormatGroup:
-            Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.yuv420
+            : ImageFormatGroup.bgra8888,
       );
       await ctrl.initialize();
       if (!mounted) {
@@ -156,7 +162,12 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       _cameraDesc = back;
       _cameraCtrl = ctrl;
       setState(() => _initializing = false);
-      await _startStream();
+      final streamOk = await _startStream();
+      if (!streamOk && preset == ResolutionPreset.high && mounted) {
+        // 若部分机型高分辨率并发绑定 Preview+ImageCapture+ImageAnalysis 失败，自动降级 medium 重试一次
+        await _stopCamera();
+        await _initCamera(preset: ResolutionPreset.medium);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -166,15 +177,22 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     }
   }
 
-  Future<void> _startStream() async {
+  Future<bool> _startStream() async {
     final ctrl = _cameraCtrl;
-    if (ctrl == null || !ctrl.value.isInitialized || ctrl.value.isStreamingImages) {
-      return;
-    }
+    if (ctrl == null || !ctrl.value.isInitialized) return false;
+    if (ctrl.value.isStreamingImages) return true;
     try {
       await ctrl.startImageStream(_onCameraFrame);
-    } catch (e) {
-      debugPrint('[MenuOcrLab] startImageStream failed: $e');
+      if (mounted && _streamError != null) {
+        setState(() => _streamError = null);
+      }
+      return true;
+    } catch (e, st) {
+      debugPrint('[MenuOcrLab] startImageStream failed: $e\n$st');
+      if (mounted) {
+        setState(() => _streamError = e.toString());
+      }
+      return false;
     }
   }
 
@@ -197,7 +215,13 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         camera: cam,
         deviceOrientation: ctrl.value.deviceOrientation,
       );
-      if (input == null) return;
+      if (input == null) {
+        debugPrint(
+          '[MenuOcrLab] buildInputImage returned null: '
+          '${image.width}x${image.height} planes=${image.planes.length} fmt=${image.format.raw}',
+        );
+        return;
+      }
       final res = await ocr.processInputImage(
         input,
         imageSize: Size(image.width.toDouble(), image.height.toDouble()),
@@ -205,13 +229,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       );
       if (!mounted || _paused) return;
       setState(() {
+        _ocrRunCount++;
+        _streamError = null;
         _latest = res;
         if (_translation == null && _translateError == null) {
           _resultTab = 1;
         }
       });
-    } catch (e) {
-      debugPrint('[MenuOcrLab] frame OCR error: $e');
+    } catch (e, st) {
+      debugPrint('[MenuOcrLab] frame OCR error: $e\n$st');
+      if (mounted) {
+        setState(() => _streamError = e.toString());
+      }
     } finally {
       _processingFrame = false;
     }
@@ -361,6 +390,9 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       if (res?.source == 'gallery') return l.menuOcrStatusGallery(ms, count);
       return l.menuOcrStatusPaused(count);
     }
+    if (res == null && _ocrRunCount == 0 && _cameraError == null) {
+      return l.menuOcrStatusWaiting;
+    }
     return l.menuOcrStatusLive(ms, count);
   }
 
@@ -496,6 +528,30 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                         color: Colors.black.withValues(alpha: 0.38),
                         alignment: Alignment.center,
                         child: CircularProgressIndicator(color: primary),
+                      ),
+                    if (_streamError != null)
+                      Positioned(
+                        left: 10,
+                        right: 10,
+                        bottom: 10,
+                        child: Container(
+                          key: const ValueKey('menu_ocr_stream_error_banner'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger(context).withValues(alpha: 0.90),
+                            borderRadius: AppRadius.bMd,
+                          ),
+                          child: Text(
+                            l.menuOcrStreamError(_streamError!),
+                            style: AppTypography.caption(context, color: Colors.white)
+                                .copyWith(fontSize: 11),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
                   ],
                 ),
