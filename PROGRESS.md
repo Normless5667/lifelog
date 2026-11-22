@@ -97,3 +97,14 @@
   - 不可用时确保分级降级生效：开跑与切段 `HapticFeedback.mediumImpact()` + 顶部滑入横幅，每公里 `HapticFeedback.lightImpact()`。
 - [x] **课程开跑主动语音引导**：开跑先播总述（「开始 3 公里法特莱克跑，共 9 段，预计 29 分钟」），间隔 1.5 秒后再播第 1 段提示。
 - [x] 验证：59/59 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.1.3_release.apk`。
+
+## v3.2.0：跑步机拍照读数 + 轨迹按配速五档分色（v3.2.0+22）✅ 已完成并出包
+- [x] **拍照读跑步机 / 椭圆机 / 动感单车屏幕 (`AiService.analyzeTreadmillImage` + `TreadmillScanScreen`)**：
+  - 复用 `SettingsService.visionConfig()` 视觉识别通道，返回结构化 JSON（`distance_km / duration_secs / calories / pace / machine_type / unit_note`）；反光模糊看不清的字段严格返回 `null` 不瞎猜；自动兼容 `mile → km` 换算并注明，兼容 `MM:SS` / `HH:MM:SS` 时长格式。
+  - 跑步首页（2×2 入口「拍照记录」）与有氧记录页顶部均提供入口；识别后**必须展示可编辑确认页**（照片缩略图 + 距离/时长/热量/器械类型可修正 + `[重拍]`/`[保存]`）。
+  - 保存至 `cardio_records`，新增 `CardioType.treadmill` / `treadmill_fast` / `elliptical` / `bike` 与真实 GPS 跑步区分；热量读不到时自动按 MET 兜底（跑步机 8.0 / 跑步机快跑 11.0 / 椭圆机 5.0 / 动感单车 7.0）。
+- [x] **轨迹按配速五档分色 (`RouteSpeedColoring` + `RouteSpeedLegend` + `RouteColorModeToggle`)**：
+  - 严格按跑者习惯以配速分五档：`>7:00/km` 蓝灰 `#90A4AE`（慢走）、`6–7` 青 `#4DD0E1`（慢跑）、`5–6` 绿 `#66BB6A`（正常）、`4–5` 橙 `#FFA726`（快跑）、`<4:00` 红 `#EF5350`（冲刺）。
+  - 相邻跳点 `> 200m` 直接过滤断开不连线；采用前后各 2 点（5 点）滑动窗口算速度，消除单点 GPS 抖动全红毛刺；同档连续点聚合为多点 Polyline 并将 segment 总数控制在 `<= 300`（严格 `<= 400`），30 分钟数千点轨迹依然流畅不卡顿。
+  - **跑步中 (`RunningActiveScreen`) 与详情回放 (`RunDetailScreen`) 同步支持实时/回放分色**，地图右下角展示五档图例，顶部提供 `[单色轨迹 | 速度分色]` 一键切换开关并持久化偏好。
+- [x] 验证：68/68 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.2.0_release.apk`。

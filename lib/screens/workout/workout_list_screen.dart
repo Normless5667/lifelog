@@ -13,6 +13,7 @@ import '../../widgets/in_progress_workout_card.dart';
 import '../ai/ai_chat_screen.dart';
 import '../running/run_detail_screen.dart';
 import '../running/running_home_screen.dart';
+import '../running/treadmill_scan_screen.dart';
 import 'exercise_library_screen.dart';
 import 'workout_session_screen.dart';
 
@@ -729,24 +730,75 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     );
   }
 
+  Future<void> _openTreadmillScan() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TreadmillScanScreen(weightKg: _userWeightKg),
+      ),
+    );
+    if (saved == true && mounted) _load();
+  }
+
   Widget _buildCardioTab() {
     final l = context.l10n;
     final cardioColor = AppColors.moduleWorkout(context);
-    if (_cardios.isEmpty) {
-      return Center(
-        child: EmptyHint(
-          icon: Icons.directions_run_rounded,
-          text: l.workoutEmptyCardioHint,
-          actionLabel: l.workoutEmptyCardioBtn,
-          onAction: () => _addOrEditCardio(),
+    final accent = AppColors.accent(context);
+    final photoBanner = Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: SurfaceCard(
+        padding: AppSpacing.cardCompactPadding,
+        backgroundColor: AppColors.softBg(context, accent, lightAlpha: 0.08, darkAlpha: 0.16),
+        borderColor: AppColors.softBorder(context, accent),
+        onTap: _openTreadmillScan,
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.softBg(context, accent, lightAlpha: 0.16, darkAlpha: 0.26),
+                borderRadius: AppRadius.bMd,
+              ),
+              child: Icon(Icons.camera_alt_rounded, color: accent, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.workoutPhotoScanCardioBtn, style: AppTypography.cardTitle(context)),
+                  const SizedBox(height: 2),
+                  Text(l.runModePhotoRecordSub, style: AppTypography.bodySecondary(context)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: accent),
+          ],
         ),
+      ),
+    );
+    if (_cardios.isEmpty) {
+      return ListView(
+        padding: AppSpacing.pagePadding,
+        children: [
+          photoBanner,
+          const SizedBox(height: AppSpacing.xl),
+          EmptyHint(
+            icon: Icons.directions_run_rounded,
+            text: l.workoutEmptyCardioHint,
+            actionLabel: l.workoutEmptyCardioBtn,
+            onAction: () => _addOrEditCardio(),
+          ),
+        ],
       );
     }
     return ListView.builder(
       padding: AppSpacing.pagePadding,
-      itemCount: _cardios.length,
-      itemBuilder: (_, i) {
-        final c = _cardios[i];
+      itemCount: _cardios.length + 1,
+      itemBuilder: (_, idx) {
+        if (idx == 0) return photoBanner;
+        final c = _cardios[idx - 1];
         final typeLabel = L10nHelper.cardioTypeLabel(context, c.type);
         final effDur = c.effectiveDurationMinutes;
         final effBurn = Nutrition.burnForCardio(c, weightKg: _userWeightKg);
@@ -799,7 +851,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                     color: AppColors.softBg(context, accent),
                     borderRadius: AppRadius.bMd,
                   ),
-                  child: Icon(Icons.directions_run_rounded, color: accent, size: 22),
+                  child: Icon(L10nHelper.cardioTypeIcon(c.type), color: accent, size: 22),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(

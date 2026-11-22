@@ -397,10 +397,14 @@ class Profile {
       );
 }
 
-/// 统一有氧运动类型常量（跑步双写与有氧记录页共用）
+/// 统一有氧运动类型常量（跑步双写、跑步机拍照与有氧记录页共用）
 class CardioType {
   static const walk = 'walk';
   static const run = 'running';
+  static const treadmill = 'treadmill';
+  static const treadmillFast = 'treadmill_fast';
+  static const elliptical = 'elliptical';
+  static const bike = 'bike';
   static const cycle = 'cycling';
   static const swim = 'swimming';
   static const jumpRope = 'jump_rope';
@@ -410,6 +414,10 @@ class CardioType {
         walk || '走路' => '走路',
         '快走' => '快走',
         run || '跑步' => '跑步',
+        treadmill || '跑步机' => '跑步机',
+        treadmillFast || '跑步机快跑' => '跑步机快跑',
+        elliptical || '椭圆机' => '椭圆机',
+        bike || '动感单车' => '动感单车',
         '慢跑' => '慢跑',
         '中速跑' => '中速跑',
         cycle || '骑行' => '骑行',

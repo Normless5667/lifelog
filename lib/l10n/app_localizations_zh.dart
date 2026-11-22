@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.1.3 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.2.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.1.3 (Build 21)';
+  String get aboutVersion => '版本 v3.2.0 (Build 22)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2803,4 +2803,107 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runVoiceRetrySuccessToast => '语音教练已恢复就绪';
+
+  @override
+  String get cardioTypeTreadmill => '跑步机';
+
+  @override
+  String get cardioTypeTreadmillFast => '跑步机快跑';
+
+  @override
+  String get cardioTypeElliptical => '椭圆机';
+
+  @override
+  String get cardioTypeBike => '动感单车';
+
+  @override
+  String get runModePhotoRecord => '拍照记录';
+
+  @override
+  String get runModePhotoRecordSub => '拍跑步机/器械屏';
+
+  @override
+  String get treadmillScanTitle => '拍照读跑步机屏幕';
+
+  @override
+  String get treadmillScanTakePhoto => '拍照识别';
+
+  @override
+  String get treadmillScanPickGallery => '从相册选图';
+
+  @override
+  String get treadmillScanManualBtn => '直接手动填写';
+
+  @override
+  String get treadmillScanHint =>
+      '对准跑步机、椭圆机或动感单车屏幕拍照，自动读取距离、时长与热量；识别后可确认并手动修正。';
+
+  @override
+  String get treadmillScanAnalyzing => '正在识别屏幕运动数据…';
+
+  @override
+  String get treadmillScanEditHint => '识别有误或反光漏读？直接修改上方数字即可';
+
+  @override
+  String get treadmillScanDistanceLabel => '距离';
+
+  @override
+  String get treadmillScanDurationLabel => '时长 (MM:SS 或 HH:MM:SS)';
+
+  @override
+  String get treadmillScanCaloriesLabel => '热量';
+
+  @override
+  String get treadmillScanMachineLabel => '器械类型';
+
+  @override
+  String treadmillScanMetFallbackNote(String met) {
+    return '未读到热量，已按 MET $met 自动估算（可修改）';
+  }
+
+  @override
+  String treadmillScanPaceTag(String pace) {
+    return '识别配速：$pace';
+  }
+
+  @override
+  String get treadmillScanRetakeBtn => '重拍';
+
+  @override
+  String get treadmillScanSaveBtn => '保存';
+
+  @override
+  String get treadmillScanDurationInvalid => '请填写有效的运动时长（例如 32:15 或 30）';
+
+  @override
+  String treadmillScanSavedToast(String kcal) {
+    return '已保存器械有氧（$kcal kcal 已同步至饮食页）';
+  }
+
+  @override
+  String get treadmillScanOpenSettingsBtn => '去配置视觉模型';
+
+  @override
+  String get workoutPhotoScanCardioBtn => '拍照读跑步机屏幕';
+
+  @override
+  String get routeColorModeMono => '单色轨迹';
+
+  @override
+  String get routeColorModeSpeed => '速度分色';
+
+  @override
+  String get paceZoneWalk => '慢走';
+
+  @override
+  String get paceZoneJog => '慢跑';
+
+  @override
+  String get paceZoneNormal => '正常';
+
+  @override
+  String get paceZoneFast => '快跑';
+
+  @override
+  String get paceZoneSprint => '冲刺';
 }

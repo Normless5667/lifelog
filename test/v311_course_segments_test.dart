@@ -157,7 +157,10 @@ void main() {
       // 推进到 300 秒 -> 自动切到「慢跑」，显示「下一段：快走 120 秒」，横幅可见，语音念慢跑文案
       ctrl.advanceTestClock(300);
       await tester.pump();
-      expect(find.text('慢跑'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('run_course_current_label'))).data,
+        '慢跑',
+      );
       expect(find.text('第 2 段 / 共 9 段'), findsOneWidget);
       expect(find.text('下一段：快走 120 秒'), findsOneWidget);
       expect(find.byKey(const ValueKey('run_course_transition_banner')), findsOneWidget);
@@ -235,7 +238,10 @@ void main() {
         );
       }
       await tester.pump();
-      expect(find.text('慢跑'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('run_course_current_label'))).data,
+        '慢跑',
+      );
       expect(find.text('第 2 段 / 共 7 段'), findsOneWidget);
       expect(find.text('下一段：快跑 400 米'), findsOneWidget);
 

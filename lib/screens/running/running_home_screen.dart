@@ -11,6 +11,7 @@ import '../../widgets/common.dart';
 import 'location_permission_guide.dart';
 import 'run_detail_screen.dart';
 import 'running_active_screen.dart';
+import 'treadmill_scan_screen.dart';
 
 /// 户外跑步首页（Keep 风格）：
 /// - 顶部：当前位置 OpenStreetMap 实时预览 + © OpenStreetMap contributors
@@ -181,6 +182,16 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
         curve: AppMotion.standardCurve,
       );
     }
+  }
+
+  Future<void> _openTreadmillScan() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TreadmillScanScreen(weightKg: _weightKg),
+      ),
+    );
+    if (saved == true && mounted) _load();
   }
 
   String _formatSegmentTarget(BuildContext context, RunningCourseSegment seg) {
@@ -439,7 +450,7 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                   ),
                 ),
 
-                // 开始跑步三入口（自由跑 / 距离跑 / 跑步课程）
+                // 开始跑步四入口（2×2：自由跑 / 距离跑 / 跑步课程 / 拍照记录跑步机）
                 SectionTitle(
                   l.runStartSection,
                   icon: Icons.directions_run_rounded,
@@ -468,7 +479,11 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                         onTap: _openDistancePicker,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
                     Expanded(
                       child: _modeCard(
                         context,
@@ -477,6 +492,18 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
                         title: l.runModeCourse,
                         subtitle: l.runModeCourseSub,
                         onTap: _scrollToCourses,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _modeCard(
+                        context,
+                        key: const ValueKey('run_mode_photo_record_card'),
+                        icon: Icons.camera_alt_rounded,
+                        color: AppColors.accent(context),
+                        title: l.runModePhotoRecord,
+                        subtitle: l.runModePhotoRecordSub,
+                        onTap: _openTreadmillScan,
                       ),
                     ),
                   ],
@@ -703,6 +730,7 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
 
   Widget _modeCard(
     BuildContext context, {
+    Key? key,
     required IconData icon,
     required Color color,
     required String title,
@@ -710,6 +738,7 @@ class _RunningHomeScreenState extends State<RunningHomeScreen> {
     required VoidCallback onTap,
   }) {
     return SurfaceCard(
+      key: key,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
       onTap: onTap,
       child: Column(

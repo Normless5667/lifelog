@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.1.3 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.2.0 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.1.3 (Build 21)",
+  "aboutVersion": "Version v3.2.0 (Build 22)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1636,5 +1636,53 @@
   "runVoiceUnavailableDesc": "Your device does not appear to have a compatible Text-to-Speech engine or voice pack installed.\n\nYou can install one in Settings → Accessibility → Text-to-Speech, or continue this run with vibration and on-screen cues.",
   "runVoiceUnavailableGotIt": "Got It",
   "runVoiceUnavailableSettings": "Open Settings",
-  "runVoiceRetrySuccessToast": "Voice coach is ready"
+  "runVoiceRetrySuccessToast": "Voice coach is ready",
+
+  "cardioTypeTreadmill": "Treadmill",
+  "cardioTypeTreadmillFast": "Treadmill (Fast)",
+  "cardioTypeElliptical": "Elliptical",
+  "cardioTypeBike": "Stationary Bike",
+  "runModePhotoRecord": "Photo Scan",
+  "runModePhotoRecordSub": "Treadmill / Machine",
+  "treadmillScanTitle": "Scan Machine Display",
+  "treadmillScanTakePhoto": "Take Photo",
+  "treadmillScanPickGallery": "Choose Photo",
+  "treadmillScanManualBtn": "Enter Manually",
+  "treadmillScanHint": "Take a photo of your treadmill, elliptical, or bike display to read distance, duration, and calories. Review and edit before saving.",
+  "treadmillScanAnalyzing": "Reading machine display…",
+  "treadmillScanEditHint": "Spotted a glare or typo? Edit any field above before saving.",
+  "treadmillScanDistanceLabel": "Distance",
+  "treadmillScanDurationLabel": "Duration (MM:SS or HH:MM:SS)",
+  "treadmillScanCaloriesLabel": "Calories",
+  "treadmillScanMachineLabel": "Machine Type",
+  "treadmillScanMetFallbackNote": "Calories unreadable — estimated via MET {met} (editable)",
+  "@treadmillScanMetFallbackNote": {
+    "placeholders": {
+      "met": { "type": "String" }
+    }
+  },
+  "treadmillScanPaceTag": "Detected pace: {pace}",
+  "@treadmillScanPaceTag": {
+    "placeholders": {
+      "pace": { "type": "String" }
+    }
+  },
+  "treadmillScanRetakeBtn": "Retake",
+  "treadmillScanSaveBtn": "Save",
+  "treadmillScanDurationInvalid": "Enter a valid duration (e.g. 32:15 or 30)",
+  "treadmillScanSavedToast": "Machine cardio saved ({kcal} kcal synced to Diet)",
+  "@treadmillScanSavedToast": {
+    "placeholders": {
+      "kcal": { "type": "String" }
+    }
+  },
+  "treadmillScanOpenSettingsBtn": "Configure Vision AI",
+  "workoutPhotoScanCardioBtn": "Scan Treadmill Screen",
+  "routeColorModeMono": "Single Color",
+  "routeColorModeSpeed": "Pace Colors",
+  "paceZoneWalk": "Walk",
+  "paceZoneJog": "Jog",
+  "paceZoneNormal": "Steady",
+  "paceZoneFast": "Fast",
+  "paceZoneSprint": "Sprint"
 }

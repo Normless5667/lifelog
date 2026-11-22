@@ -14,6 +14,27 @@ class AiException implements Exception {
   String toString() => message;
 }
 
+/// 跑步机 / 椭圆机 / 动感单车屏幕拍照识别结果（读不出的字段严格保留 null，绝不瞎猜）
+class TreadmillScanResult {
+  final double? distanceKm;
+  final int? durationSecs;
+  final double? calories;
+  final String? paceNote;
+  final String machineType; // treadmill / treadmill_fast / elliptical / bike / unknown
+  final String? unitNote;
+  final String raw;
+
+  const TreadmillScanResult({
+    this.distanceKm,
+    this.durationSecs,
+    this.calories,
+    this.paceNote,
+    this.machineType = 'unknown',
+    this.unitNote,
+    this.raw = '',
+  });
+}
+
 /// OpenAI 兼容 Chat Completions 客户端（DeepSeek / 通义千问 / Kimi 等均可）。
 class AiService {
   AiService._();
@@ -199,6 +220,160 @@ class AiService {
       }
     ], temperature: 0.1, maxTokens: 3500);
     return _parseCourses(reply);
+  }
+
+  static const _treadmillPrompt = '''
+这是健身房跑步机/椭圆机/动感单车屏幕的照片。请读出屏幕上的运动数据，只返回一个 JSON 对象，不要输出任何其他文字或解释：
+
+{
+  "distance_km": 数字或null,
+  "duration_secs": 整数或null,
+  "calories": 数字或null,
+  "pace": "例如 6'30\"/km 或 null",
+  "machine_type": "treadmill/elliptical/bike/unknown",
+  "unit_note": "如果屏幕原始距离是 mile/英里 请写明原值与换算说明，否则 null"
+}
+
+严格要求：
+- 距离单位可能是 km 也可能是 mile（mi）：如果是 mile，请按 1 mile = 1.60934 km 换算成 distance_km，并在 unit_note 里注明（例如 "屏幕显示 3.10 mi，已换算为 4.99 km"）
+- 时长可能是 MM:SS 也可能是 HH:MM:SS，请统一换算为总秒数 duration_secs（整数）
+- 反光、模糊、被遮挡或看不清的字段必须返回 null，绝对不要瞎猜''';
+
+  /// 拍照读取健身房跑步机 / 椭圆机 / 动感单车屏幕数据（复用 SettingsService.visionConfig() 视觉通道）。
+  static Future<TreadmillScanResult> analyzeTreadmillImage(
+    File imageFile, {
+    String? hint,
+  }) async {
+    final cfg = await SettingsService.visionConfig();
+    final bytes = await imageFile.readAsBytes();
+    final b64 = base64Encode(bytes);
+    final text = hint != null && hint.trim().isNotEmpty
+        ? '$_treadmillPrompt\n用户补充说明：${hint.trim()}'
+        : _treadmillPrompt;
+    final reply = await _complete(cfg, [
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'text', 'text': text},
+          {
+            'type': 'image_url',
+            'image_url': {'url': 'data:image/jpeg;base64,$b64'}
+          },
+        ],
+      }
+    ], temperature: 0.1, maxTokens: 600);
+    return parseTreadmillResponse(reply);
+  }
+
+  /// 纯解析函数：将视觉模型返回的 JSON 解析为结构化器械读数（保留 null，绝不瞎猜；支持 mile 换算与 MM:SS / HH:MM:SS 容错）。
+  static TreadmillScanResult parseTreadmillResponse(String reply) {
+    final j = extractJson(reply);
+    if (j == null) {
+      throw AiException('无法解析屏幕数据，请换个角度避开反光重拍或手动填写。\n原始回复：$reply');
+    }
+
+    double? parseOptDouble(Object? v) {
+      if (v == null) return null;
+      if (v is num) {
+        final d = v.toDouble();
+        return d.isFinite && d > 0 ? d : null;
+      }
+      if (v is String) {
+        final s = v.trim();
+        if (s.isEmpty || s.toLowerCase() == 'null') return null;
+        final m = RegExp(r'\d+(\.\d+)?').firstMatch(s);
+        if (m == null) return null;
+        final d = double.tryParse(m.group(0)!);
+        return (d != null && d.isFinite && d > 0) ? d : null;
+      }
+      return null;
+    }
+
+    int? parseDurationSecs(Object? v) {
+      if (v == null) return null;
+      if (v is num) {
+        final s = v.round();
+        return (s > 0 && s <= 86400) ? s : null;
+      }
+      if (v is String) {
+        final s = v.trim();
+        if (s.isEmpty || s.toLowerCase() == 'null') return null;
+        // 支持 HH:MM:SS 或 MM:SS
+        final parts = s.split(':');
+        if (parts.length == 2 || parts.length == 3) {
+          final nums = parts.map((p) => int.tryParse(p.trim())).toList();
+          if (nums.every((n) => n != null && n >= 0)) {
+            final total = parts.length == 3
+                ? nums[0]! * 3600 + nums[1]! * 60 + nums[2]!
+                : nums[0]! * 60 + nums[1]!;
+            return (total > 0 && total <= 86400) ? total : null;
+          }
+        }
+        final m = RegExp(r'\d+').firstMatch(s);
+        if (m != null) {
+          final n = int.tryParse(m.group(0)!);
+          return (n != null && n > 0 && n <= 86400) ? n : null;
+        }
+      }
+      return null;
+    }
+
+    var distanceKm = parseOptDouble(j['distance_km']);
+    var rawNote = reply.trim();
+    final unitNote = (j['unit_note'] ?? '').toString().trim();
+    // 兜底：若模型返回了 distance_mile 或在 distance_km 字符串里带了 mi/mile
+    final distStr = (j['distance_km'] ?? '').toString().toLowerCase();
+    final explicitMile = parseOptDouble(j['distance_mile'] ?? j['distance_miles']);
+    if (distanceKm == null && explicitMile != null) {
+      distanceKm = double.parse((explicitMile * 1.60934).toStringAsFixed(2));
+      rawNote = 'Mile converted: $explicitMile mi -> $distanceKm km\n$rawNote';
+    } else if (distanceKm != null &&
+        (distStr.contains('mi') || distStr.contains('英里'))) {
+      final orig = distanceKm;
+      distanceKm = double.parse((orig * 1.60934).toStringAsFixed(2));
+      rawNote = 'Mile converted: $orig mi -> $distanceKm km\n$rawNote';
+    }
+    if (distanceKm != null && distanceKm > 200) {
+      distanceKm = null;
+    }
+
+    final durationSecs = parseDurationSecs(j['duration_secs'] ?? j['duration']);
+    var calories = parseOptDouble(j['calories']);
+    if (calories != null && calories > 10000) {
+      calories = null;
+    }
+
+    final paceRaw = j['pace'];
+    String? paceNote;
+    if (paceRaw != null) {
+      final p = paceRaw.toString().trim();
+      if (p.isNotEmpty && p.toLowerCase() != 'null') {
+        paceNote = p;
+      }
+    }
+
+    final rawMachine = (j['machine_type'] ?? 'unknown').toString().trim().toLowerCase();
+    final machineType = switch (rawMachine) {
+      'treadmill' || '跑步机' => CardioType.treadmill,
+      'treadmill_fast' => CardioType.treadmillFast,
+      'elliptical' || '椭圆机' => CardioType.elliptical,
+      'bike' || 'cycling' || 'spin' || '动感单车' => CardioType.bike,
+      _ => 'unknown',
+    };
+
+    if (unitNote.isNotEmpty && unitNote.toLowerCase() != 'null') {
+      rawNote = '$unitNote\n$rawNote';
+    }
+
+    return TreadmillScanResult(
+      distanceKm: distanceKm,
+      durationSecs: durationSecs,
+      calories: calories,
+      paceNote: paceNote,
+      machineType: machineType,
+      unitNote: (unitNote.isNotEmpty && unitNote.toLowerCase() != 'null') ? unitNote : null,
+      raw: rawNote,
+    );
   }
 
   /// 粘贴教务文字或 JSON 导入课表（使用对话模型）

@@ -6,9 +6,12 @@ import 'package:latlong2/latlong.dart';
 
 import '../../db/repo.dart';
 import '../../models/run_models.dart';
+import '../../services/app_prefs.dart';
 import '../../services/run_course_engine.dart';
 import '../../services/running_tracker.dart';
+import '../../utils/route_speed_coloring.dart';
 import '../../widgets/common.dart';
+import '../../widgets/route_speed_overlay.dart';
 import 'run_detail_screen.dart';
 
 /// 跑步进行中全屏界面：
@@ -53,10 +56,14 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
   SegmentTransitionEvent? _visibleBanner;
   Timer? _bannerHideTimer;
   bool _voiceDialogOpen = false;
+  late bool _colorBySpeed;
+  int _cachedColoredPointCount = -1;
+  List<ColoredRouteSegment> _cachedColoredSegments = const [];
 
   @override
   void initState() {
     super.initState();
+    _colorBySpeed = AppPrefsController.instance.routeColorBySpeed;
     final isEn = WidgetsBinding.instance.platformDispatcher.locale.languageCode == 'en';
     if (widget.controllerForTest != null) {
       _ctrl = widget.controllerForTest!;
@@ -361,15 +368,32 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
         ? LatLng(latest.lat, latest.lng)
         : (widget.initialCenter ?? const LatLng(20.9628, 105.9410));
 
-    final polylines = <Polyline>[
-      for (final seg in _ctrl.trackSegments)
-        if (seg.length >= 2)
-          Polyline(
-            points: seg.map((p) => LatLng(p.lat, p.lng)).toList(),
-            strokeWidth: 5,
-            color: primary,
-          ),
-    ];
+    final allPointCount = _ctrl.allPoints.length;
+    if (_colorBySpeed && allPointCount != _cachedColoredPointCount) {
+      _cachedColoredPointCount = allPointCount;
+      _cachedColoredSegments = RouteSpeedColoring.buildFromTrackSegments(
+        _ctrl.trackSegments,
+      );
+    }
+
+    final polylines = _colorBySpeed
+        ? <Polyline>[
+            for (final seg in _cachedColoredSegments)
+              Polyline(
+                points: seg.points,
+                strokeWidth: 5,
+                color: seg.color,
+              ),
+          ]
+        : <Polyline>[
+            for (final seg in _ctrl.trackSegments)
+              if (seg.length >= 2)
+                Polyline(
+                  points: seg.map((p) => LatLng(p.lat, p.lng)).toList(),
+                  strokeWidth: 5,
+                  color: primary,
+                ),
+          ];
 
     final engine = _ctrl.courseEngine;
     final hasCourse = engine != null;
@@ -500,10 +524,25 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
                           ),
                         ),
                       ),
+                      // 轨迹单色 / 速度分色切换胶囊
+                      Positioned(
+                        right: 10,
+                        top: 10,
+                        child: RouteColorModeToggle(
+                          colorBySpeed: _colorBySpeed,
+                          onChanged: (next) {
+                            setState(() {
+                              _colorBySpeed = next;
+                              if (next) _cachedColoredPointCount = -1;
+                            });
+                            AppPrefsController.instance.setRouteColorBySpeed(next);
+                          },
+                        ),
+                      ),
                       // 回到当前位置按钮
                       Positioned(
                         right: 12,
-                        bottom: 34,
+                        bottom: 58,
                         child: FloatingActionButton.small(
                           heroTag: 'run_recenter_fab',
                           onPressed: () {
@@ -516,20 +555,30 @@ class _RunningActiveScreenState extends State<RunningActiveScreen> {
                           ),
                         ),
                       ),
-                      // OSM 版权声明（强制）
+                      // 右下角：五档配速图例 + OSM 版权声明（强制）
                       Positioned(
-                        right: 10,
+                        right: 8,
                         bottom: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface(context).withValues(alpha: 0.85),
-                            borderRadius: AppRadius.bSm,
-                          ),
-                          child: Text(
-                            l.runOsmAttribution,
-                            style: AppTypography.caption(context).copyWith(fontSize: 10),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (_colorBySpeed) ...[
+                              const RouteSpeedLegend(),
+                              const SizedBox(height: 4),
+                            ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface(context).withValues(alpha: 0.85),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Text(
+                                l.runOsmAttribution,
+                                style: AppTypography.caption(context).copyWith(fontSize: 10),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

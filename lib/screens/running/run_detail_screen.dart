@@ -7,8 +7,11 @@ import 'package:latlong2/latlong.dart';
 
 import '../../db/repo.dart';
 import '../../models/run_models.dart';
+import '../../services/app_prefs.dart';
 import '../../services/running_tracker.dart';
+import '../../utils/route_speed_coloring.dart';
 import '../../widgets/common.dart';
+import '../../widgets/route_speed_overlay.dart';
 
 /// 跑步记录详情页：
 /// - 从数据库 route_json 还原地图轨迹，支持一笔画动态回放（尊重系统减弱动画设置）
@@ -38,17 +41,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   List<RunSegmentRecord> _segments = const [];
   late final List<RoutePoint> _points;
   late final List<LatLng> _latLngs;
+  late final List<ColoredRouteSegment> _coloredSegments;
   late final List<PaceCurveSample> _paceSamples;
   late final AnimationController _replayCtrl;
   late final Animation<double> _replayCurve;
   bool _replayStarted = false;
+  late bool _colorBySpeed;
 
   @override
   void initState() {
     super.initState();
     _points = widget.run.decodeRoute();
     _latLngs = _points.map((p) => LatLng(p.lat, p.lng)).toList();
+    _coloredSegments = RouteSpeedColoring.buildSegments(_points);
     _paceSamples = computePaceCurveSamples(_points);
+    _colorBySpeed = AppPrefsController.instance.routeColorBySpeed;
 
     _replayCtrl = AnimationController(
       vsync: this,
@@ -177,6 +184,26 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   final progress = _replayCurve.value;
                   final drawn = _interpolatedRoute(progress);
                   final isReplaying = _replayCtrl.isAnimating;
+                  final activePolylines = _colorBySpeed && _coloredSegments.isNotEmpty
+                      ? [
+                          for (final seg in RouteSpeedColoring.sliceByProgress(
+                            _coloredSegments,
+                            progress,
+                          ))
+                            Polyline(
+                              points: seg.points,
+                              strokeWidth: 5,
+                              color: seg.color,
+                            ),
+                        ]
+                      : [
+                          if (drawn.length >= 2)
+                            Polyline(
+                              points: drawn,
+                              strokeWidth: 5,
+                              color: primary,
+                            ),
+                        ];
 
                   return Stack(
                     children: [
@@ -198,16 +225,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                               userAgentPackageName: 'com.lifelog.lifelog',
                             ),
-                          if (drawn.length >= 2)
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: drawn,
-                                  strokeWidth: 5,
-                                  color: primary,
-                                ),
-                              ],
-                            ),
+                          if (activePolylines.isNotEmpty)
+                            PolylineLayer(polylines: activePolylines),
                           if (drawn.isNotEmpty)
                             MarkerLayer(
                               markers: [
@@ -271,6 +290,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                         ),
                       if (_latLngs.length >= 2)
                         Positioned(
+                          left: 10,
+                          top: 10,
+                          child: RouteColorModeToggle(
+                            colorBySpeed: _colorBySpeed,
+                            onChanged: (next) {
+                              setState(() => _colorBySpeed = next);
+                              AppPrefsController.instance.setRouteColorBySpeed(next);
+                            },
+                          ),
+                        ),
+                      if (_latLngs.length >= 2)
+                        Positioned(
                           right: 10,
                           top: 10,
                           child: Material(
@@ -313,21 +344,31 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                       Positioned(
                         right: 8,
                         bottom: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface(context)
-                                .withValues(alpha: 0.85),
-                            borderRadius: AppRadius.bSm,
-                          ),
-                          child: Text(
-                            l.runOsmAttribution,
-                            style: AppTypography.caption(context)
-                                .copyWith(fontSize: 10),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (_colorBySpeed && _latLngs.length >= 2) ...[
+                              const RouteSpeedLegend(),
+                              const SizedBox(height: 4),
+                            ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface(context)
+                                    .withValues(alpha: 0.85),
+                                borderRadius: AppRadius.bSm,
+                              ),
+                              child: Text(
+                                l.runOsmAttribution,
+                                style: AppTypography.caption(context)
+                                    .copyWith(fontSize: 10),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

@@ -249,11 +249,42 @@ class Nutrition {
     '其他': 5.0,
     CardioType.walk: 3.5,
     CardioType.run: 8.0,
+    CardioType.treadmill: 8.0,
+    CardioType.treadmillFast: 11.0,
+    CardioType.elliptical: 5.0,
+    CardioType.bike: 7.0,
     CardioType.cycle: 7.5,
     CardioType.swim: 8.0,
     CardioType.jumpRope: 12.3,
     CardioType.other: 5.0,
   };
+
+  /// 健身房器械（跑步机/椭圆机/动感单车）热量 MET 兜底估算：
+  /// treadmill=8.0, treadmill_fast=11.0, elliptical=5.0, bike=7.0。
+  /// 当类型为 treadmill 且有有效距离与时长、配速快于 5:30/km 时自动升级按快跑 11.0 MET 估算。
+  static double estimateMachineCalories({
+    required String machineType,
+    required double weightKg,
+    required double durationMinutes,
+    double? distanceKm,
+  }) {
+    if (!durationMinutes.isFinite || durationMinutes <= 0) return 0;
+    var met = cardioMets[machineType] ?? 8.0;
+    if (machineType == CardioType.treadmill &&
+        distanceKm != null &&
+        distanceKm.isFinite &&
+        distanceKm >= 0.2) {
+      final paceMinPerKm = durationMinutes / distanceKm;
+      if (paceMinPerKm < 5.5) {
+        met = cardioMets[CardioType.treadmillFast] ?? 11.0;
+      }
+    }
+    return calcMetCalories(
+      met: met,
+      weightKg: weightKg,
+      minutes: durationMinutes,
+    ).roundToDouble();
+  }
 
   /// 跑步热量估算（runs 与 cardio_records 唯一权威口径）：
   /// - 有 GPS 距离时按配速分档：kcal = distanceKm × weightKg × factor

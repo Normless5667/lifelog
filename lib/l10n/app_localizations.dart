@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.3 · Co-developed with DaFeiYu'**
+  /// **'Version v3.2.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.1.3 (Build 21)'**
+  /// **'Version v3.2.0 (Build 22)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5028,6 +5028,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Voice coach is ready'**
   String get runVoiceRetrySuccessToast;
+
+  /// No description provided for @cardioTypeTreadmill.
+  ///
+  /// In en, this message translates to:
+  /// **'Treadmill'**
+  String get cardioTypeTreadmill;
+
+  /// No description provided for @cardioTypeTreadmillFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Treadmill (Fast)'**
+  String get cardioTypeTreadmillFast;
+
+  /// No description provided for @cardioTypeElliptical.
+  ///
+  /// In en, this message translates to:
+  /// **'Elliptical'**
+  String get cardioTypeElliptical;
+
+  /// No description provided for @cardioTypeBike.
+  ///
+  /// In en, this message translates to:
+  /// **'Stationary Bike'**
+  String get cardioTypeBike;
+
+  /// No description provided for @runModePhotoRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo Scan'**
+  String get runModePhotoRecord;
+
+  /// No description provided for @runModePhotoRecordSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Treadmill / Machine'**
+  String get runModePhotoRecordSub;
+
+  /// No description provided for @treadmillScanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Machine Display'**
+  String get treadmillScanTitle;
+
+  /// No description provided for @treadmillScanTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Photo'**
+  String get treadmillScanTakePhoto;
+
+  /// No description provided for @treadmillScanPickGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Photo'**
+  String get treadmillScanPickGallery;
+
+  /// No description provided for @treadmillScanManualBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Manually'**
+  String get treadmillScanManualBtn;
+
+  /// No description provided for @treadmillScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo of your treadmill, elliptical, or bike display to read distance, duration, and calories. Review and edit before saving.'**
+  String get treadmillScanHint;
+
+  /// No description provided for @treadmillScanAnalyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading machine display…'**
+  String get treadmillScanAnalyzing;
+
+  /// No description provided for @treadmillScanEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Spotted a glare or typo? Edit any field above before saving.'**
+  String get treadmillScanEditHint;
+
+  /// No description provided for @treadmillScanDistanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get treadmillScanDistanceLabel;
+
+  /// No description provided for @treadmillScanDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (MM:SS or HH:MM:SS)'**
+  String get treadmillScanDurationLabel;
+
+  /// No description provided for @treadmillScanCaloriesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories'**
+  String get treadmillScanCaloriesLabel;
+
+  /// No description provided for @treadmillScanMachineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine Type'**
+  String get treadmillScanMachineLabel;
+
+  /// No description provided for @treadmillScanMetFallbackNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories unreadable — estimated via MET {met} (editable)'**
+  String treadmillScanMetFallbackNote(String met);
+
+  /// No description provided for @treadmillScanPaceTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected pace: {pace}'**
+  String treadmillScanPaceTag(String pace);
+
+  /// No description provided for @treadmillScanRetakeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get treadmillScanRetakeBtn;
+
+  /// No description provided for @treadmillScanSaveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get treadmillScanSaveBtn;
+
+  /// No description provided for @treadmillScanDurationInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid duration (e.g. 32:15 or 30)'**
+  String get treadmillScanDurationInvalid;
+
+  /// No description provided for @treadmillScanSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine cardio saved ({kcal} kcal synced to Diet)'**
+  String treadmillScanSavedToast(String kcal);
+
+  /// No description provided for @treadmillScanOpenSettingsBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure Vision AI'**
+  String get treadmillScanOpenSettingsBtn;
+
+  /// No description provided for @workoutPhotoScanCardioBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Treadmill Screen'**
+  String get workoutPhotoScanCardioBtn;
+
+  /// No description provided for @routeColorModeMono.
+  ///
+  /// In en, this message translates to:
+  /// **'Single Color'**
+  String get routeColorModeMono;
+
+  /// No description provided for @routeColorModeSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace Colors'**
+  String get routeColorModeSpeed;
+
+  /// No description provided for @paceZoneWalk.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get paceZoneWalk;
+
+  /// No description provided for @paceZoneJog.
+  ///
+  /// In en, this message translates to:
+  /// **'Jog'**
+  String get paceZoneJog;
+
+  /// No description provided for @paceZoneNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady'**
+  String get paceZoneNormal;
+
+  /// No description provided for @paceZoneFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get paceZoneFast;
+
+  /// No description provided for @paceZoneSprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sprint'**
+  String get paceZoneSprint;
 }
 
 class _AppLocalizationsDelegate

@@ -227,6 +227,18 @@ class L10nHelper {
       case CardioType.run:
       case '跑步':
         return l.cardioTypeRunning;
+      case CardioType.treadmill:
+      case '跑步机':
+        return l.cardioTypeTreadmill;
+      case CardioType.treadmillFast:
+      case '跑步机快跑':
+        return l.cardioTypeTreadmillFast;
+      case CardioType.elliptical:
+      case '椭圆机':
+        return l.cardioTypeElliptical;
+      case CardioType.bike:
+      case '动感单车':
+        return l.cardioTypeBike;
       case '骑行':
       case CardioType.cycle:
         return l.cardioTypeCycle;
@@ -240,6 +252,14 @@ class L10nHelper {
         return l.cardioTypeOther;
     }
   }
+
+  static IconData cardioTypeIcon(String rawType) => switch (rawType) {
+        CardioType.bike || CardioType.cycle || '骑行' => Icons.pedal_bike_rounded,
+        CardioType.elliptical || '椭圆机' => Icons.fitness_center_rounded,
+        CardioType.swim || '游泳' => Icons.pool_rounded,
+        CardioType.walk || '走路' || '快走' => Icons.directions_walk_rounded,
+        _ => Icons.directions_run_rounded,
+      };
 
   static String goalLabel(BuildContext context, String key) {
     final l = context.l10n;

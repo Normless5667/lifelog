@@ -17,12 +17,14 @@ class AppPrefsController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   double _textScale = 1.0;
   String _lang = 'zh'; // 'system' | 'zh' | 'en'
+  bool _routeColorBySpeed = true;
 
   AppSkin get skin => _skin;
   bool get isMidnight => _skin == AppSkin.midnight;
   ThemeMode get themeMode => _themeMode;
   double get textScale => _textScale;
   String get lang => _lang;
+  bool get routeColorBySpeed => _routeColorBySpeed;
 
   bool get isEn {
     if (_lang == 'en') return true;
@@ -42,6 +44,7 @@ class AppPrefsController extends ChangeNotifier {
     final tm = await Repo.getKv('pref_theme_mode') ?? 'light';
     final sc = double.tryParse(await Repo.getKv('pref_text_scale') ?? '') ?? 1.0;
     final lg = await Repo.getKv('pref_lang') ?? 'zh';
+    final rcs = await Repo.getKv('pref_route_color_by_speed');
 
     if (savedSkin == 'midnight') {
       _skin = AppSkin.midnight;
@@ -65,7 +68,16 @@ class AppPrefsController extends ChangeNotifier {
 
     _textScale = sc.clamp(0.85, 1.25);
     _lang = (lg == 'en' || lg == 'zh' || lg == 'system') ? lg : 'zh';
+    _routeColorBySpeed = rcs != '0';
     notifyListeners();
+  }
+
+  Future<void> setRouteColorBySpeed(bool enabled) async {
+    _routeColorBySpeed = enabled;
+    notifyListeners();
+    try {
+      await Repo.setKv('pref_route_color_by_speed', enabled ? '1' : '0');
+    } catch (_) {}
   }
 
   Future<void> setSkin(AppSkin next) async {

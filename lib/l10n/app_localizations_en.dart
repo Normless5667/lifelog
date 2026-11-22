@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.1.3 · Co-developed with DaFeiYu';
+      'Version v3.2.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.1.3 (Build 21)';
+  String get aboutVersion => 'Version v3.2.0 (Build 22)';
 
   @override
   String get aboutBadge =>
@@ -2896,4 +2896,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runVoiceRetrySuccessToast => 'Voice coach is ready';
+
+  @override
+  String get cardioTypeTreadmill => 'Treadmill';
+
+  @override
+  String get cardioTypeTreadmillFast => 'Treadmill (Fast)';
+
+  @override
+  String get cardioTypeElliptical => 'Elliptical';
+
+  @override
+  String get cardioTypeBike => 'Stationary Bike';
+
+  @override
+  String get runModePhotoRecord => 'Photo Scan';
+
+  @override
+  String get runModePhotoRecordSub => 'Treadmill / Machine';
+
+  @override
+  String get treadmillScanTitle => 'Scan Machine Display';
+
+  @override
+  String get treadmillScanTakePhoto => 'Take Photo';
+
+  @override
+  String get treadmillScanPickGallery => 'Choose Photo';
+
+  @override
+  String get treadmillScanManualBtn => 'Enter Manually';
+
+  @override
+  String get treadmillScanHint =>
+      'Take a photo of your treadmill, elliptical, or bike display to read distance, duration, and calories. Review and edit before saving.';
+
+  @override
+  String get treadmillScanAnalyzing => 'Reading machine display…';
+
+  @override
+  String get treadmillScanEditHint =>
+      'Spotted a glare or typo? Edit any field above before saving.';
+
+  @override
+  String get treadmillScanDistanceLabel => 'Distance';
+
+  @override
+  String get treadmillScanDurationLabel => 'Duration (MM:SS or HH:MM:SS)';
+
+  @override
+  String get treadmillScanCaloriesLabel => 'Calories';
+
+  @override
+  String get treadmillScanMachineLabel => 'Machine Type';
+
+  @override
+  String treadmillScanMetFallbackNote(String met) {
+    return 'Calories unreadable — estimated via MET $met (editable)';
+  }
+
+  @override
+  String treadmillScanPaceTag(String pace) {
+    return 'Detected pace: $pace';
+  }
+
+  @override
+  String get treadmillScanRetakeBtn => 'Retake';
+
+  @override
+  String get treadmillScanSaveBtn => 'Save';
+
+  @override
+  String get treadmillScanDurationInvalid =>
+      'Enter a valid duration (e.g. 32:15 or 30)';
+
+  @override
+  String treadmillScanSavedToast(String kcal) {
+    return 'Machine cardio saved ($kcal kcal synced to Diet)';
+  }
+
+  @override
+  String get treadmillScanOpenSettingsBtn => 'Configure Vision AI';
+
+  @override
+  String get workoutPhotoScanCardioBtn => 'Scan Treadmill Screen';
+
+  @override
+  String get routeColorModeMono => 'Single Color';
+
+  @override
+  String get routeColorModeSpeed => 'Pace Colors';
+
+  @override
+  String get paceZoneWalk => 'Walk';
+
+  @override
+  String get paceZoneJog => 'Jog';
+
+  @override
+  String get paceZoneNormal => 'Steady';
+
+  @override
+  String get paceZoneFast => 'Fast';
+
+  @override
+  String get paceZoneSprint => 'Sprint';
 }
