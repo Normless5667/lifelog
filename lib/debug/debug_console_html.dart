@@ -79,6 +79,19 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
   .chip { padding: 3px 9px; border-radius: 999px; font-size: 12px; }
   #searchInput { width: 200px; }
   label.chk { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; cursor: pointer; }
+  label.chk.err-toggle {
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--err-border); background: rgba(248, 81, 73, 0.08);
+    color: #ffb4ab; font-weight: 600;
+  }
+  label.chk.err-toggle.on {
+    background: var(--err); border-color: var(--err); color: #fff;
+  }
+  .expand-btn {
+    margin-top: 5px; padding: 2px 8px; font-size: 11px;
+    color: var(--accent); background: rgba(88,166,255,0.1);
+    border-color: rgba(88,166,255,0.35);
+  }
   #copyToast { color: var(--ok); font-size: 12px; min-width: 72px; text-align: right; }
 
   /* 中间区域：实时日志流 */
@@ -156,9 +169,11 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
 </header>
 
 <div class="toolbar">
+  <label id="errorsOnlyLabel" class="chk err-toggle">
+    <input id="errorsOnlyChk" type="checkbox" /> 只看错误 (<span id="errCountBadge">0</span>)
+  </label>
   <div class="chips" id="filterChips">
     <button class="chip active" data-filter="all">全部</button>
-    <button class="chip" data-filter="error">仅异常</button>
     <button class="chip" data-filter="ocr">OCR</button>
     <button class="chip" data-filter="ai">AI</button>
     <button class="chip" data-filter="telemetry">页面/功能</button>
@@ -203,6 +218,9 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
   const logContainer = document.getElementById('logContainer');
   const emptyHint = document.getElementById('emptyHint');
   const searchInput = document.getElementById('searchInput');
+  const errorsOnlyChk = document.getElementById('errorsOnlyChk');
+  const errorsOnlyLabel = document.getElementById('errorsOnlyLabel');
+  const errCountBadge = document.getElementById('errCountBadge');
   const autoScrollChk = document.getElementById('autoScrollChk');
   const copyToast = document.getElementById('copyToast');
   const fxInput = document.getElementById('fxInput');
@@ -231,10 +249,16 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
     previewText.textContent = `100,000₫ ≈ ¥${rmb} · threshold=${thStr}`;
   }
 
+  function updateCounts() {
+    logCountEl.textContent = String(logs.length);
+    const errCount = logs.filter(e => (e.level || 'info').toLowerCase() === 'error').length;
+    errCountBadge.textContent = String(errCount);
+  }
+
   function matchFilter(entry) {
     const lvl = (entry.level || 'info').toLowerCase();
     const tag = (entry.tag || '').toLowerCase();
-    if (activeFilter === 'error' && lvl !== 'error') return false;
+    if (errorsOnlyChk.checked && lvl !== 'error') return false;
     if (activeFilter === 'ocr' && !tag.includes('ocr') && !(entry.message || '').toLowerCase().includes('ocr') && !(entry.message || '').toLowerCase().includes('mlkit') && !(entry.message || '').toLowerCase().includes('inputimage')) return false;
     if (activeFilter === 'ai' && !tag.includes('ai')) return false;
     if (activeFilter === 'telemetry' && !tag.includes('page') && !tag.includes('feature')) return false;
@@ -268,10 +292,25 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
     tagSpan.textContent = `[${tag}]`;
     meta.append(tsSpan, lvlBadge, tagSpan);
 
+    const fullMsg = entry.message || '';
+    const shouldCollapse = lvl !== 'error' && fullMsg.length > 360;
     const msgDiv = document.createElement('div');
     msgDiv.className = 'log-msg';
-    msgDiv.textContent = entry.message || '';
+    msgDiv.textContent = shouldCollapse ? (fullMsg.slice(0, 360) + ' …') : fullMsg;
     row.append(meta, msgDiv);
+
+    if (shouldCollapse) {
+      let expanded = false;
+      const btn = document.createElement('button');
+      btn.className = 'expand-btn';
+      btn.textContent = `展开全文 (${fullMsg.length} 字)`;
+      btn.addEventListener('click', () => {
+        expanded = !expanded;
+        msgDiv.textContent = expanded ? fullMsg : (fullMsg.slice(0, 360) + ' …');
+        btn.textContent = expanded ? '收起' : `展开全文 (${fullMsg.length} 字)`;
+      });
+      row.appendChild(btn);
+    }
 
     if (entry.stack) {
       const st = document.createElement('div');
@@ -285,7 +324,7 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
   function renderAll() {
     logContainer.innerHTML = '';
     const matched = logs.filter(matchFilter);
-    logCountEl.textContent = String(logs.length);
+    updateCounts();
     if (matched.length === 0) {
       logContainer.appendChild(emptyHint);
       return;
@@ -301,7 +340,7 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
   function appendLog(entry) {
     logs.push(entry);
     if (logs.length > 2000) logs.shift();
-    logCountEl.textContent = String(logs.length);
+    updateCounts();
     if (!matchFilter(entry)) return;
     if (emptyHint.parentNode === logContainer) logContainer.removeChild(emptyHint);
     logContainer.appendChild(createLogEl(entry));
@@ -402,6 +441,10 @@ const String kDebugConsoleHtml = r'''<!DOCTYPE html>
     for (const b of document.querySelectorAll('#filterChips button')) {
       b.classList.toggle('active', b === btn);
     }
+    renderAll();
+  });
+  errorsOnlyChk.addEventListener('change', () => {
+    errorsOnlyLabel.classList.toggle('on', errorsOnlyChk.checked);
     renderAll();
   });
   searchInput.addEventListener('input', renderAll);

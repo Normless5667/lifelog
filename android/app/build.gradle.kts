@@ -25,8 +25,8 @@ android {
         applicationId = "com.lifelog.lifelog"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 30
-        versionName = "3.4.1"
+        versionCode = 31
+        versionName = "3.4.2"
     }
 
     signingConfigs {

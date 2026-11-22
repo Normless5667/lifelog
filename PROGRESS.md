@@ -178,3 +178,14 @@
 - [x] **调试后端抓到真相**：通过 v3.4.0 Wi-Fi 调试台抓到完整堆栈 `NullPointerException at t22.<init>:57 / t22.k`，反查 R8 `mapping.txt` 实锤 `t22` 是被 R8 合并混淆的 `mlkit_vision_common.zzmr` + `mlkit_vision_text_common.zzum` + `mlkit_common.zzsr` + `datatransport`（并非图像格式问题）。
 - [x] **补全 R8 `-keep` 规则 (`android/app/proguard-rules.pro`)**：完整保留 `com.google.mlkit.**`、`com.google.android.gms.internal.mlkit_common/vision_common/vision_text_common.**`、`com.google.android.libraries.vision.visionkit.**`、`com.google.android.datatransport.**`、`com.google.firebase.components/encoders.**`、`com.google_mlkit_commons/text_recognition.**`、`io.flutter.plugin.common.**` 及注解/泛型/内部类属性；同时保持 R8 压缩开启控制包体体积。
 - [x] 验证：81/81 测试通过，`analyze` 0 error / 0 warning，反查新版 `mapping.txt` 确认 ML Kit 类零混淆零合并，APK：`LifeLog_v3.4.1_release.apk`。
+
+### 扫菜单体验与调试台打磨：本地噪音清洗 + 价格规范化 + 防废帧 + 降分辨率 + 只看错误开关（v3.4.2+31）✅ 已完成并出包
+- [x] **本地 OCR 噪音清洗与越南盾价格规范化 (`MenuOcrService.cleanMenuOcrWithStats` + `normalizeMenuPrices`)**：
+  - 发 AI 前本地剔除 URL/域名/查询串（`http`/`.com`/`cid=`/`%2F`）、极短行/纯符号行、键盘与浏览器 UI 词（`insert`/`Tab`/`Gemini X`/`pngtree`/`Lifelog`/乱码标签栏），保留并优先保护含越南语声调与价格行。
+  - 将 `50K` / `48k` / `50.000đ` / `50,000` / `120.000 VND` 统一规范化为整数 `50000đ` 等（自动跳过 `4K` 分辨率与小数），省 Token 且提升 AI 换算准确率；清洗统计实时推送调试台。
+- [x] **消除起手废帧闪烁 + 降低闪存写入与耗电 (`menu_ocr_lab_screen.dart`)**：
+  - 首帧抓拍延迟由 `350ms` 提高至 **`900ms`**，且前 2 帧若为空帧直接静默丢弃不刷到 UI，避免顶部闪烁「0 块」。
+  - `CameraController` 默认分辨率由 `high` 降至 **`ResolutionPreset.medium`**（单帧体积由 ~1.1MB 降至 ~250–350KB），大幅降低闪存写入量与耗电。
+- [x] **电脑调试台新增「只看错误」过滤开关 (`debug_console_html.dart`)**：
+  - 工具栏置顶独立的「只看错误 (N)」红色开关与实时错误计数；超长非错误日志（如 AI 完整 Prompt/回复）自动折叠并支持一键展开全文，「一键复制全部日志」仍保留 100% 完整未截断原文。
+- [x] 验证：84/84 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.4.2_release.apk`。

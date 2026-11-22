@@ -40,7 +40,9 @@ class MenuOcrLabScreen extends StatefulWidget {
 class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     with WidgetsBindingObserver {
   static final _vndFmt = NumberFormat('#,###');
+  static const Duration _firstCaptureDelay = Duration(milliseconds: 900);
   static const Duration _liveCaptureInterval = Duration(milliseconds: 1200);
+  static const int _warmupEmptyFramesToSkip = 2;
 
   MenuOcrService? _ocrService;
   CameraController? _cameraCtrl;
@@ -58,6 +60,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   bool _translating = false;
   int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
   int _ocrRunCount = 0;
+  int _liveCaptureAttempt = 0;
 
   String? _cameraError;
   String? _streamError;
@@ -144,8 +147,9 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   void _startLivePolling() {
     _stopLivePolling();
     if (_paused || !mounted) return;
-    // 稍作短暂延迟等待自动对焦/曝光稳定后拍首帧，随后按固定周期定时 takePicture()
-    _liveTimer = Timer(const Duration(milliseconds: 350), () {
+    _liveCaptureAttempt = 0;
+    // 首帧延迟 900ms 等待对焦与曝光稳定，随后按固定周期定时 takePicture()
+    _liveTimer = Timer(_firstCaptureDelay, () {
       if (!mounted || _paused) return;
       _captureLiveFrame();
       _liveTimer = Timer.periodic(_liveCaptureInterval, (_) {
@@ -164,7 +168,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } catch (_) {}
   }
 
-  Future<void> _initCamera({ResolutionPreset preset = ResolutionPreset.high}) async {
+  Future<void> _initCamera({ResolutionPreset preset = ResolutionPreset.medium}) async {
     setState(() {
       _initializing = true;
       _cameraError = null;
@@ -179,7 +183,8 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
-      // 直接使用标准拍照通道（takePicture + InputImage.fromFilePath），不做任何 YUV/NV21/BMP 格式转换
+      // 默认使用 ResolutionPreset.medium（720p 左右，单帧仅 ~250-350KB 降低闪存写入与耗电），
+      // 走标准 takePicture + InputImage.fromFilePath 通道，不做任何格式转换
       final ctrl = CameraController(
         back,
         preset,
@@ -239,6 +244,15 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       );
       tempPath = null;
       if (!mounted || _paused) return;
+      _liveCaptureAttempt++;
+      // 前 2 帧若对焦/曝光尚未稳定导致 0 块，静默丢弃不刷到界面，避免顶部闪烁「0 块」
+      if (_liveCaptureAttempt <= _warmupEmptyFramesToSkip && res.isEmpty) {
+        DebugServer.instance.log(
+          'live OCR warmup #$_liveCaptureAttempt discarded (empty, ${res.elapsedMs}ms, $fileDiag)',
+          tag: 'OCR',
+        );
+        return;
+      }
       DebugServer.instance.log(
         'live OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}, $fileDiag',
         tag: 'OCR',

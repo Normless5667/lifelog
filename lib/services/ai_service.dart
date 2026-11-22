@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../debug/debug_server.dart';
 import '../models/models.dart';
+import 'menu_ocr_service.dart';
 import 'settings_service.dart';
 
 class AiException implements Exception {
@@ -535,10 +536,15 @@ class AiService {
     double? customFxRate,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final cleaned = ocrText.trim();
+    final stats = MenuOcrService.cleanMenuOcrWithStats(ocrText);
+    final cleaned = stats.cleanedText;
     if (cleaned.isEmpty) {
       throw AiException('当前没有识别到菜单文字，请对准菜单后再试');
     }
+    DebugServer.instance.log(
+      'OCR local clean: raw=${stats.rawLines} lines -> kept=${stats.keptLines} lines (dropped ${stats.droppedLines} noise lines)',
+      tag: 'OCR',
+    );
     var cfg = await SettingsService.visionConfig();
     if (!cfg.isReady) {
       cfg = await SettingsService.chatConfig();

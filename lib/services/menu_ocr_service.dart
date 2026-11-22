@@ -108,4 +108,204 @@ class MenuOcrService {
   Future<void> dispose() async {
     await _recognizer.close();
   }
+
+  // ── v3.4.2 本地菜单 OCR 噪音清洗与越南盾价格规范化（发 AI 前执行，省 Token 提准确率） ──
+
+  static final RegExp _vietnameseDiacriticRe = RegExp(
+    r'[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]',
+    caseSensitive: false,
+  );
+
+  static final RegExp _urlNoiseRe = RegExp(
+    r'(https?://|www\.|\.(com|net|org|io|cn|html|htm|php|gov|edu)\b|%[0-9a-f]{2}|[?&](cid|id|utm_\w+|token|ref|v)=|\b[a-z0-9_]{2,}=\S+)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _browserBrandNoiseRe = RegExp(
+    r'\b(gemini|chatgpt|gpt|lifelog|bilbil\w*|bilibili|pngtree|localhost|chrome|firefox|safari|deepseek|openai|github|youtube)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _garbledMixedAlnumRe = RegExp(
+    r'(?:\b\d+[a-z]{3,}\b|\b[a-z]{2,}\d+[a-z]+\b|\b\d+[A-Z]{2,}-[a-zA-Z]+\b|\b[A-Z][a-z]+[A-Z]\d+\b)',
+  );
+
+  static final RegExp _priceThousandSepRe = RegExp(
+    r'(?<!\d)(\d{1,3})[.,](\d{3})(?:\s*(đ|₫|d|vnd))?(?!\d)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _priceKRe = RegExp(
+    r'(?<![a-zA-Z0-9])(\d{1,3})\s*[kK](?![a-zA-Z0-9])',
+  );
+
+  static final RegExp _normalizedPriceRe = RegExp(r'\b\d{4,7}đ\b');
+
+  static final RegExp _hasAlphaNumRe = RegExp(
+    r'[a-zA-Z0-9àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]',
+    caseSensitive: false,
+  );
+
+  static final RegExp _standaloneXRe = RegExp(r'(?:^|\s)[xX×](?:\s|$)');
+
+  static const Set<String> _uiNoiseSingleWords = {
+    'insert',
+    'delete',
+    'del',
+    'home',
+    'end',
+    'pgup',
+    'pgdn',
+    'tab',
+    'shift',
+    'ctrl',
+    'alt',
+    'esc',
+    'enter',
+    'backspace',
+    'caps',
+    'capslock',
+    'numlock',
+    'prtsc',
+    'pause',
+    'fn',
+    'win',
+    'cmd',
+    'file',
+    'edit',
+    'view',
+    'help',
+    'tools',
+    'window',
+    'search',
+    'settings',
+    'bookmark',
+    'bookmarks',
+    'history',
+    'downloads',
+    'extensions',
+    'close',
+    'cancel',
+    'ok',
+    'back',
+    'next',
+    'share',
+    'copy',
+    'paste',
+    'gemini',
+    'chatgpt',
+    'chrome',
+    'edge',
+    'firefox',
+    'safari',
+    'localhost',
+    'lifelog',
+    'bilibili',
+    'youtube',
+    'google',
+    'github',
+  };
+
+  /// 将菜单中的越南盾常见价格写法规范化为整数 + `đ`（如 `50K` / `50.000đ` / `50,000` → `50000đ`），
+  /// 降低大模型换算与千分位误判概率。
+  static String normalizeMenuPrices(String text) {
+    var out = text.replaceAllMapped(_priceThousandSepRe, (m) {
+      final thousands = int.tryParse(m.group(1)!) ?? 0;
+      final rest = m.group(2)!;
+      final suffix = m.group(3);
+      // 有明确货币后缀（đ/₫/d/vnd）或 >= 5,000 才按越南盾价格规范化，避免误改 1.250 等小数
+      if (suffix != null || thousands >= 5) {
+        return '${thousands * 1000 + int.parse(rest)}đ';
+      }
+      return m.group(0)!;
+    });
+    out = out.replaceAllMapped(_priceKRe, (m) {
+      final n = int.tryParse(m.group(1)!) ?? 0;
+      // 过滤 1K/2K/4K 显示器分辨率字样，仅把 5K..999K 规范为越南盾整数
+      if (n >= 5 && n <= 999) {
+        return '${n * 1000}đ';
+      }
+      return m.group(0)!;
+    });
+    return out;
+  }
+
+  /// 本地清洗 OCR 菜单原文并统计丢弃噪音行数：
+  /// 1) 过滤 URL/域名/查询串片段（http/.com/.html/%2F/cid= 等）
+  /// 2) 过滤极短行（<3 字符）及纯符号行（短价格如 50K 除外）
+  /// 3) 过滤键盘/浏览器 UI 噪音词、标签页关闭符 `X` 及乱码字母数字串
+  /// 4) 规范化 `50K` / `50.000đ` / `50,000` 为整数越南盾，优先保留越南语变音符与价格行
+  static ({String cleanedText, int rawLines, int keptLines, int droppedLines})
+      cleanMenuOcrWithStats(String rawText) {
+    final trimmed = rawText.trim();
+    if (trimmed.isEmpty) {
+      return (cleanedText: '', rawLines: 0, keptLines: 0, droppedLines: 0);
+    }
+
+    final rawLines = trimmed
+        .split(RegExp(r'\r?\n'))
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    final kept = <String>[];
+    for (final rawLine in rawLines) {
+      // ① URL / 查询串 / 域名直接剔除
+      if (_urlNoiseRe.hasMatch(rawLine)) continue;
+
+      // 浏览器/电脑屏幕杂词直接剔除
+      if (_browserBrandNoiseRe.hasMatch(rawLine)) continue;
+
+      // 多处独立 "X" 浏览器标签页关闭按钮特征（如 "X 0TF-bilbilX ... X Lifelog EBAC"）
+      if (_standaloneXRe.allMatches(rawLine).length >= 2) continue;
+
+      // 先做价格规范化，避免 50K 被误判为短行或混合字母数字
+      final normalized = normalizeMenuPrices(rawLine);
+      final hasVn = _vietnameseDiacriticRe.hasMatch(normalized);
+      final hasPrice = _normalizedPriceRe.hasMatch(normalized);
+
+      // ② 极短行或纯符号行过滤（有价格的短行如 50000đ 保留）
+      if (!hasPrice && (normalized.length < 3 || !_hasAlphaNumRe.hasMatch(normalized))) {
+        continue;
+      }
+
+      // ③ 明显键盘/UI 单词过滤
+      final lower = normalized.toLowerCase();
+      if (_uiNoiseSingleWords.contains(lower)) continue;
+
+      // 以独立 " X" 结尾的浏览器标签页（且不含越南语和价格）
+      if (!hasVn && !hasPrice && RegExp(r'\s+[xX×]$').hasMatch(normalized)) {
+        continue;
+      }
+
+      // 乱码字母数字混排（非越南语且非价格行）
+      if (!hasVn && !hasPrice && _garbledMixedAlnumRe.hasMatch(normalized)) {
+        continue;
+      }
+
+      kept.add(normalized);
+    }
+
+    // 兜底：若极端情况下全部被误滤，则回退规范化后的原文本避免空请求
+    if (kept.isEmpty) {
+      final fallback = normalizeMenuPrices(trimmed);
+      return (
+        cleanedText: fallback,
+        rawLines: rawLines.length,
+        keptLines: rawLines.length,
+        droppedLines: 0,
+      );
+    }
+
+    return (
+      cleanedText: kept.join('\n'),
+      rawLines: rawLines.length,
+      keptLines: kept.length,
+      droppedLines: rawLines.length - kept.length,
+    );
+  }
+
+  /// 便捷接口：返回清洗与价格规范化后的菜单文本
+  static String cleanMenuOcrTextForAi(String rawText) =>
+      cleanMenuOcrWithStats(rawText).cleanedText;
 }

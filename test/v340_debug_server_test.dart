@@ -75,6 +75,7 @@ void main() {
           final body = await utf8.decodeStream(resOk);
           expect(body, contains('LifeLog 调试台'));
           expect(body, contains('一键复制全部日志'));
+          expect(body, contains('只看错误'));
           expect(body, contains('update_config'));
         } finally {
           client.close(force: true);

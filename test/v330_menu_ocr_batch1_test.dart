@@ -185,4 +185,54 @@ void main() {
       expect(find.text('继续实时'), findsOneWidget);
     });
   });
+
+  group('v3.4.2 Local Menu OCR Noise Cleaning & Price Normalization', () {
+    test('normalizeMenuPrices converts 50K / 50.000đ / 50,000 to integer VND without mangling 4K or decimals', () {
+      expect(MenuOcrService.normalizeMenuPrices('Cà phê đen đá 45K'), 'Cà phê đen đá 45000đ');
+      expect(MenuOcrService.normalizeMenuPrices('Bạc xỉu 50.000đ'), 'Bạc xỉu 50000đ');
+      expect(MenuOcrService.normalizeMenuPrices('Trà đào cam sả 50,000'), 'Trà đào cam sả 50000đ');
+      expect(MenuOcrService.normalizeMenuPrices('Phở bò 120.000 VND'), 'Phở bò 120000đ');
+      expect(MenuOcrService.normalizeMenuPrices('48k'), '48000đ');
+      // 4K monitor label & 1.250 decimal should not be converted
+      expect(MenuOcrService.normalizeMenuPrices('4K display 1.250'), '4K display 1.250');
+    });
+
+    test('cleanMenuOcrWithStats strips browser tabs, URLs, UI keys, garbled text while keeping Vietnamese dishes & prices', () {
+      const noisyRaw = '''
+Gemini X
+pngtree.com
+https://example.com/menu?cid=123
+FdetaiV2&cid=-Bpil9abc
+insert
+Tab
+X 0TF-bilbilX GPT 62 Astra 1computer USe, X Lifelog EBAC
+--
+AB
+CÀ PHÊ ĐEN ĐÁ
+45K
+Cà phê sữa đá · 50.000đ
+Bạc xỉu 50,000
+Hot Chocolate 48K
+''';
+      final stats = MenuOcrService.cleanMenuOcrWithStats(noisyRaw);
+      expect(stats.droppedLines, greaterThanOrEqualTo(9));
+      expect(stats.cleanedText, isNot(contains('Gemini')));
+      expect(stats.cleanedText, isNot(contains('pngtree.com')));
+      expect(stats.cleanedText, isNot(contains('cid=')));
+      expect(stats.cleanedText, isNot(contains('insert')));
+      expect(stats.cleanedText, isNot(contains('bilbil')));
+      expect(stats.cleanedText, isNot(contains('Lifelog')));
+
+      expect(stats.cleanedText, contains('CÀ PHÊ ĐEN ĐÁ'));
+      expect(stats.cleanedText, contains('45000đ'));
+      expect(stats.cleanedText, contains('Cà phê sữa đá · 50000đ'));
+      expect(stats.cleanedText, contains('Bạc xỉu 50000đ'));
+      expect(stats.cleanedText, contains('Hot Chocolate 48000đ'));
+    });
+
+    test('cleanMenuOcrWithStats falls back safely if every line looks like noise', () {
+      final stats = MenuOcrService.cleanMenuOcrWithStats('AB\n--');
+      expect(stats.cleanedText, isNotEmpty);
+    });
+  });
 }
