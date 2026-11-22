@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../db/repo.dart';
+import '../../debug/debug_server.dart';
 import '../../models/models.dart';
 import '../../services/nutrition.dart';
 import '../../services/usage_telemetry_service.dart';
@@ -51,12 +52,25 @@ class _BodyScreenState extends State<BodyScreen> {
     );
     final dur = DateTime.now().millisecondsSinceEpoch - t0;
     if (result != null) {
-      if (existing != null && existing.date != result.date) {
-        await Repo.deleteBodyRecord(existing.id!);
+      try {
+        if (existing != null && existing.date != result.date) {
+          await Repo.deleteBodyRecord(existing.id!);
+        }
+        await Repo.saveBodyRecord(result);
+        UsageTelemetryService.instance.trackFeature('log_weight', 'success', durationMs: dur);
+        _load();
+      } catch (e, st) {
+        UsageTelemetryService.instance.trackFeature(
+          'log_weight',
+          'fail',
+          durationMs: dur,
+          stage: 'save',
+          errorMsg: '$e',
+        );
+        DebugServer.instance.logError('Body', e, st, 'saveBodyRecord failed');
+        if (!mounted) return;
+        toast(context, context.l10n.bodySaveFailed('$e'));
       }
-      await Repo.saveBodyRecord(result);
-      UsageTelemetryService.instance.trackFeature('log_weight', 'success', durationMs: dur);
-      _load();
     } else {
       UsageTelemetryService.instance.trackFeature('log_weight', 'cancel', durationMs: dur);
     }
@@ -614,10 +628,22 @@ class _BodyRecordDialogState extends State<_BodyRecordDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton.icon(
           onPressed: () {
-            final w = Nutrition.sanitizeWeightKg(Nutrition.parsePlainDouble(_weight.text));
-            final f = Nutrition.sanitizeBodyFat(Nutrition.parsePlainDouble(_fat.text));
-            final wa = Nutrition.sanitizeWaistCm(Nutrition.parsePlainDouble(_waist.text));
+            final rawW = _weight.text.trim();
+            final rawF = _fat.text.trim();
+            final rawWa = _waist.text.trim();
+            final w = Nutrition.sanitizeWeightKg(Nutrition.parsePlainDouble(rawW));
+            final f = Nutrition.sanitizeBodyFat(Nutrition.parsePlainDouble(rawF));
+            final wa = Nutrition.sanitizeWaistCm(Nutrition.parsePlainDouble(rawWa));
             if (w == null && f == null && wa == null) {
+              final reason = (rawW.isEmpty && rawF.isEmpty && rawWa.isEmpty)
+                  ? 'all_fields_empty'
+                  : 'invalid_or_out_of_range(w_len=${rawW.length},f_len=${rawF.length},wa_len=${rawWa.length})';
+              UsageTelemetryService.instance.trackFeature(
+                'log_weight',
+                'fail',
+                stage: 'validate',
+                errorMsg: reason,
+              );
               toast(context, l.commonAtLeastOneField);
               return;
             }

@@ -3,6 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import '../../db/repo.dart';
+import '../../debug/debug_server.dart';
 import '../../models/models.dart';
 import '../../services/ai_service.dart';
 import '../../services/context_builder.dart';
@@ -17,6 +18,7 @@ class _ParsedAiReply {
   final bool isGeneratingPlan;
   final bool parseFailed;
   final String? rawFailedJson;
+  final String? parseError;
 
   const _ParsedAiReply({
     required this.displayText,
@@ -24,6 +26,7 @@ class _ParsedAiReply {
     this.isGeneratingPlan = false,
     this.parseFailed = false,
     this.rawFailedJson,
+    this.parseError,
   });
 }
 
@@ -96,14 +99,22 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
-  TrainingPlan? _tryParsePlanJson(String rawJson) {
+  ({TrainingPlan? plan, String? error}) _tryParsePlanJson(String rawJson) {
     final j = AiService.extractJson(rawJson);
-    if (j == null || j['days'] is! List) return null;
+    if (j == null) {
+      return (plan: null, error: 'extractJson_returned_null(len=${rawJson.length})');
+    }
+    if (j['days'] is! List) {
+      return (plan: null, error: 'missing_or_invalid_days_field');
+    }
     try {
       final plan = TrainingPlan.fromJson(j);
-      return plan.days.isEmpty ? null : plan;
-    } catch (_) {
-      return null;
+      if (plan.days.isEmpty) {
+        return (plan: null, error: 'parsed_plan_days_empty');
+      }
+      return (plan: plan, error: null);
+    } catch (e) {
+      return (plan: null, error: 'TrainingPlan.fromJson: $e');
     }
   }
 
@@ -116,14 +127,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
       var cleanText = content.replaceAll(markerMatch.group(0)!, '').trim();
       // 清理可能包裹在标记外层的空代码块符号
       cleanText = cleanText.replaceAll(RegExp(r'```(?:json)?\s*```'), '').trim();
-      final plan = _tryParsePlanJson(jsonStr);
-      if (plan != null) {
-        return _ParsedAiReply(displayText: cleanText, plan: plan);
+      final res = _tryParsePlanJson(jsonStr);
+      if (res.plan != null) {
+        return _ParsedAiReply(displayText: cleanText, plan: res.plan);
       } else {
         return _ParsedAiReply(
           displayText: cleanText,
           parseFailed: true,
           rawFailedJson: jsonStr,
+          parseError: res.error,
         );
       }
     }
@@ -143,14 +155,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
       final candidate = m.group(1) ?? '';
       if (candidate.contains('"plan_name"') || candidate.contains('"days"')) {
         final cleanText = content.replaceAll(m.group(0)!, '').trim();
-        final plan = _tryParsePlanJson(candidate);
-        if (plan != null) {
-          return _ParsedAiReply(displayText: cleanText, plan: plan);
+        final res = _tryParsePlanJson(candidate);
+        if (res.plan != null) {
+          return _ParsedAiReply(displayText: cleanText, plan: res.plan);
         } else {
           return _ParsedAiReply(
             displayText: cleanText,
             parseFailed: true,
             rawFailedJson: candidate,
+            parseError: res.error,
           );
         }
       }
@@ -162,10 +175,17 @@ class _AiChatScreenState extends State<AiChatScreen> {
       final endBrace = content.lastIndexOf('}');
       if (startBrace >= 0 && endBrace > startBrace) {
         final jsonCandidate = content.substring(startBrace, endBrace + 1);
-        final plan = _tryParsePlanJson(jsonCandidate);
-        if (plan != null) {
+        final res = _tryParsePlanJson(jsonCandidate);
+        if (res.plan != null) {
           final cleanText = (content.substring(0, startBrace) + content.substring(endBrace + 1)).trim();
-          return _ParsedAiReply(displayText: cleanText, plan: plan);
+          return _ParsedAiReply(displayText: cleanText, plan: res.plan);
+        } else {
+          return _ParsedAiReply(
+            displayText: content,
+            parseFailed: true,
+            rawFailedJson: jsonCandidate,
+            parseError: res.error,
+          );
         }
       }
     }
@@ -176,6 +196,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<void> _importPlan(TrainingPlan plan) async {
     final t0 = DateTime.now().millisecondsSinceEpoch;
     UsageTelemetryService.instance.trackFeature('ai_plan_import', 'tap');
+    if (plan.planName.trim().isEmpty || plan.days.isEmpty) {
+      final dur = DateTime.now().millisecondsSinceEpoch - t0;
+      const err = 'invalid_plan_empty_name_or_days';
+      UsageTelemetryService.instance.trackFeature(
+        'ai_plan_import',
+        'fail',
+        durationMs: dur,
+        stage: 'parse',
+        errorMsg: err,
+      );
+      if (mounted) {
+        showAiError(context, AiException(context.l10n.aiPlanParseFailedHint));
+      }
+      return;
+    }
     try {
       await Repo.saveTrainingPlan(plan);
       final dur = DateTime.now().millisecondsSinceEpoch - t0;
@@ -185,14 +220,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
         _importedPlanNames.add(plan.planName);
       });
       toast(context, context.l10n.aiPlanImportedToast(plan.planName));
-    } catch (e) {
+    } catch (e, st) {
       final dur = DateTime.now().millisecondsSinceEpoch - t0;
       UsageTelemetryService.instance.trackFeature(
         'ai_plan_import',
         'fail',
         durationMs: dur,
+        stage: 'save',
         errorMsg: '$e',
       );
+      DebugServer.instance.logError('AiPlan', e, st, 'saveTrainingPlan failed');
       if (!mounted) return;
       showAiError(context, e);
     }
@@ -357,6 +394,19 @@ class _AiChatScreenState extends State<AiChatScreen> {
       );
       final aiMsg = ChatMessage(role: 'assistant', content: reply);
       await Repo.addChatMessage(aiMsg);
+      // 及时捕捉训练计划 JSON 解析失败阶段（stage=parse），避免静默失败漏报
+      final parsedPlanReply = _parseReplyContent(reply);
+      if (parsedPlanReply.parseFailed ||
+          (isPlanReq && parsedPlanReply.plan == null && !parsedPlanReply.isGeneratingPlan)) {
+        final reason = parsedPlanReply.parseError ??
+            (isPlanReq ? 'plan_json_missing_or_truncated' : 'plan_parse_failed');
+        UsageTelemetryService.instance.trackFeature(
+          'ai_plan_import',
+          'fail',
+          stage: 'parse',
+          errorMsg: reason,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _messages.add(aiMsg);
@@ -671,7 +721,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                     ],
                                     if (parsed.parseFailed) ...[
                                       const SizedBox(height: AppSpacing.sm),
-                                      _buildParseFailedCollapse(i, parsed.rawFailedJson ?? m.content),
+                                      _buildParseFailedCollapse(
+                                        i,
+                                        parsed.rawFailedJson ?? m.content,
+                                        parseError: parsed.parseError,
+                                      ),
                                     ],
                                   ],
                                 ),
@@ -901,8 +955,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  /// 1.3 兜底：JSON 解析失败时默认折叠原文，提供「显示原始回复」按钮
-  Widget _buildParseFailedCollapse(int msgIdx, String rawText) {
+  /// 1.3 兜底：JSON 解析失败时默认折叠原文，提供「显示原始回复」按钮并展示失败原因
+  Widget _buildParseFailedCollapse(
+    int msgIdx,
+    String rawText, {
+    String? parseError,
+  }) {
     final l = context.l10n;
     final expanded = _expandedRawMsgIndices.contains(msgIdx);
     final warning = AppColors.warning(context);
@@ -915,7 +973,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
             const SizedBox(width: AppSpacing.xs + 2),
             Expanded(
               child: Text(
-                l.aiPlanParseFailedHint,
+                parseError != null && parseError.isNotEmpty
+                    ? '${l.aiPlanParseFailedHint} ($parseError)'
+                    : l.aiPlanParseFailedHint,
                 style: AppTypography.bodySecondary(context),
               ),
             ),

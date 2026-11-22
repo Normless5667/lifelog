@@ -27,7 +27,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
   UsageTelemetryService._();
   static final UsageTelemetryService instance = UsageTelemetryService._();
 
-  static const appVersion = '3.5.0';
+  static const appVersion = '3.5.1';
   static const _enabledKvKey = 'usage_telemetry_enabled';
   static const _flushIntervalSec = 30;
   static const _flushBatchThreshold = 50;
@@ -223,23 +223,32 @@ class UsageTelemetryService with WidgetsBindingObserver {
     String feature,
     String action, {
     int? durationMs,
+    String? stage,
     String? errorMsg,
+    Map<String, Object?>? extra,
   }) {
+    final trimmedErr = (errorMsg != null && errorMsg.isNotEmpty)
+        ? (errorMsg.length > 100 ? errorMsg.substring(0, 100) : errorMsg)
+        : null;
     DebugServer.instance.logFeature(
       feature,
       action,
       durationMs: durationMs,
-      errorMsg: errorMsg,
+      stage: stage,
+      errorMsg: trimmedErr,
     );
     if (!_enabled) return;
+    final mergedExtra = <String, Object?>{
+      if (extra != null) ...extra,
+      if (stage != null && stage.isNotEmpty) 'stage': stage,
+      if (trimmedErr != null) 'error': trimmedErr,
+    };
     _enqueue(
       category: 'feature',
       name: feature,
       action: action,
       durationMs: durationMs,
-      extra: errorMsg != null && errorMsg.isNotEmpty
-          ? {'error': errorMsg.length > 120 ? errorMsg.substring(0, 120) : errorMsg}
-          : null,
+      extra: mergedExtra.isEmpty ? null : mergedExtra,
     );
   }
 

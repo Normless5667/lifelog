@@ -230,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _open(Widget page) async {
     final prevPage = UsageTelemetryService.instance.currentPage;
     if (page is BusScheduleScreen) {
-      UsageTelemetryService.instance.trackFeature('bus_board', 'tap');
+      // 校车看板属于页面浏览而非转化漏斗，仅记 page 访问，避免无 success 污染功能转化率
       UsageTelemetryService.instance.enterPage('bus_board', source: 'push');
     } else if (page is BodyScreen) {
       // 仅记录页面浏览，真正的 log_weight tap/success/cancel 在 BodyScreen._addRecord 内配对埋点

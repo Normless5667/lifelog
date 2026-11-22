@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.5.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.5.1 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.5.0 (Build 32)",
+  "aboutVersion": "Version v3.5.1 (Build 33)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1833,5 +1833,11 @@
       "kcal": { "type": "String" }
     }
   },
-  "quickMealFallbackToast": "Couldn't auto-estimate; opened full form"
+  "quickMealFallbackToast": "Couldn't auto-estimate; opened full form",
+  "bodySaveFailed": "Failed to save body record: {error}",
+  "@bodySaveFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  }
 }

@@ -197,4 +197,13 @@
 - [x] **饮食埋点分路径精细统计 (`diet_screen.dart`)**：
   - 彻底拆分三条转化路径：`quick_log_diet`（快速两步路径，含 `fail` 原因上报）、`meal_reuse_recent`（点最近吃过一键复用）、`meal_edit_full`（编辑已有记录或进入完整 6 格表单）。
 - [x] 验证：88/88 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.5.0_release.apk`。
-- [ ] 待下一批（等用户验收 `v3.5.0` 后推进）：`ai_plan_import` / `log_weight` 补 fail 埋点与报错提示、`bus_board` 埋点修正、`start_workout` 重复计数修复、内存 242MB 专项排查。
+
+### 第二批：`bus_board` / `log_weight` / `ai_plan_import` 埋点与报错闭环（v3.5.1+33）✅ 已完成并出包
+- [x] **1) `bus_board` 埋点修正 (`home_screen.dart`)**：移除打开校车看板时误打的 `trackFeature('bus_board', 'tap')`，保留 `enterPage('bus_board', source: 'push')`，将其准确归入页面访问统计，不再以 `22 tap / 0 success` 污染功能转化率。
+- [x] **2) `log_weight` 补全 `fail` 埋点与用户可见提示 (`body_screen.dart` + `usage_telemetry_service.dart`)**：
+  - `UsageTelemetryService.trackFeature()` 新增 `stage` 参数并将 `error` 截断前 100 字符同时落库与推送调试台。
+  - `_BodyRecordDialog` 校验拦截（空表单/超范围输入）记录 `fail` (`stage: 'validate'`)；`Repo.saveBodyRecord` 异常捕获记录 `fail` (`stage: 'save'`)、推送完整堆栈至调试台并弹出 `bodySaveFailed` 提示。
+- [x] **3) `ai_plan_import` 全阶段 `fail` 埋点覆盖 (`ai_chat_screen.dart`)**：
+  - `parse` 阶段：`_tryParsePlanJson` 不再吞异常，保留具体失败原因；`_send` 收到计划回复若解析失败或缺失 JSON 立即上报 `fail` (`stage: 'parse'`) 并在聊天气泡折叠卡片里展示具体原因；
+  - `save` 阶段：`_importPlan` 保存前校验空计划（`stage: 'parse'`），`Repo.saveTrainingPlan` 异常捕获上报 `fail` (`stage: 'save'`)、推堆栈至调试台并弹窗展示错误。
+- [x] 验证：90/90 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.5.1_release.apk`。

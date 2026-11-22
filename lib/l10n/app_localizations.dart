@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.5.0 · Co-developed with DaFeiYu'**
+  /// **'Version v3.5.1 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.5.0 (Build 32)'**
+  /// **'Version v3.5.1 (Build 33)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5586,6 +5586,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t auto-estimate; opened full form'**
   String get quickMealFallbackToast;
+
+  /// No description provided for @bodySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save body record: {error}'**
+  String bodySaveFailed(String error);
 }
 
 class _AppLocalizationsDelegate

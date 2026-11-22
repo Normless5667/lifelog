@@ -448,12 +448,14 @@ class DebugServer extends ChangeNotifier with WidgetsBindingObserver {
     String feature,
     String action, {
     int? durationMs,
+    String? stage,
     String? errorMsg,
   }) {
     final durPart = durationMs != null ? ' ${durationMs}ms' : '';
+    final stagePart = (stage != null && stage.isNotEmpty) ? ' stage=$stage' : '';
     final errPart = (errorMsg != null && errorMsg.isNotEmpty) ? ' error="$errorMsg"' : '';
     log(
-      'feature="$feature" action=$action$durPart$errPart',
+      'feature="$feature" action=$action$stagePart$durPart$errPart',
       level: action == 'fail' ? 'error' : 'info',
       tag: 'Feature',
     );

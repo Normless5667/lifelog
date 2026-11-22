@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.5.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.5.1 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.5.0 (Build 32)';
+  String get aboutVersion => '版本 v3.5.1 (Build 33)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -3123,4 +3123,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get quickMealFallbackToast => '未能自动估算，已为你打开手动表单';
+
+  @override
+  String bodySaveFailed(String error) {
+    return '保存身体记录失败：$error';
+  }
 }
