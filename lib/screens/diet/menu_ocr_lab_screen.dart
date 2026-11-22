@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -38,11 +39,11 @@ class MenuOcrLabScreen extends StatefulWidget {
 class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     with WidgetsBindingObserver {
   static final _vndFmt = NumberFormat('#,###');
-  static const Duration _streamThrottle = Duration(milliseconds: 450);
+  static const Duration _liveCaptureInterval = Duration(milliseconds: 1200);
 
   MenuOcrService? _ocrService;
   CameraController? _cameraCtrl;
-  CameraDescription? _cameraDesc;
+  Timer? _liveTimer;
 
   final TextEditingController _fxCtrl = TextEditingController();
   double? _activeFxRate;
@@ -57,7 +58,6 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
   int _ocrRunCount = 0;
 
-  DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _cameraError;
   String? _streamError;
   MenuOcrFrameResult? _latest;
@@ -98,6 +98,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopLivePolling();
     _fxCtrl.dispose();
     _stopCamera();
     _ocrService?.dispose();
@@ -115,15 +116,29 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     }
   }
 
+  void _stopLivePolling() {
+    _liveTimer?.cancel();
+    _liveTimer = null;
+  }
+
+  void _startLivePolling() {
+    _stopLivePolling();
+    if (_paused || !mounted) return;
+    // 稍作短暂延迟等待自动对焦/曝光稳定后拍首帧，随后按固定周期定时 takePicture()
+    _liveTimer = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted || _paused) return;
+      _captureLiveFrame();
+      _liveTimer = Timer.periodic(_liveCaptureInterval, (_) {
+        _captureLiveFrame();
+      });
+    });
+  }
+
   Future<void> _stopCamera() async {
+    _stopLivePolling();
     final ctrl = _cameraCtrl;
     _cameraCtrl = null;
     if (ctrl == null) return;
-    try {
-      if (ctrl.value.isStreamingImages) {
-        await ctrl.stopImageStream();
-      }
-    } catch (_) {}
     try {
       await ctrl.dispose();
     } catch (_) {}
@@ -144,29 +159,25 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
-      // Android 必须用 ImageFormatGroup.yuv420：
-      // camera_android_camerax 0.6.x 使用 ImageFormatGroup.nv21 时会在内部 ImageProxyUtils 抛异常导致 0 帧！
+      // 直接使用标准拍照通道（takePicture + InputImage.fromFilePath），不做任何 YUV/NV21/BMP 格式转换
       final ctrl = CameraController(
         back,
         preset,
         enableAudio: false,
-        imageFormatGroup: Platform.isAndroid
-            ? ImageFormatGroup.yuv420
-            : ImageFormatGroup.bgra8888,
       );
       await ctrl.initialize();
+      try {
+        // 默认关闭自动闪光灯，避免暗光环境下定时 takePicture() 连续闪光
+        await ctrl.setFlashMode(_torchOn ? FlashMode.torch : FlashMode.off);
+      } catch (_) {}
       if (!mounted) {
         await ctrl.dispose();
         return;
       }
-      _cameraDesc = back;
       _cameraCtrl = ctrl;
       setState(() => _initializing = false);
-      final streamOk = await _startStream();
-      if (!streamOk && preset == ResolutionPreset.high && mounted) {
-        // 若部分机型高分辨率并发绑定 Preview+ImageCapture+ImageAnalysis 失败，自动降级 medium 重试一次
-        await _stopCamera();
-        await _initCamera(preset: ResolutionPreset.medium);
+      if (!_paused) {
+        _startLivePolling();
       }
     } catch (e) {
       if (!mounted) return;
@@ -177,45 +188,32 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     }
   }
 
-  Future<bool> _startStream() async {
-    final ctrl = _cameraCtrl;
-    if (ctrl == null || !ctrl.value.isInitialized) return false;
-    if (ctrl.value.isStreamingImages) return true;
-    try {
-      await ctrl.startImageStream(_onCameraFrame);
-      if (mounted && _streamError != null) {
-        setState(() => _streamError = null);
-      }
-      return true;
-    } catch (e, st) {
-      debugPrint('[MenuOcrLab] startImageStream failed: $e\n$st');
-      if (mounted) {
-        setState(() => _streamError = e.toString());
-      }
-      return false;
-    }
-  }
-
-  Future<void> _onCameraFrame(CameraImage image) async {
+  Future<void> _captureLiveFrame() async {
     if (_paused || _busyStillOcr || _processingFrame || _translating || !mounted) {
       return;
     }
-    final now = DateTime.now();
-    if (now.difference(_lastFrameAt) < _streamThrottle) return;
-    final cam = _cameraDesc;
     final ctrl = _cameraCtrl;
     final ocr = _ocrService;
-    if (cam == null || ctrl == null || ocr == null) return;
+    if (ctrl == null ||
+        !ctrl.value.isInitialized ||
+        ctrl.value.isTakingPicture ||
+        ocr == null) {
+      return;
+    }
 
     _processingFrame = true;
-    _lastFrameAt = now;
+    String? tempPath;
     try {
-      final res = await ocr.processCameraImage(
-        image: image,
-        camera: cam,
-        deviceOrientation: ctrl.value.deviceOrientation,
+      final photo = await ctrl.takePicture();
+      tempPath = photo.path;
+      if (!mounted || _paused) return;
+      final res = await ocr.processFilePath(
+        photo.path,
+        source: 'stream',
+        deleteAfter: true,
       );
-      if (res == null || !mounted || _paused) return;
+      tempPath = null;
+      if (!mounted || _paused) return;
       setState(() {
         _ocrRunCount++;
         _streamError = null;
@@ -225,14 +223,19 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         }
       });
     } catch (e, st) {
-      debugPrint('[MenuOcrLab] frame OCR error: $e\n$st');
-      if (mounted) {
+      debugPrint('[MenuOcrLab] live capture OCR error: $e\n$st');
+      if (mounted && !_paused) {
         setState(() {
-          _streamError =
-              '$e [${image.width}x${image.height} p=${image.planes.length} fmt=${image.format.raw}]';
+          _streamError = e.toString();
         });
       }
     } finally {
+      if (tempPath != null) {
+        try {
+          final f = File(tempPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
       _processingFrame = false;
     }
   }
@@ -253,18 +256,31 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     if (ctrl == null || !ctrl.value.isInitialized || ocr == null || _busyStillOcr) {
       return;
     }
+    _stopLivePolling();
     setState(() {
       _busyStillOcr = true;
       _paused = true;
     });
+    String? tempPath;
     try {
-      if (ctrl.value.isStreamingImages) {
-        await ctrl.stopImageStream();
+      // 等待可能正在执行中的上一次定时抓帧结束，避免并发 takePicture 冲突
+      var waited = 0;
+      while ((_processingFrame || ctrl.value.isTakingPicture) && waited < 25) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        waited++;
+        if (!mounted) return;
       }
       final photo = await ctrl.takePicture();
-      final res = await ocr.processFilePath(photo.path, source: 'photo');
+      tempPath = photo.path;
+      final res = await ocr.processFilePath(
+        photo.path,
+        source: 'photo',
+        deleteAfter: true,
+      );
+      tempPath = null;
       if (!mounted) return;
       setState(() {
+        _streamError = null;
         _latest = res;
         _busyStillOcr = false;
       });
@@ -274,11 +290,17 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } catch (e) {
       debugPrint('[MenuOcrLab] HD capture OCR error: $e');
       if (mounted) {
-        setState(() => _busyStillOcr = false);
+        setState(() {
+          _busyStillOcr = false;
+          _streamError = e.toString();
+        });
       }
     } finally {
-      if (mounted && !_paused) {
-        await _startStream();
+      if (tempPath != null) {
+        try {
+          final f = File(tempPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
       }
     }
   }
@@ -288,6 +310,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     _ocrService ??= ocr;
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
+    _stopLivePolling();
     setState(() {
       _busyStillOcr = true;
       _paused = true;
@@ -296,6 +319,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       final res = await ocr.processFilePath(picked.path, source: 'gallery');
       if (!mounted) return;
       setState(() {
+        _streamError = null;
         _latest = res;
         _busyStillOcr = false;
       });
@@ -305,7 +329,10 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } catch (e) {
       debugPrint('[MenuOcrLab] gallery OCR error: $e');
       if (mounted) {
-        setState(() => _busyStillOcr = false);
+        setState(() {
+          _busyStillOcr = false;
+          _streamError = e.toString();
+        });
       }
     }
   }
@@ -314,6 +341,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     final text = _latest?.fullText.trim() ?? '';
     if (text.isEmpty || _translating) return;
 
+    _stopLivePolling();
     setState(() {
       _paused = true;
       _translating = true;
@@ -355,11 +383,13 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     }
   }
 
-  Future<void> _togglePause() async {
+  void _togglePause() {
     final next = !_paused;
     setState(() => _paused = next);
-    if (!next && _cameraCtrl != null && _cameraCtrl!.value.isInitialized) {
-      await _startStream();
+    if (next) {
+      _stopLivePolling();
+    } else if (_cameraCtrl != null && _cameraCtrl!.value.isInitialized) {
+      _startLivePolling();
     }
   }
 

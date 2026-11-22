@@ -154,3 +154,11 @@
   - 直接取 Android 全机型统一的 `planes[0]` Y 亮度平面，纯 Dart 同步完成 0/90/180/270 正立旋转并封装为标准 8-bit 灰度 BMP（含 54 字节头 + 1024 字节调色板 + 4 字节行对齐，720p 仅 ~0.9MB、编码 <3ms）。
   - 复用单个缓存文件走 `InputImage.fromFilePath`（与高清拍照/相册测图完全同一条零坑原生链路，退出页面自动清理临时文件），且输出边界框直接是正立坐标系（为第三批 AR 浮层铺路）。
 - [x] 验证：77/77 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.4_release.apk`。
+
+### P0 方案重构：废弃自研编码器，改用 `takePicture()` 定时抓帧 + 原图 `InputImage.fromFilePath`（v3.3.5+28）✅ 已完成并出包
+- [x] **一步到位零格式转换**：移除全部手写 YUV420→NV21、Y→RGBA、8-bit 灰度 BMP 编码器及 `startImageStream`，彻底消除跨机型格式兼容风险与维护负担，完整保留菜单彩色对比度与越南语声调符号（`ế ệ ộ`）清晰度。
+- [x] **`takePicture()` 定时抓帧 (`menu_ocr_lab_screen.dart` + `menu_ocr_service.dart`)**：
+  - 相机初始化后默认锁定 `FlashMode.off`（避免暗光餐厅定时抓帧连续触发自动闪光灯），以 `Timer.periodic(1200ms)` 配合防重入锁 `_processingFrame` 与 `isTakingPicture` 校验定时调用 `takePicture()`。
+  - 直接走硬件编码 JPEG + `InputImage.fromFilePath(path)`，由 `MenuOcrService.processFilePath(..., deleteAfter: true)` 在 `finally` 块自动删除临时抓帧文件（相册测图保持 `deleteAfter: false` 绝不删用户原图）。
+  - 手动「拍高清帧」自动先停定时器并等待在途抓帧收尾，杜绝并发 `takePicture()` 冲突。
+- [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.5_release.apk`。

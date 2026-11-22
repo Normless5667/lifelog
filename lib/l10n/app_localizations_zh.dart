@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.3.4 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.3.5 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.3.4 (Build 27)';
+  String get aboutVersion => '版本 v3.3.5 (Build 28)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
