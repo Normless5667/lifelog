@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../db/repo.dart';
+import '../../debug/debug_server.dart';
 import '../../services/academic_calendar_service.dart';
 import '../../services/ai_service.dart';
 import '../../services/app_prefs.dart';
@@ -108,6 +110,142 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _activeTerm = activeTerm;
       _loading = false;
     });
+  }
+
+  bool _debugServerBusy = false;
+
+  Future<void> _toggleDebugServer(bool enable) async {
+    if (_debugServerBusy) return;
+    final l = context.l10n;
+    setState(() => _debugServerBusy = true);
+    try {
+      if (enable) {
+        await DebugServer.instance.start();
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.danger(ctx),
+              size: 32,
+            ),
+            title: Text(l.debugServerWarnTitle),
+            content: Text(l.debugServerWarnBody),
+            actions: [
+              FilledButton(
+                key: const ValueKey('debug_server_warn_ack_btn'),
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l.debugServerWarnAck),
+              ),
+            ],
+          ),
+        );
+      } else {
+        await DebugServer.instance.stop(reason: 'settings_switch');
+        if (!mounted) return;
+        toast(context, l.debugServerStoppedToast);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      toast(context, l.debugServerStartFailed(e.toString()));
+    } finally {
+      if (mounted) setState(() => _debugServerBusy = false);
+    }
+  }
+
+  Widget _buildDeveloperDebugCard(BuildContext context) {
+    final l = context.l10n;
+    final danger = AppColors.danger(context);
+    final srv = DebugServer.instance;
+    return ListenableBuilder(
+      listenable: Listenable.merge([srv, srv.config]),
+      builder: (context, _) {
+        final running = srv.isRunning;
+        final url = srv.connectUrl ?? '';
+        final token = srv.token ?? '';
+        return SurfaceCard(
+          padding: AppSpacing.cardPadding,
+          backgroundColor: running ? AppColors.softBg(context, danger) : null,
+          borderColor: running ? AppColors.softBorder(context, danger) : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchListTile(
+                key: const ValueKey('settings_debug_server_switch'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  l.debugServerSwitchTitle,
+                  style: AppTypography.cardTitle(
+                    context,
+                    color: running ? danger : null,
+                  ),
+                ),
+                subtitle: Text(
+                  running
+                      ? l.debugServerSwitchSubOn(srv.clientCount)
+                      : l.debugServerSwitchSubOff,
+                  style: AppTypography.bodySecondary(context),
+                ),
+                value: running,
+                onChanged: _debugServerBusy ? null : _toggleDebugServer,
+              ),
+              if (running && url.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l.debugServerUrlLabel,
+                  style: AppTypography.caption(context),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface(context),
+                    borderRadius: AppRadius.bMd,
+                    border: Border.all(color: AppColors.softBorder(context, danger)),
+                  ),
+                  child: SelectableText(
+                    url,
+                    key: const ValueKey('settings_debug_server_url'),
+                    style: AppTypography.body(context).copyWith(
+                      fontFamily: 'monospace',
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l.debugServerTokenLabel(token),
+                  style: AppTypography.caption(context),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.debugServerLiveConfigPreview(
+                    srv.config.fxRate.toString(),
+                    srv.config.threshold.toStringAsFixed(2),
+                  ),
+                  style: AppTypography.caption(context),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FilledButton.tonalIcon(
+                  key: const ValueKey('settings_debug_server_copy_btn'),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: url));
+                    if (!context.mounted) return;
+                    toast(context, l.debugServerCopiedToast);
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  label: Text(l.debugServerCopyUrlBtn),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 
   AiConfig _currentChat() => AiConfig(
@@ -894,6 +1032,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
+                    SectionTitle(
+                      l.debugServerSectionTitle,
+                      icon: Icons.terminal_rounded,
+                      iconColor: AppColors.danger(context),
+                    ),
+                    _buildDeveloperDebugCard(context),
                     SectionTitle(
                       l.settingsSystemDataSection,
                       icon: Icons.security_rounded,

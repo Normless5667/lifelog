@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../debug/debug_server.dart';
 import '../models/models.dart';
 import 'settings_service.dart';
 
@@ -117,6 +118,29 @@ class AiService {
     return Uri.parse('$b/chat/completions');
   }
 
+  static String _summarizeMessagesForDebug(List<Map<String, dynamic>> messages) {
+    final buf = StringBuffer();
+    for (final m in messages) {
+      final role = m['role'] ?? 'unknown';
+      final content = m['content'];
+      if (content is String) {
+        buf.writeln('[$role] $content');
+      } else if (content is List) {
+        for (final part in content) {
+          if (part is Map) {
+            if (part['type'] == 'text') {
+              buf.writeln('[$role/text] ${part['text']}');
+            } else if (part['type'] == 'image_url') {
+              final url = (part['image_url'] is Map) ? '${part['image_url']['url']}' : '';
+              buf.writeln('[$role/image] <image_url len=${url.length}>');
+            }
+          }
+        }
+      }
+    }
+    return buf.toString().trim();
+  }
+
   static Future<String> _complete(
     AiConfig cfg,
     List<Map<String, dynamic>> messages, {
@@ -127,17 +151,26 @@ class AiService {
     if (!cfg.isReady) {
       throw AiException('还没有配置 AI 接口，请先到「设置」里填写 API Key', needsConfig: true);
     }
+    final sw = Stopwatch()..start();
+    final endpoint = _endpoint(cfg.baseUrl);
+    final modelName = cfg.model.trim();
+    DebugServer.instance.logAi(
+      stage: 'REQ',
+      model: modelName,
+      detail: 'POST $endpoint (max_tokens=$maxTokens, temp=$temperature)\n'
+          '${_summarizeMessagesForDebug(messages)}',
+    );
     final http.Response resp;
     try {
       resp = await http
           .post(
-            _endpoint(cfg.baseUrl),
+            endpoint,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ${cfg.apiKey.trim()}',
             },
             body: jsonEncode({
-              'model': cfg.model.trim(),
+              'model': modelName,
               'messages': messages,
               'temperature': temperature,
               'max_tokens': maxTokens,
@@ -145,11 +178,29 @@ class AiService {
             }),
           )
           .timeout(timeout);
-    } on SocketException {
+    } on SocketException catch (e) {
+      DebugServer.instance.logAi(
+        stage: 'ERR ${sw.elapsedMilliseconds}ms',
+        model: modelName,
+        detail: 'SocketException: $e',
+        isError: true,
+      );
       throw AiException('网络连接失败，请检查网络');
     } on HttpException catch (e) {
+      DebugServer.instance.logAi(
+        stage: 'ERR ${sw.elapsedMilliseconds}ms',
+        model: modelName,
+        detail: 'HttpException: ${e.message}',
+        isError: true,
+      );
       throw AiException('网络错误：${e.message}');
     } on Exception catch (e) {
+      DebugServer.instance.logAi(
+        stage: 'ERR ${sw.elapsedMilliseconds}ms',
+        model: modelName,
+        detail: '$e',
+        isError: true,
+      );
       if (e.toString().contains('TimeoutException')) throw AiException('请求超时，请稍后再试');
       throw AiException('请求失败：$e');
     }
@@ -161,6 +212,12 @@ class AiService {
         final j = jsonDecode(body);
         detail = (j['error']?['message'] ?? body).toString();
       } catch (_) {}
+      DebugServer.instance.logAi(
+        stage: 'HTTP ${resp.statusCode} (${sw.elapsedMilliseconds}ms)',
+        model: modelName,
+        detail: detail,
+        isError: true,
+      );
       if (detail.length > 300) detail = '${detail.substring(0, 300)}…';
       switch (resp.statusCode) {
         case 401:
@@ -175,9 +232,20 @@ class AiService {
     }
     try {
       final j = jsonDecode(body) as Map<String, dynamic>;
-      final content = j['choices'][0]['message']['content'];
-      return (content ?? '').toString().trim();
-    } catch (_) {
+      final content = (j['choices'][0]['message']['content'] ?? '').toString().trim();
+      DebugServer.instance.logAi(
+        stage: 'RES ${sw.elapsedMilliseconds}ms',
+        model: modelName,
+        detail: content,
+      );
+      return content;
+    } catch (e) {
+      DebugServer.instance.logAi(
+        stage: 'PARSE_ERR ${sw.elapsedMilliseconds}ms',
+        model: modelName,
+        detail: 'error=$e\nraw=$body',
+        isError: true,
+      );
       throw AiException('无法解析 AI 返回内容');
     }
   }

@@ -162,3 +162,14 @@
   - 直接走硬件编码 JPEG + `InputImage.fromFilePath(path)`，由 `MenuOcrService.processFilePath(..., deleteAfter: true)` 在 `finally` 块自动删除临时抓帧文件（相册测图保持 `deleteAfter: false` 绝不删用户原图）。
   - 手动「拍高清帧」自动先停定时器并等待在途抓帧收尾，杜绝并发 `takePicture()` 冲突。
 - [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.5_release.apk`。
+
+## v3.4.0：Wi-Fi 电脑调试后端 + 全局日志流 + 远程热调参（v3.4.0+29）✅ 已完成并出包
+- [x] **零依赖 `dart:io` HTTP + WebSocket 服务 (`lib/debug/debug_server.dart` + `debug_console_html.dart`)**：
+  - 监听 `InternetAddress.anyIPv4:8080`（端口冲突自动顺延 `8081..8085`），内置单页深色 HTML 控制台（`GET /`）与双向遥测通道（`WS /ws`），零第三方包依赖。
+  - **六条安全底线全部落实**：① 默认关闭（设置页手动开关）；② 开启时强制弹出局域网风险警示对话框；③ 开启期间 App 顶栏常驻红色警示条（`DebugServerBannerHost`，点击即停）；④ 每次开启使用 `Random.secure()` 重新生成随机 Token，无有效 Token 所有 HTTP/WS 请求一律返回 `403`；⑤ 2 小时无任何客户端连接自动关闭；⑥ 监听 `AppLifecycleState.detached`，App 退出时自动停服释放端口。
+- [x] **全局日志上行 + 下行热调参**：
+  - `main()` 启动早期挂载 `debugPrint` / `FlutterError.onError` / `PlatformDispatcher.onError` 缓冲钩子（500 条环形缓冲，浏览器连上即回放历史并实时流式推送）。
+  - 接入 `MenuOcrLabScreen`（完整展开 `PlatformException` 的 `code`/`message`/`details`/`nativeStacktrace`、文件路径与字节数）、`UsageTelemetryService`（页面切换与功能埋点）、`AiService`（请求 Prompt 与返回原文，自动脱敏图片 Base64 且绝不打印 API Key）。
+  - 下行支持 `{"cmd":"update_config","fx_rate":...,"threshold":...}` 即时更新内存单例并通知菜单翻译页实时生效，控制台同步回显实时预览。
+  - 电脑端深色控制台三区布局（状态/Token/IP、实时高亮日志流 + 过滤搜索 + 局域网 HTTP 兼容的一键复制全部日志、汇率/阈值热调与预览）。
+- [x] 验证：81/81 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.4.0_release.apk`。

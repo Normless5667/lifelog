@@ -587,7 +587,7 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v3.3.5 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v3.4.0 · 由大肥鱼协助开发",
 
   "usageSectionTitle": "使用数据与性能分析",
   "usageSwitchTitle": "记录使用情况与性能探针",
@@ -637,7 +637,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v3.3.5 (Build 28)",
+  "aboutVersion": "版本 v3.4.0 (Build 29)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
   "aboutCreditsTitle": "协作开发",
@@ -924,5 +924,20 @@
   "menuLightYellow": "适量",
   "menuLightRed": "高热",
   "menuOcrStatusWaiting": "等待相机帧…",
-  "menuOcrStreamError": "实时流识别异常（可改用「拍高清帧」）：{error}"
+  "menuOcrStreamError": "实时流识别异常（可改用「拍高清帧」）：{error}",
+  "debugServerSectionTitle": "开发者选项",
+  "debugServerSwitchTitle": "电脑调试服务 (Wi-Fi)",
+  "debugServerSwitchSubOff": "默认关闭 · 开启后可在电脑浏览器查看实时日志与热调参数",
+  "debugServerSwitchSubOn": "运行中 · {clients} 台设备已连接 · 2小时无连接自动关闭",
+  "debugServerWarnTitle": "调试服务已开启",
+  "debugServerWarnBody": "同一 Wi-Fi 下的任何设备都能连接到你的手机。\n连接需携带下方随机 Token，用完请立即关闭。",
+  "debugServerWarnAck": "我知道了",
+  "debugServerUrlLabel": "电脑浏览器访问地址（含随机 Token）",
+  "debugServerCopyUrlBtn": "复制完整地址",
+  "debugServerCopiedToast": "已复制调试地址与 Token",
+  "debugServerStartFailed": "启动调试服务失败：{error}",
+  "debugServerStoppedToast": "调试服务已关闭",
+  "debugServerBannerText": "调试服务运行中 · {address} · 点击关闭",
+  "debugServerTokenLabel": "Token：{token}",
+  "debugServerLiveConfigPreview": "当前热调参数：汇率 {fxRate} · 阈值 {threshold}"
 }

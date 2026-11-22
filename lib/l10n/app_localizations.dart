@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.5 · Co-developed with DaFeiYu'**
+  /// **'Version v3.4.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.5 (Build 28)'**
+  /// **'Version v3.4.0 (Build 29)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5418,6 +5418,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live stream OCR error (try HD Shot): {error}'**
   String menuOcrStreamError(String error);
+
+  /// No description provided for @debugServerSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer Options'**
+  String get debugServerSectionTitle;
+
+  /// No description provided for @debugServerSwitchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer Debug Server (Wi-Fi)'**
+  String get debugServerSwitchTitle;
+
+  /// No description provided for @debugServerSwitchSubOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off by default · Stream live logs & tune config from a PC browser'**
+  String get debugServerSwitchSubOff;
+
+  /// No description provided for @debugServerSwitchSubOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · {clients} client(s) connected · Auto-stops after 2h idle'**
+  String debugServerSwitchSubOn(int clients);
+
+  /// No description provided for @debugServerWarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug Server Enabled'**
+  String get debugServerWarnTitle;
+
+  /// No description provided for @debugServerWarnBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Any device on the same Wi-Fi network can connect to your phone.\nA random token is required. Turn it off immediately when done.'**
+  String get debugServerWarnBody;
+
+  /// No description provided for @debugServerWarnAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get debugServerWarnAck;
+
+  /// No description provided for @debugServerUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PC Browser URL (with random token)'**
+  String get debugServerUrlLabel;
+
+  /// No description provided for @debugServerCopyUrlBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Full URL'**
+  String get debugServerCopyUrlBtn;
+
+  /// No description provided for @debugServerCopiedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug URL & token copied'**
+  String get debugServerCopiedToast;
+
+  /// No description provided for @debugServerStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start debug server: {error}'**
+  String debugServerStartFailed(String error);
+
+  /// No description provided for @debugServerStoppedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug server stopped'**
+  String get debugServerStoppedToast;
+
+  /// No description provided for @debugServerBannerText.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug Server ON · {address} · Tap to stop'**
+  String debugServerBannerText(String address);
+
+  /// No description provided for @debugServerTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Token: {token}'**
+  String debugServerTokenLabel(String token);
+
+  /// No description provided for @debugServerLiveConfigPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Live config: FX {fxRate} · Threshold {threshold}'**
+  String debugServerLiveConfigPreview(String fxRate, String threshold);
 }
 
 class _AppLocalizationsDelegate

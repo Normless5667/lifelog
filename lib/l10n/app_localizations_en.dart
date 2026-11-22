@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.3.5 · Co-developed with DaFeiYu';
+      'Version v3.4.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.3.5 (Build 28)';
+  String get aboutVersion => 'Version v3.4.0 (Build 29)';
 
   @override
   String get aboutBadge =>
@@ -3121,5 +3121,62 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String menuOcrStreamError(String error) {
     return 'Live stream OCR error (try HD Shot): $error';
+  }
+
+  @override
+  String get debugServerSectionTitle => 'Developer Options';
+
+  @override
+  String get debugServerSwitchTitle => 'Computer Debug Server (Wi-Fi)';
+
+  @override
+  String get debugServerSwitchSubOff =>
+      'Off by default · Stream live logs & tune config from a PC browser';
+
+  @override
+  String debugServerSwitchSubOn(int clients) {
+    return 'Running · $clients client(s) connected · Auto-stops after 2h idle';
+  }
+
+  @override
+  String get debugServerWarnTitle => 'Debug Server Enabled';
+
+  @override
+  String get debugServerWarnBody =>
+      'Any device on the same Wi-Fi network can connect to your phone.\nA random token is required. Turn it off immediately when done.';
+
+  @override
+  String get debugServerWarnAck => 'Got it';
+
+  @override
+  String get debugServerUrlLabel => 'PC Browser URL (with random token)';
+
+  @override
+  String get debugServerCopyUrlBtn => 'Copy Full URL';
+
+  @override
+  String get debugServerCopiedToast => 'Debug URL & token copied';
+
+  @override
+  String debugServerStartFailed(String error) {
+    return 'Failed to start debug server: $error';
+  }
+
+  @override
+  String get debugServerStoppedToast => 'Debug server stopped';
+
+  @override
+  String debugServerBannerText(String address) {
+    return 'Debug Server ON · $address · Tap to stop';
+  }
+
+  @override
+  String debugServerTokenLabel(String token) {
+    return 'Token: $token';
+  }
+
+  @override
+  String debugServerLiveConfigPreview(String fxRate, String threshold) {
+    return 'Live config: FX $fxRate · Threshold $threshold';
   }
 }

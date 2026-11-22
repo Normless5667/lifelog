@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../db/database.dart';
 import '../db/repo.dart';
+import '../debug/debug_server.dart';
 import '../utils/date_utils.dart';
 import 'battery_probe_service.dart';
 import 'reminder_service.dart';
@@ -26,7 +27,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
   UsageTelemetryService._();
   static final UsageTelemetryService instance = UsageTelemetryService._();
 
-  static const appVersion = '3.3.5';
+  static const appVersion = '3.4.0';
   static const _enabledKvKey = 'usage_telemetry_enabled';
   static const _flushIntervalSec = 30;
   static const _flushBatchThreshold = 50;
@@ -207,6 +208,7 @@ class UsageTelemetryService with WidgetsBindingObserver {
 
   /// 2.1 记录页面切换与上一个页面的停留时长
   void enterPage(String pageName, {String source = 'tab'}) {
+    DebugServer.instance.logPage(pageName, source: source);
     if (!_enabled) return;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     if (_currentPage == pageName && _pageEnterMs > 0) return;
@@ -223,6 +225,12 @@ class UsageTelemetryService with WidgetsBindingObserver {
     int? durationMs,
     String? errorMsg,
   }) {
+    DebugServer.instance.logFeature(
+      feature,
+      action,
+      durationMs: durationMs,
+      errorMsg: errorMsg,
+    );
     if (!_enabled) return;
     _enqueue(
       category: 'feature',

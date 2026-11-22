@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.3.5 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.4.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.3.5 (Build 28)';
+  String get aboutVersion => '版本 v3.4.0 (Build 29)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -3023,5 +3023,61 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String menuOcrStreamError(String error) {
     return '实时流识别异常（可改用「拍高清帧」）：$error';
+  }
+
+  @override
+  String get debugServerSectionTitle => '开发者选项';
+
+  @override
+  String get debugServerSwitchTitle => '电脑调试服务 (Wi-Fi)';
+
+  @override
+  String get debugServerSwitchSubOff => '默认关闭 · 开启后可在电脑浏览器查看实时日志与热调参数';
+
+  @override
+  String debugServerSwitchSubOn(int clients) {
+    return '运行中 · $clients 台设备已连接 · 2小时无连接自动关闭';
+  }
+
+  @override
+  String get debugServerWarnTitle => '调试服务已开启';
+
+  @override
+  String get debugServerWarnBody =>
+      '同一 Wi-Fi 下的任何设备都能连接到你的手机。\n连接需携带下方随机 Token，用完请立即关闭。';
+
+  @override
+  String get debugServerWarnAck => '我知道了';
+
+  @override
+  String get debugServerUrlLabel => '电脑浏览器访问地址（含随机 Token）';
+
+  @override
+  String get debugServerCopyUrlBtn => '复制完整地址';
+
+  @override
+  String get debugServerCopiedToast => '已复制调试地址与 Token';
+
+  @override
+  String debugServerStartFailed(String error) {
+    return '启动调试服务失败：$error';
+  }
+
+  @override
+  String get debugServerStoppedToast => '调试服务已关闭';
+
+  @override
+  String debugServerBannerText(String address) {
+    return '调试服务运行中 · $address · 点击关闭';
+  }
+
+  @override
+  String debugServerTokenLabel(String token) {
+    return 'Token：$token';
+  }
+
+  @override
+  String debugServerLiveConfigPreview(String fxRate, String threshold) {
+    return '当前热调参数：汇率 $fxRate · 阈值 $threshold';
   }
 }

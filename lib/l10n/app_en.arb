@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.3.5 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.4.0 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.3.5 (Build 28)",
+  "aboutVersion": "Version v3.4.0 (Build 29)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1767,6 +1767,47 @@
   "@menuOcrStreamError": {
     "placeholders": {
       "error": { "type": "String" }
+    }
+  },
+  "debugServerSectionTitle": "Developer Options",
+  "debugServerSwitchTitle": "Computer Debug Server (Wi-Fi)",
+  "debugServerSwitchSubOff": "Off by default · Stream live logs & tune config from a PC browser",
+  "debugServerSwitchSubOn": "Running · {clients} client(s) connected · Auto-stops after 2h idle",
+  "@debugServerSwitchSubOn": {
+    "placeholders": {
+      "clients": { "type": "int" }
+    }
+  },
+  "debugServerWarnTitle": "Debug Server Enabled",
+  "debugServerWarnBody": "Any device on the same Wi-Fi network can connect to your phone.\nA random token is required. Turn it off immediately when done.",
+  "debugServerWarnAck": "Got it",
+  "debugServerUrlLabel": "PC Browser URL (with random token)",
+  "debugServerCopyUrlBtn": "Copy Full URL",
+  "debugServerCopiedToast": "Debug URL & token copied",
+  "debugServerStartFailed": "Failed to start debug server: {error}",
+  "@debugServerStartFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "debugServerStoppedToast": "Debug server stopped",
+  "debugServerBannerText": "Debug Server ON · {address} · Tap to stop",
+  "@debugServerBannerText": {
+    "placeholders": {
+      "address": { "type": "String" }
+    }
+  },
+  "debugServerTokenLabel": "Token: {token}",
+  "@debugServerTokenLabel": {
+    "placeholders": {
+      "token": { "type": "String" }
+    }
+  },
+  "debugServerLiveConfigPreview": "Live config: FX {fxRate} · Threshold {threshold}",
+  "@debugServerLiveConfigPreview": {
+    "placeholders": {
+      "fxRate": { "type": "String" },
+      "threshold": { "type": "String" }
     }
   }
 }

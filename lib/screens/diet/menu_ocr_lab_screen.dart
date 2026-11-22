@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../debug/debug_server.dart';
 import '../../services/ai_service.dart';
 import '../../services/menu_ocr_service.dart';
 import '../../utils/date_utils.dart';
@@ -69,6 +70,12 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    DebugServer.instance.config.addListener(_onRemoteDebugConfigChanged);
+    if (DebugServer.instance.config.fxRateOverridden) {
+      _activeFxRate = DebugServer.instance.config.fxRate;
+      _userOverrodeFx = true;
+      _fxCtrl.text = _activeFxRate!.toString();
+    }
     if (widget.initialResultForTest != null) {
       _latest = widget.initialResultForTest;
       _resultTab = 1;
@@ -81,6 +88,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } else {
       _ocrService = MenuOcrService();
       _initCamera();
+    }
+  }
+
+  void _onRemoteDebugConfigChanged() {
+    if (!mounted) return;
+    final cfg = DebugServer.instance.config;
+    if (cfg.fxRateOverridden) {
+      setState(() {
+        _activeFxRate = cfg.fxRate;
+        _userOverrodeFx = true;
+        _fxCtrl.text = cfg.fxRate.toString();
+      });
     }
   }
 
@@ -98,6 +117,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    DebugServer.instance.config.removeListener(_onRemoteDebugConfigChanged);
     _stopLivePolling();
     _fxCtrl.dispose();
     _stopCamera();
@@ -203,9 +223,14 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
 
     _processingFrame = true;
     String? tempPath;
+    String fileDiag = '';
     try {
       final photo = await ctrl.takePicture();
       tempPath = photo.path;
+      final f = File(photo.path);
+      final exists = f.existsSync();
+      final bytes = exists ? f.lengthSync() : -1;
+      fileDiag = 'path=${photo.path}, exists=$exists, bytes=$bytes';
       if (!mounted || _paused) return;
       final res = await ocr.processFilePath(
         photo.path,
@@ -214,6 +239,10 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       );
       tempPath = null;
       if (!mounted || _paused) return;
+      DebugServer.instance.log(
+        'live OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}, $fileDiag',
+        tag: 'OCR',
+      );
       setState(() {
         _ocrRunCount++;
         _streamError = null;
@@ -223,10 +252,17 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         }
       });
     } catch (e, st) {
-      debugPrint('[MenuOcrLab] live capture OCR error: $e\n$st');
+      DebugServer.instance.logError(
+        'OCR',
+        e,
+        st,
+        'live capture OCR failed ($fileDiag)',
+      );
       if (mounted && !_paused) {
         setState(() {
-          _streamError = e.toString();
+          _streamError = e is PlatformException
+              ? '${e.code}: ${e.message ?? e.details ?? e}'
+              : e.toString();
         });
       }
     } finally {
@@ -262,6 +298,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       _paused = true;
     });
     String? tempPath;
+    String fileDiag = '';
     try {
       // 等待可能正在执行中的上一次定时抓帧结束，避免并发 takePicture 冲突
       var waited = 0;
@@ -272,12 +309,21 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       }
       final photo = await ctrl.takePicture();
       tempPath = photo.path;
+      final f = File(photo.path);
+      final exists = f.existsSync();
+      final bytes = exists ? f.lengthSync() : -1;
+      fileDiag = 'path=${photo.path}, exists=$exists, bytes=$bytes';
+      DebugServer.instance.log('HD capture started ($fileDiag)', tag: 'OCR');
       final res = await ocr.processFilePath(
         photo.path,
         source: 'photo',
         deleteAfter: true,
       );
       tempPath = null;
+      DebugServer.instance.log(
+        'HD capture OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}\n${res.fullText}',
+        tag: 'OCR',
+      );
       if (!mounted) return;
       setState(() {
         _streamError = null;
@@ -287,12 +333,19 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       if (!res.isEmpty) {
         await _translateCurrentMenu();
       }
-    } catch (e) {
-      debugPrint('[MenuOcrLab] HD capture OCR error: $e');
+    } catch (e, st) {
+      DebugServer.instance.logError(
+        'OCR',
+        e,
+        st,
+        'HD capture OCR failed ($fileDiag)',
+      );
       if (mounted) {
         setState(() {
           _busyStillOcr = false;
-          _streamError = e.toString();
+          _streamError = e is PlatformException
+              ? '${e.code}: ${e.message ?? e.details ?? e}'
+              : e.toString();
         });
       }
     } finally {
@@ -316,7 +369,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       _paused = true;
     });
     try {
+      final f = File(picked.path);
+      final exists = f.existsSync();
+      final bytes = exists ? f.lengthSync() : -1;
+      DebugServer.instance.log(
+        'gallery OCR started (path=${picked.path}, exists=$exists, bytes=$bytes)',
+        tag: 'OCR',
+      );
       final res = await ocr.processFilePath(picked.path, source: 'gallery');
+      DebugServer.instance.log(
+        'gallery OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}\n${res.fullText}',
+        tag: 'OCR',
+      );
       if (!mounted) return;
       setState(() {
         _streamError = null;
@@ -326,12 +390,19 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       if (!res.isEmpty) {
         await _translateCurrentMenu();
       }
-    } catch (e) {
-      debugPrint('[MenuOcrLab] gallery OCR error: $e');
+    } catch (e, st) {
+      DebugServer.instance.logError(
+        'OCR',
+        e,
+        st,
+        'gallery OCR failed (path=${picked.path})',
+      );
       if (mounted) {
         setState(() {
           _busyStillOcr = false;
-          _streamError = e.toString();
+          _streamError = e is PlatformException
+              ? '${e.code}: ${e.message ?? e.details ?? e}'
+              : e.toString();
         });
       }
     }
@@ -557,6 +628,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                         bottom: 10,
                         child: Container(
                           key: const ValueKey('menu_ocr_stream_error_banner'),
+                          constraints: const BoxConstraints(maxHeight: 112),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 6,
@@ -565,10 +637,12 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                             color: AppColors.danger(context).withValues(alpha: 0.90),
                             borderRadius: AppRadius.bMd,
                           ),
-                          child: SelectableText(
-                            l.menuOcrStreamError(_streamError!),
-                            style: AppTypography.caption(context, color: Colors.white)
-                                .copyWith(fontSize: 10.5),
+                          child: SingleChildScrollView(
+                            child: SelectableText(
+                              l.menuOcrStreamError(_streamError!),
+                              style: AppTypography.caption(context, color: Colors.white)
+                                  .copyWith(fontSize: 10.5),
+                            ),
                           ),
                         ),
                       ),

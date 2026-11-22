@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'debug/debug_server.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/ai/ai_chat_screen.dart';
 import 'screens/diet/diet_screen.dart';
@@ -12,10 +13,13 @@ import 'services/battery_probe_service.dart';
 import 'services/usage_telemetry_service.dart';
 import 'theme/app_theme.dart';
 import 'utils/l10n_ext.dart';
+import 'widgets/debug_server_banner.dart';
 import 'widgets/m3_sliding_nav_bar.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 仅挂载全局日志缓冲钩子，调试 HTTP 服务严格保持默认关闭，须在设置中手动开启
+  DebugServer.instance.installGlobalLogHooks();
   // 限制 Flutter 图片解码缓存上限（32 MB / 60 张），避免食物拍照缩略图导致常驻内存膨胀
   PaintingBinding.instance.imageCache.maximumSize = 60;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 32 * 1024 * 1024;
@@ -51,9 +55,11 @@ class LifeLogApp extends StatelessWidget {
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.linear(prefs.textScale),
               ),
-              child: MidnightBackdropLayer(
-                enabled: prefs.isMidnight,
-                child: child ?? const SizedBox.shrink(),
+              child: DebugServerBannerHost(
+                child: MidnightBackdropLayer(
+                  enabled: prefs.isMidnight,
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             );
           },
