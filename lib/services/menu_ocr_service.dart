@@ -80,8 +80,8 @@ class MenuOcrService {
     int? vPixelStride,
   }) {
     final ySize = width * height;
-    final uvHeight = height ~/ 2;
-    final uvWidth = width ~/ 2;
+    final uvHeight = (height + 1) ~/ 2;
+    final uvWidth = (width + 1) ~/ 2;
     final out = Uint8List(ySize + uvWidth * uvHeight * 2);
 
     // 复制 Y 平面（无 padding 时整块拷贝，有 stride padding 时逐行去尾）
@@ -185,6 +185,7 @@ class MenuOcrService {
     // Android 单平面 NV21 兜底
     if (image.planes.length == 1) {
       final plane = image.planes.first;
+      if (plane.bytes.length <= image.width * image.height) return null;
       return InputImage.fromBytes(
         bytes: plane.bytes,
         metadata: InputImageMetadata(
@@ -197,6 +198,65 @@ class MenuOcrService {
     }
 
     return null;
+  }
+
+  /// 纯 Y 亮度平面转 RGBA 灰度位图（供 InputImage.fromBitmap 兜底通道使用）：
+  /// - 仅依赖 Android 全机型必有的 planes[0] 亮度平面，彻底绕开 NV21/YUV 格式兼容问题
+  /// - 长边 > maxEdge 时自动整数抽稀，兼顾越南语变音符清晰度与低耗时
+  static ({Uint8List rgba, int width, int height}) convertYPlaneToRgbaBitmap({
+    required int width,
+    required int height,
+    required Uint8List yBytes,
+    required int yRowStride,
+    int maxEdge = 1280,
+  }) {
+    final longEdge = width > height ? width : height;
+    final step = longEdge > maxEdge ? ((longEdge + 959) ~/ 960) : 1;
+    final outW = (width + step - 1) ~/ step;
+    final outH = (height + step - 1) ~/ step;
+    final rgba = Uint8List(outW * outH * 4);
+    var dst = 0;
+    for (var y = 0; y < height; y += step) {
+      final rowOff = y * yRowStride;
+      for (var x = 0; x < width; x += step) {
+        final idx = rowOff + x;
+        final lum = idx < yBytes.length ? yBytes[idx] : 0;
+        rgba[dst++] = lum;
+        rgba[dst++] = lum;
+        rgba[dst++] = lum;
+        rgba[dst++] = 255;
+      }
+    }
+    return (rgba: rgba, width: outW, height: outH);
+  }
+
+  /// 使用 Y 亮度平面构造 Android `InputImage.fromBitmap`（当部分机型 NV21 `fromBytes` 报 `InputImageConverterError` 时自动无缝接管）
+  static InputImage? buildBitmapInputImageFromCameraImage({
+    required CameraImage image,
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) {
+    if (image.planes.isEmpty || image.width <= 0 || image.height <= 0) return null;
+    final yPlane = image.planes.first;
+    final rotationDeg = Platform.isIOS
+        ? camera.sensorOrientation
+        : computeAndroidRotationDegrees(
+            sensorOrientation: camera.sensorOrientation,
+            deviceOrientation: deviceOrientation,
+            lensDirection: camera.lensDirection,
+          );
+    final bmp = convertYPlaneToRgbaBitmap(
+      width: image.width,
+      height: image.height,
+      yBytes: yPlane.bytes,
+      yRowStride: yPlane.bytesPerRow,
+    );
+    return InputImage.fromBitmap(
+      bitmap: bmp.rgba,
+      width: bmp.width,
+      height: bmp.height,
+      rotation: rotationDeg,
+    );
   }
 
   /// 对单帧 InputImage 执行端侧 OCR 并返回文本块、边界框与耗时

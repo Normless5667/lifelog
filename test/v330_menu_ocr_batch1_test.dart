@@ -76,6 +76,36 @@ void main() {
       );
       expect(fastNv21, [1, 2, 3, 4, 5, 6, 7, 8, 60, 50, 61, 51]);
     });
+
+    test('convertYPlaneToRgbaBitmap converts Y luminance to exact ARGB_8888 RGBA bytes & decimates oversized frames', () {
+      final yBytes = Uint8List.fromList([
+        10, 20, 99, // row 0, stride=3, width=2
+        30, 40, 99, // row 1, stride=3, width=2
+      ]);
+      final bmp = MenuOcrService.convertYPlaneToRgbaBitmap(
+        width: 2,
+        height: 2,
+        yBytes: yBytes,
+        yRowStride: 3,
+      );
+      expect(bmp.width, 2);
+      expect(bmp.height, 2);
+      expect(bmp.rgba, [
+        10, 10, 10, 255, 20, 20, 20, 255,
+        30, 30, 30, 255, 40, 40, 40, 255,
+      ]);
+
+      // Oversized 2000x1000 frame decimates cleanly (step=3 -> 667x334)
+      final bigY = Uint8List(2000 * 1000);
+      final dec = MenuOcrService.convertYPlaneToRgbaBitmap(
+        width: 2000,
+        height: 1000,
+        yBytes: bigY,
+        yRowStride: 2000,
+      );
+      expect(dec.width, lessThanOrEqualTo(960));
+      expect(dec.rgba.length, dec.width * dec.height * 4);
+    });
   });
 
   group('v3.3.0 Batch 1 MenuOcrLabScreen widget verification', () {

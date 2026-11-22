@@ -56,6 +56,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   bool _translating = false;
   int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
   int _ocrRunCount = 0;
+  bool _useBitmapFallback = false;
 
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _cameraError;
@@ -210,28 +211,58 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     _processingFrame = true;
     _lastFrameAt = now;
     try {
-      final input = MenuOcrService.buildInputImageFromCameraImage(
-        image: image,
-        camera: cam,
-        deviceOrientation: ctrl.value.deviceOrientation,
-      );
-      if (input == null) {
-        debugPrint(
-          '[MenuOcrLab] buildInputImage returned null: '
-          '${image.width}x${image.height} planes=${image.planes.length} fmt=${image.format.raw}',
+      final imgSize = Size(image.width.toDouble(), image.height.toDouble());
+      MenuOcrFrameResult? res;
+
+      if (!_useBitmapFallback) {
+        final input = MenuOcrService.buildInputImageFromCameraImage(
+          image: image,
+          camera: cam,
+          deviceOrientation: ctrl.value.deviceOrientation,
         );
-        return;
+        if (input != null) {
+          try {
+            res = await ocr.processInputImage(
+              input,
+              imageSize: imgSize,
+              source: 'stream',
+            );
+          } catch (e, st) {
+            if (e.toString().contains('InputImageConverterError')) {
+              debugPrint(
+                '[MenuOcrLab] NV21 InputImageConverterError (${image.width}x${image.height} '
+                'planes=${image.planes.length} fmt=${image.format.raw}), switching to Y-plane Bitmap fallback: $e\n$st',
+              );
+              _useBitmapFallback = true;
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          _useBitmapFallback = true;
+        }
       }
-      final res = await ocr.processInputImage(
-        input,
-        imageSize: Size(image.width.toDouble(), image.height.toDouble()),
-        source: 'stream',
-      );
-      if (!mounted || _paused) return;
+
+      if (res == null && _useBitmapFallback) {
+        final bmpInput = MenuOcrService.buildBitmapInputImageFromCameraImage(
+          image: image,
+          camera: cam,
+          deviceOrientation: ctrl.value.deviceOrientation,
+        );
+        if (bmpInput == null) return;
+        res = await ocr.processInputImage(
+          bmpInput,
+          imageSize: imgSize,
+          source: 'stream',
+        );
+      }
+
+      if (res == null || !mounted || _paused) return;
+      final finalRes = res;
       setState(() {
         _ocrRunCount++;
         _streamError = null;
-        _latest = res;
+        _latest = finalRes;
         if (_translation == null && _translateError == null) {
           _resultTab = 1;
         }
@@ -239,7 +270,10 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     } catch (e, st) {
       debugPrint('[MenuOcrLab] frame OCR error: $e\n$st');
       if (mounted) {
-        setState(() => _streamError = e.toString());
+        setState(() {
+          _streamError =
+              '$e [${image.width}x${image.height} p=${image.planes.length} fmt=${image.format.raw} bmp=$_useBitmapFallback]';
+        });
       }
     } finally {
       _processingFrame = false;
@@ -544,12 +578,10 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
                             color: AppColors.danger(context).withValues(alpha: 0.90),
                             borderRadius: AppRadius.bMd,
                           ),
-                          child: Text(
+                          child: SelectableText(
                             l.menuOcrStreamError(_streamError!),
                             style: AppTypography.caption(context, color: Colors.white)
-                                .copyWith(fontSize: 11),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                                .copyWith(fontSize: 10.5),
                           ),
                         ),
                       ),

@@ -139,3 +139,11 @@
   - 若高分辨率 `high` 并发绑定 `ImageAnalysis` 失败，自动降级 `medium` 重试一次。
   - 消灭静默失败：默认进入先显示实时 OCR 原文区；未出首帧前显示「等待相机帧…」而非误导性的 `0 ms · 0 块`；流启动或帧 OCR 发生任何异常直接在取景框底部显示红色错误条。
 - [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.2_release.apk`。
+
+### P0 实时流转换兜底热修：自动切换纯 Y 平面 `InputImage.fromBitmap` 彻底规避 `InputImageConverterError`（v3.3.3+26）✅ 已完成并出包
+- [x] **问题闭环**：v3.3.2 可视化红条在真机成功捕获 `PlatformException(InputImageConverterError, java.la...)`，定位到部分机型通过 `InputImage.fromBytes` 构造 NV21 失败。
+- [x] **双通道无缝兜底 (`menu_ocr_service.dart` + `menu_ocr_lab_screen.dart`)**：
+  - 修正奇数分辨率 NV21 UV 向上取整（`(width + 1) ~/ 2`）与单平面长度校验。
+  - 新增 `convertYPlaneToRgbaBitmap()` + `buildBitmapInputImageFromCameraImage()`：直接取全机型必有的 `planes[0]` Y 亮度平面生成紧凑 RGBA 位图走 `InputImage.fromBitmap`（Android `ARGB_8888 Bitmap`，彻底绕开 NV21/YUV 格式兼容问题，R=G=B=亮度且超 1280px 自动抽稀）。
+  - 帧循环中首次命中 `InputImageConverterError` 立即自动切换 Bitmap 通道并在**同一帧**完成重试，零中断出字；同时取消错误条 `maxLines: 2` 截断并附带帧参数诊断信息。
+- [x] 验证：76/76 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.3_release.apk`。
