@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.3.0 · Co-developed with DaFeiYu';
+      'Version v3.3.1 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.3.0 (Build 23)';
+  String get aboutVersion => 'Version v3.3.1 (Build 24)';
 
   @override
   String get aboutBadge =>
@@ -3003,14 +3003,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paceZoneSprint => 'Sprint';
 
   @override
-  String get menuOcrEntryTitle => 'Menu OCR Lab (EN/VI)';
+  String get menuOcrEntryTitle => 'AI Menu Camera (EN/VI)';
 
   @override
   String get menuOcrEntrySub =>
-      'On-device ML Kit live Vietnamese & English OCR (offline)';
+      'On-device ML Kit OCR + AI translation, RMB price & calories';
 
   @override
-  String get menuOcrTitle => 'Menu OCR Lab';
+  String get menuOcrTitle => 'AI Menu Camera';
 
   @override
   String menuOcrStatusLive(int ms, int count) {
@@ -3052,7 +3052,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuOcrEmptyHint =>
-      'Point the camera at a Vietnamese or English menu (e.g. Phở bò / Bún chả). Text appears below in real time, or use HD Shot / Gallery.';
+      'Point at a Vietnamese or English menu (e.g. Phở bò / Bún chả), then tap Translate Menu to see Chinese names, RMB prices & calorie lights.';
 
   @override
   String get menuOcrCameraInit => 'Starting camera & ML Kit recognizer…';
@@ -3064,4 +3064,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuOcrTorchTooltip => 'Flashlight';
+
+  @override
+  String get menuTranslateBtn => 'Translate Menu';
+
+  @override
+  String get menuTranslatingHint =>
+      'Translating menu & estimating calories (text-only)…';
+
+  @override
+  String get menuTabTranslated => 'Translated';
+
+  @override
+  String get menuTabOcrRaw => 'OCR Text';
+
+  @override
+  String get menuFxRateLabel => 'Rate (1₫ → ¥)';
+
+  @override
+  String menuFxRatePreview(String rmb) {
+    return '100k₫ ≈ ¥$rmb';
+  }
+
+  @override
+  String get menuRetryBtn => 'Retry';
+
+  @override
+  String get menuOpenSettingsBtn => 'Configure API';
+
+  @override
+  String get menuParseFailedHint =>
+      'AI reply wasn\'t valid JSON — showing raw output below:';
+
+  @override
+  String menuPriceRmb(String rmb) {
+    return '≈ ¥$rmb';
+  }
+
+  @override
+  String menuMacrosSummary(String p, String c, String f) {
+    return 'P ${p}g · C ${c}g · F ${f}g';
+  }
+
+  @override
+  String get menuLightGreen => 'Great';
+
+  @override
+  String get menuLightYellow => 'Moderate';
+
+  @override
+  String get menuLightRed => 'Heavy';
 }

@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.0 · Co-developed with DaFeiYu'**
+  /// **'Version v3.3.1 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.0 (Build 23)'**
+  /// **'Version v3.3.1 (Build 24)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5224,19 +5224,19 @@ abstract class AppLocalizations {
   /// No description provided for @menuOcrEntryTitle.
   ///
   /// In en, this message translates to:
-  /// **'Menu OCR Lab (EN/VI)'**
+  /// **'AI Menu Camera (EN/VI)'**
   String get menuOcrEntryTitle;
 
   /// No description provided for @menuOcrEntrySub.
   ///
   /// In en, this message translates to:
-  /// **'On-device ML Kit live Vietnamese & English OCR (offline)'**
+  /// **'On-device ML Kit OCR + AI translation, RMB price & calories'**
   String get menuOcrEntrySub;
 
   /// No description provided for @menuOcrTitle.
   ///
   /// In en, this message translates to:
-  /// **'Menu OCR Lab'**
+  /// **'AI Menu Camera'**
   String get menuOcrTitle;
 
   /// No description provided for @menuOcrStatusLive.
@@ -5302,7 +5302,7 @@ abstract class AppLocalizations {
   /// No description provided for @menuOcrEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Point the camera at a Vietnamese or English menu (e.g. Phở bò / Bún chả). Text appears below in real time, or use HD Shot / Gallery.'**
+  /// **'Point at a Vietnamese or English menu (e.g. Phở bò / Bún chả), then tap Translate Menu to see Chinese names, RMB prices & calorie lights.'**
   String get menuOcrEmptyHint;
 
   /// No description provided for @menuOcrCameraInit.
@@ -5322,6 +5322,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Flashlight'**
   String get menuOcrTorchTooltip;
+
+  /// No description provided for @menuTranslateBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate Menu'**
+  String get menuTranslateBtn;
+
+  /// No description provided for @menuTranslatingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating menu & estimating calories (text-only)…'**
+  String get menuTranslatingHint;
+
+  /// No description provided for @menuTabTranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated'**
+  String get menuTabTranslated;
+
+  /// No description provided for @menuTabOcrRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'OCR Text'**
+  String get menuTabOcrRaw;
+
+  /// No description provided for @menuFxRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate (1₫ → ¥)'**
+  String get menuFxRateLabel;
+
+  /// No description provided for @menuFxRatePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'100k₫ ≈ ¥{rmb}'**
+  String menuFxRatePreview(String rmb);
+
+  /// No description provided for @menuRetryBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get menuRetryBtn;
+
+  /// No description provided for @menuOpenSettingsBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure API'**
+  String get menuOpenSettingsBtn;
+
+  /// No description provided for @menuParseFailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'AI reply wasn\'t valid JSON — showing raw output below:'**
+  String get menuParseFailedHint;
+
+  /// No description provided for @menuPriceRmb.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ ¥{rmb}'**
+  String menuPriceRmb(String rmb);
+
+  /// No description provided for @menuMacrosSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'P {p}g · C {c}g · F {f}g'**
+  String menuMacrosSummary(String p, String c, String f);
+
+  /// No description provided for @menuLightGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Great'**
+  String get menuLightGreen;
+
+  /// No description provided for @menuLightYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get menuLightYellow;
+
+  /// No description provided for @menuLightRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy'**
+  String get menuLightRed;
 }
 
 class _AppLocalizationsDelegate

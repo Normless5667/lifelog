@@ -35,6 +35,58 @@ class TreadmillScanResult {
   });
 }
 
+/// AR 菜单翻译单条菜品（符合 REQUIREMENTS_v3.3_ar_camera.md JSON 契约）
+class MenuDishItem {
+  final int id;
+  final String vn;
+  final String cn;
+  final int? vnd;
+  final double? rmb;
+  final int? kcal;
+  final double? proteinG;
+  final double? carbsG;
+  final double? fatG;
+  final String light; // 'green' | 'yellow' | 'red'
+  final String tip;
+
+  const MenuDishItem({
+    required this.id,
+    required this.vn,
+    required this.cn,
+    this.vnd,
+    this.rmb,
+    this.kcal,
+    this.proteinG,
+    this.carbsG,
+    this.fatG,
+    this.light = 'yellow',
+    this.tip = '',
+  });
+
+  /// 按当前生效汇率（1 VND -> RMB）实时计算人民币价格；若无越南盾原价则回退 AI 提供的 rmb
+  double? effectiveRmb(double? fxRate) {
+    if (vnd != null && vnd! > 0 && fxRate != null && fxRate.isFinite && fxRate > 0) {
+      return vnd! * fxRate;
+    }
+    return rmb;
+  }
+}
+
+/// AR 菜单翻译完整结果（若 AI 返回非合法 JSON，parseFailed=true 并完整保留 rawReply，绝不崩溃）
+class MenuTranslationResult {
+  final double? fxRate;
+  final List<MenuDishItem> items;
+  final String rawReply;
+  final bool parseFailed;
+
+  const MenuTranslationResult({
+    required this.fxRate,
+    required this.items,
+    required this.rawReply,
+    this.parseFailed = false,
+  });
+}
+
 /// OpenAI 兼容 Chat Completions 客户端（DeepSeek / 通义千问 / Kimi 等均可）。
 class AiService {
   AiService._();
@@ -65,8 +117,13 @@ class AiService {
     return Uri.parse('$b/chat/completions');
   }
 
-  static Future<String> _complete(AiConfig cfg, List<Map<String, dynamic>> messages,
-      {double temperature = 0.7, int maxTokens = 2000}) async {
+  static Future<String> _complete(
+    AiConfig cfg,
+    List<Map<String, dynamic>> messages, {
+    double temperature = 0.7,
+    int maxTokens = 2000,
+    Duration timeout = _timeout,
+  }) async {
     if (!cfg.isReady) {
       throw AiException('还没有配置 AI 接口，请先到「设置」里填写 API Key', needsConfig: true);
     }
@@ -87,7 +144,7 @@ class AiService {
               'stream': false,
             }),
           )
-          .timeout(_timeout);
+          .timeout(timeout);
     } on SocketException {
       throw AiException('网络连接失败，请检查网络');
     } on HttpException catch (e) {
@@ -373,6 +430,199 @@ class AiService {
       machineType: machineType,
       unitNote: (unitNote.isNotEmpty && unitNote.toLowerCase() != 'null') ? unitNote : null,
       raw: rawNote,
+    );
+  }
+
+  static const _menuTranslationPrompt = '''
+你是懂越南语、英语和中国营养学的随身点餐助手。下面是端侧 OCR 从越南/英文餐厅菜单识别出的原始文字（可能存在轻微换行错位或少量字符误差）。
+请提取其中的菜品，翻译成地道中文，换算越南盾（VND）到人民币（RMB），并估算每道菜热量与营养红绿灯。
+请**只输出一个合法 JSON 对象**，不要输出任何其他解释文字，严格遵循以下格式：
+
+{
+  "fx_rate": 0.000285,
+  "items": [
+    {
+      "id": 1,
+      "vn": "Phở bò",
+      "cn": "牛肉粉",
+      "vnd": 120000,
+      "rmb": 34.2,
+      "kcal": 320,
+      "macros": {"p": 38, "c": 2, "f": 17},
+      "light": "green",
+      "tip": "高蛋白，汤底偏咸"
+    }
+  ]
+}
+
+要求：
+1. fx_rate 为 1 越南盾兑换人民币的汇率（参考约 0.000285）。
+2. vnd 为整数越南盾（例如菜单写 65k 或 65.000đ 均填 65000；若菜单上没标价则填 null）。
+3. light 只能是 "green"（高蛋白/清淡/适合减脂增肌）、"yellow"（普通/适量吃）或 "red"（高油/高糖/油炸/热量炸弹）。
+4. 忽略纯店名、电话、Wi-Fi 密码等非菜品文字；尽量还原 OCR 轻微拼错的越南菜名。''';
+
+  /// 将 ML Kit 端侧 OCR 识别出的菜单文本发给 AI 进行翻译、汇率换算与营养红绿灯分析（只发文字，大幅省 Token，默认 15 秒超时）。
+  static Future<MenuTranslationResult> translateMenuOcrText(
+    String ocrText, {
+    double? customFxRate,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final cleaned = ocrText.trim();
+    if (cleaned.isEmpty) {
+      throw AiException('当前没有识别到菜单文字，请对准菜单后再试');
+    }
+    var cfg = await SettingsService.visionConfig();
+    if (!cfg.isReady) {
+      cfg = await SettingsService.chatConfig();
+    }
+    final fxHint = (customFxRate != null && customFxRate > 0)
+        ? '\n用户指定汇率 fx_rate = $customFxRate（请按此汇率计算 rmb）。'
+        : '';
+    final reply = await _complete(
+      cfg,
+      [
+        {
+          'role': 'user',
+          'content': '$_menuTranslationPrompt$fxHint\n\n以下是 OCR 识别出的菜单原文：\n$cleaned',
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 2000,
+      timeout: timeout,
+    );
+    return parseMenuTranslationResponse(reply);
+  }
+
+  /// 纯解析函数：将 AI 菜单翻译回复解析为 MenuTranslationResult；遇到非合法 JSON 时安全返回 parseFailed=true 并保留 rawReply。
+  static MenuTranslationResult parseMenuTranslationResponse(String reply) {
+    final j = extractJson(reply);
+    if (j == null) {
+      return MenuTranslationResult(
+        fxRate: null,
+        items: const [],
+        rawReply: reply.trim(),
+        parseFailed: true,
+      );
+    }
+
+    double? parseOptDouble(Object? v) {
+      if (v == null) return null;
+      if (v is num) {
+        final d = v.toDouble();
+        return d.isFinite && d > 0 ? d : null;
+      }
+      if (v is String) {
+        final s = v.trim();
+        if (s.isEmpty || s.toLowerCase() == 'null') return null;
+        final m = RegExp(r'\d+(\.\d+)?').firstMatch(s);
+        if (m == null) return null;
+        final d = double.tryParse(m.group(0)!);
+        return (d != null && d.isFinite && d > 0) ? d : null;
+      }
+      return null;
+    }
+
+    int? parseVnd(Object? v) {
+      if (v == null) return null;
+      if (v is num) {
+        final n = v.round();
+        return n > 0 ? n : null;
+      }
+      if (v is String) {
+        final s = v.trim().toLowerCase();
+        if (s.isEmpty || s == 'null') return null;
+        // 处理 65k / 65K
+        final kMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*k').firstMatch(s);
+        if (kMatch != null) {
+          final base = double.tryParse(kMatch.group(1)!);
+          if (base != null && base > 0) return (base * 1000).round();
+        }
+        // 处理 120,000 或 65.000đ（越南盾千位分隔符）
+        final digitsOnly = s.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digitsOnly.isNotEmpty) {
+          final n = int.tryParse(digitsOnly);
+          if (n != null && n > 0) return n;
+        }
+      }
+      return null;
+    }
+
+    final fxRate = parseOptDouble(j['fx_rate']);
+    final rawList = j['items'];
+    if (rawList is! List) {
+      return MenuTranslationResult(
+        fxRate: fxRate,
+        items: const [],
+        rawReply: reply.trim(),
+        parseFailed: true,
+      );
+    }
+
+    final items = <MenuDishItem>[];
+    var seq = 1;
+    for (final entry in rawList.whereType<Map>()) {
+      final m = Map<String, dynamic>.from(entry);
+      final vn = (m['vn'] ?? m['original'] ?? '').toString().trim();
+      final cn = (m['cn'] ?? m['zh'] ?? '').toString().trim();
+      if (vn.isEmpty && cn.isEmpty) continue;
+
+      final vnd = parseVnd(m['vnd']);
+      var rmb = parseOptDouble(m['rmb']);
+      if (rmb == null && vnd != null && fxRate != null) {
+        rmb = vnd * fxRate;
+      }
+      final kcalD = parseOptDouble(m['kcal']);
+      final kcal = kcalD != null ? kcalD.round() : null;
+
+      double? p;
+      double? c;
+      double? f;
+      final macros = m['macros'];
+      if (macros is Map) {
+        p = parseOptDouble(macros['p'] ?? macros['protein']);
+        c = parseOptDouble(macros['c'] ?? macros['carbs']);
+        f = parseOptDouble(macros['f'] ?? macros['fat']);
+      }
+
+      final rawLight = (m['light'] ?? 'yellow').toString().trim().toLowerCase();
+      final light = switch (rawLight) {
+        'green' || '绿' => 'green',
+        'red' || '红' => 'red',
+        _ => 'yellow',
+      };
+
+      final tip = (m['tip'] ?? '').toString().trim();
+      final idVal = _asInt(m['id'], seq);
+      items.add(MenuDishItem(
+        id: idVal,
+        vn: vn.isNotEmpty ? vn : cn,
+        cn: cn.isNotEmpty ? cn : vn,
+        vnd: vnd,
+        rmb: rmb,
+        kcal: kcal,
+        proteinG: p,
+        carbsG: c,
+        fatG: f,
+        light: light,
+        tip: tip == 'null' ? '' : tip,
+      ));
+      seq++;
+    }
+
+    if (items.isEmpty) {
+      return MenuTranslationResult(
+        fxRate: fxRate,
+        items: const [],
+        rawReply: reply.trim(),
+        parseFailed: true,
+      );
+    }
+
+    return MenuTranslationResult(
+      fxRate: fxRate,
+      items: items,
+      rawReply: reply.trim(),
+      parseFailed: false,
     );
   }
 

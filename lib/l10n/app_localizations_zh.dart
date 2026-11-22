@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.3.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.3.1 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.3.0 (Build 23)';
+  String get aboutVersion => '版本 v3.3.1 (Build 24)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2908,13 +2908,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get paceZoneSprint => '冲刺';
 
   @override
-  String get menuOcrEntryTitle => '菜单 OCR 验证（英/越）';
+  String get menuOcrEntryTitle => 'AI 菜单翻译相机（英/越）';
 
   @override
-  String get menuOcrEntrySub => 'ML Kit 端侧实时识别越南语/英语菜单（离线免费）';
+  String get menuOcrEntrySub => '端侧 ML Kit 识别文字 + AI 翻译菜名、汇率与热量红绿灯';
 
   @override
-  String get menuOcrTitle => '菜单 OCR 验证';
+  String get menuOcrTitle => 'AI 菜单翻译相机';
 
   @override
   String menuOcrStatusLive(int ms, int count) {
@@ -2956,7 +2956,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get menuOcrEmptyHint =>
-      '将镜头对准越南语或英语菜单（如 Phở bò / Bún chả），文字会实时出现在下方；也可点「拍高清帧」或「相册测图」验证。';
+      '将镜头对准越南语或英语菜单（如 Phở bò / Bún chả），下方实时出现 OCR 文字后点击「翻译菜单」即可查看中文、人民币价格与热量红绿灯。';
 
   @override
   String get menuOcrCameraInit => '正在启动相机与 ML Kit 识别器…';
@@ -2968,4 +2968,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get menuOcrTorchTooltip => '补光灯';
+
+  @override
+  String get menuTranslateBtn => '翻译菜单';
+
+  @override
+  String get menuTranslatingHint => '正在调用 AI 翻译菜单与估算热量（仅发文字，省 Token）…';
+
+  @override
+  String get menuTabTranslated => '翻译卡片';
+
+  @override
+  String get menuTabOcrRaw => 'OCR 原文';
+
+  @override
+  String get menuFxRateLabel => '汇率 (1₫ → 元)';
+
+  @override
+  String menuFxRatePreview(String rmb) {
+    return '10万₫ ≈ $rmb元';
+  }
+
+  @override
+  String get menuRetryBtn => '重试翻译';
+
+  @override
+  String get menuOpenSettingsBtn => '去设置配置 API';
+
+  @override
+  String get menuParseFailedHint => 'AI 返回内容不是标准 JSON，已为你直接展示原始回复：';
+
+  @override
+  String menuPriceRmb(String rmb) {
+    return '≈ $rmb元';
+  }
+
+  @override
+  String menuMacrosSummary(String p, String c, String f) {
+    return '蛋 ${p}g · 碳 ${c}g · 脂 ${f}g';
+  }
+
+  @override
+  String get menuLightGreen => '推荐';
+
+  @override
+  String get menuLightYellow => '适量';
+
+  @override
+  String get menuLightRed => '高热';
 }

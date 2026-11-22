@@ -120,3 +120,14 @@
   - 上半区实时取景 + 闪光灯 + 实时耗时/块数胶囊；操作栏支持「定格画面 / 继续实时 / 拍高清帧 / 相册测图 / 复制文字」；下半区大字号展示识别文本块与坐标，便于实测 `Phở bò` / `Bún chả` 等越南语变音符。
   - 严格遵守第一批边界：暂不接 AI、不做 AR 浮层、不碰调试后端，待实测准确率验收后进入第二批。
 - [x] 验证：71/71 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.0_release.apk`。
+
+### 第二批：OCR 文字接 AI 翻译 + 可调汇率 + 红绿灯菜品卡片列表（v3.3.1+24）✅ 已完成并出包
+- [x] **仅发文字 AI 翻译 (`AiService.translateMenuOcrText` + `parseMenuTranslationResponse`)**：
+  - 复用 `SettingsService.visionConfig()`（未单独配识图时自动回退 `chatConfig()`），仅发送 ML Kit 识别文本不发图，大幅省 Token，严格设置 **15 秒超时**。
+  - 返回契约严格对齐 `{ fx_rate, items: [{ id, vn, cn, vnd, rmb, kcal, macros, light, tip }] }`，支持 `65k` / `120.000đ` 等越南盾写法容错。
+- [x] **可手动覆盖汇率 + 实时重算**：默认填入 AI 返回汇率，用户随时在顶部输入框修改汇率后，所有菜品卡片的人民币价格即时重算。
+- [x] **红绿灯菜品卡片列表 (`MenuOcrLabScreen`)**：
+  - 按卡片列表清晰展示：红绿灯徽章（挂接 Material 3 色板 `success/warning/danger`）、中文菜名、越南语原文、越南盾 + 人民币折算价（如 `120,000₫ ≈ 34.2元`）、热量 `kcal`、三大营养素与简短提示 `tip`。
+  - 完整加载与异常兜底：请求中 loading、AI 未配置时提示并带「去设置配置 API」按钮、超时支持一键「重试翻译」、非合法 JSON 时安全展示原始回复绝不崩溃。
+  - 严格遵守分批边界：AR 浮层（Positioned）留到第三批，调试后端留到第四批。
+- [x] 验证：75/75 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.1_release.apk`。

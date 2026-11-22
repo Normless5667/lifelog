@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.3.0 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.3.1 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.3.0 (Build 23)",
+  "aboutVersion": "Version v3.3.1 (Build 24)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1686,9 +1686,9 @@
   "paceZoneFast": "Fast",
   "paceZoneSprint": "Sprint",
 
-  "menuOcrEntryTitle": "Menu OCR Lab (EN/VI)",
-  "menuOcrEntrySub": "On-device ML Kit live Vietnamese & English OCR (offline)",
-  "menuOcrTitle": "Menu OCR Lab",
+  "menuOcrEntryTitle": "AI Menu Camera (EN/VI)",
+  "menuOcrEntrySub": "On-device ML Kit OCR + AI translation, RMB price & calories",
+  "menuOcrTitle": "AI Menu Camera",
   "menuOcrStatusLive": "Live · {ms} ms · {count} blocks",
   "@menuOcrStatusLive": {
     "placeholders": {
@@ -1722,7 +1722,7 @@
   "menuOcrGalleryBtn": "Gallery",
   "menuOcrCopyBtn": "Copy",
   "menuOcrCopiedToast": "Recognized text copied",
-  "menuOcrEmptyHint": "Point the camera at a Vietnamese or English menu (e.g. Phở bò / Bún chả). Text appears below in real time, or use HD Shot / Gallery.",
+  "menuOcrEmptyHint": "Point at a Vietnamese or English menu (e.g. Phở bò / Bún chả), then tap Translate Menu to see Chinese names, RMB prices & calorie lights.",
   "menuOcrCameraInit": "Starting camera & ML Kit recognizer…",
   "menuOcrCameraError": "Camera unavailable: {error}\nYou can still tap Gallery to test a menu photo.",
   "@menuOcrCameraError": {
@@ -1730,5 +1730,36 @@
       "error": { "type": "String" }
     }
   },
-  "menuOcrTorchTooltip": "Flashlight"
+  "menuOcrTorchTooltip": "Flashlight",
+  "menuTranslateBtn": "Translate Menu",
+  "menuTranslatingHint": "Translating menu & estimating calories (text-only)…",
+  "menuTabTranslated": "Translated",
+  "menuTabOcrRaw": "OCR Text",
+  "menuFxRateLabel": "Rate (1₫ → ¥)",
+  "menuFxRatePreview": "100k₫ ≈ ¥{rmb}",
+  "@menuFxRatePreview": {
+    "placeholders": {
+      "rmb": { "type": "String" }
+    }
+  },
+  "menuRetryBtn": "Retry",
+  "menuOpenSettingsBtn": "Configure API",
+  "menuParseFailedHint": "AI reply wasn't valid JSON — showing raw output below:",
+  "menuPriceRmb": "≈ ¥{rmb}",
+  "@menuPriceRmb": {
+    "placeholders": {
+      "rmb": { "type": "String" }
+    }
+  },
+  "menuMacrosSummary": "P {p}g · C {c}g · F {f}g",
+  "@menuMacrosSummary": {
+    "placeholders": {
+      "p": { "type": "String" },
+      "c": { "type": "String" },
+      "f": { "type": "String" }
+    }
+  },
+  "menuLightGreen": "Great",
+  "menuLightYellow": "Moderate",
+  "menuLightRed": "Heavy"
 }
