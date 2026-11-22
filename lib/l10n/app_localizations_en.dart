@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.4.2 · Co-developed with DaFeiYu';
+      'Version v3.5.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.4.2 (Build 31)';
+  String get aboutVersion => 'Version v3.5.0 (Build 32)';
 
   @override
   String get aboutBadge =>
@@ -3179,4 +3179,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String debugServerLiveConfigPreview(String fxRate, String threshold) {
     return 'Live config: FX $fxRate · Threshold $threshold';
   }
+
+  @override
+  String get quickMealTitle => 'What did you eat?';
+
+  @override
+  String get quickMealHint => 'e.g. Pho bo, Chicken rice';
+
+  @override
+  String get quickMealRecentHeader => 'Recently eaten (tap to log)';
+
+  @override
+  String get quickMealNextBtn => 'Next';
+
+  @override
+  String quickMealEstimating(String name) {
+    return 'Estimating calories for \"$name\"…';
+  }
+
+  @override
+  String get quickMealConfirmTitle => 'Confirm Meal';
+
+  @override
+  String get quickMealSourceRecent => 'Matched from history';
+
+  @override
+  String get quickMealSourceAi => 'Estimated by AI';
+
+  @override
+  String get quickMealEditFullBtn => 'Full Form';
+
+  @override
+  String get quickMealBackBtn => 'Back';
+
+  @override
+  String get quickMealSaveBtn => 'Save';
+
+  @override
+  String quickMealSavedToast(String name, String kcal) {
+    return 'Logged: $name · $kcal kcal';
+  }
+
+  @override
+  String get quickMealFallbackToast =>
+      'Couldn\'t auto-estimate; opened full form';
 }

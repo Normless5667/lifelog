@@ -189,3 +189,12 @@
 - [x] **电脑调试台新增「只看错误」过滤开关 (`debug_console_html.dart`)**：
   - 工具栏置顶独立的「只看错误 (N)」红色开关与实时错误计数；超长非错误日志（如 AI 完整 Prompt/回复）自动折叠并支持一键展开全文，「一键复制全部日志」仍保留 100% 完整未截断原文。
 - [x] 验证：84/84 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.4.2_release.apk`。
+
+## v3.5.0：基于 7 天真实数据的失败功能修复 — 第一批：`quick_log_diet` 两步式重构（v3.5.0+32）✅ 已完成并出包
+- [x] **新增两步式快速记饮食弹窗 (`lib/screens/diet/quick_log_meal_dialog.dart`)**：
+  - **第一步极简交互**：界面只展示 **1 个输入框「吃了什么？」** + 下方「最近吃过」列表（`Repo.getRecentUniqueMeals(days: 30, limit: 20)` 取前 6 条展示），点任意一条直接带出热量与三大营养素一键保存，无需再填 6 格表单。
+  - **第二步智能带出**：输入名称点「下一步」后，优先匹配近 30 天历史同名记录（0ms 带出）→ 未命中则自动调用 `AiService.estimateFoodText` 估算热量与营养素 → 历史与 AI 均失败时自动携带已输入食物名回退完整 6 格 `MealEditDialog`（新增 `initialDraft` 预填支持），绝不丢用户输入。
+- [x] **饮食埋点分路径精细统计 (`diet_screen.dart`)**：
+  - 彻底拆分三条转化路径：`quick_log_diet`（快速两步路径，含 `fail` 原因上报）、`meal_reuse_recent`（点最近吃过一键复用）、`meal_edit_full`（编辑已有记录或进入完整 6 格表单）。
+- [x] 验证：88/88 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.5.0_release.apk`。
+- [ ] 待下一批（等用户验收 `v3.5.0` 后推进）：`ai_plan_import` / `log_weight` 补 fail 埋点与报错提示、`bus_board` 埋点修正、`start_workout` 重复计数修复、内存 242MB 专项排查。

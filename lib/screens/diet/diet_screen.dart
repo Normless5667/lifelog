@@ -15,6 +15,7 @@ import '../settings/settings_screen.dart';
 import 'food_confirm_sheet.dart';
 import 'meal_edit_dialog.dart';
 import 'menu_ocr_lab_screen.dart';
+import 'quick_log_meal_dialog.dart';
 
 /// 饮食记录页（v2.0）：按日查看、按餐分组、拍照估算热量、文字描述估算、手动添加
 class DietScreen extends StatefulWidget {
@@ -234,27 +235,114 @@ class _DietScreenState extends State<DietScreen> {
     }
   }
 
-  Future<void> _manualEdit({Meal? existing, int? defaultMealType}) async {
+  Future<void> _openFullMealEdit({
+    Meal? existing,
+    Meal? initialDraft,
+    int? defaultMealType,
+    List<Meal> recentMeals = const [],
+  }) async {
     final t0 = DateTime.now().millisecondsSinceEpoch;
-    UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
-    final recentMeals = existing == null ? await Repo.getRecentUniqueMeals(days: 7, limit: 6) : const <Meal>[];
-    if (!mounted) return;
+    UsageTelemetryService.instance.trackFeature('meal_edit_full', 'tap');
     final m = await showDialog<Meal>(
       context: context,
       builder: (_) => MealEditDialog(
         date: _date,
         existing: existing,
-        initialMealType: defaultMealType ?? _guessMealType(),
+        initialDraft: initialDraft,
+        initialMealType: defaultMealType ?? existing?.mealType ?? _guessMealType(),
         recentMeals: recentMeals,
       ),
     );
     final dur = DateTime.now().millisecondsSinceEpoch - t0;
     if (m != null) {
       await Repo.saveMeal(m);
-      UsageTelemetryService.instance.trackFeature('quick_log_diet', 'success', durationMs: dur);
+      UsageTelemetryService.instance.trackFeature('meal_edit_full', 'success', durationMs: dur);
       _load();
     } else {
+      UsageTelemetryService.instance.trackFeature('meal_edit_full', 'cancel', durationMs: dur);
+    }
+  }
+
+  Future<void> _manualEdit({Meal? existing, int? defaultMealType}) async {
+    final mealType = defaultMealType ?? existing?.mealType ?? _guessMealType();
+    // 编辑已有记录直接走完整 6 格表单（埋点 meal_edit_full）
+    if (existing != null) {
+      await _openFullMealEdit(existing: existing, defaultMealType: mealType);
+      return;
+    }
+
+    // 新增记录默认走 v3.5.0 两步式快速记饮食（第一步仅 1 个输入框 + 最近吃过一键保存）
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    final recentMeals = await Repo.getRecentUniqueMeals(days: 30, limit: 20);
+    if (!mounted) return;
+    final res = await showDialog<QuickLogMealResult>(
+      context: context,
+      builder: (_) => QuickLogMealDialog(
+        date: _date,
+        mealType: mealType,
+        recentMeals: recentMeals,
+      ),
+    );
+    final dur = DateTime.now().millisecondsSinceEpoch - t0;
+    if (!mounted) return;
+
+    if (res == null) {
+      UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
       UsageTelemetryService.instance.trackFeature('quick_log_diet', 'cancel', durationMs: dur);
+      return;
+    }
+
+    final l = context.l10n;
+    switch (res.path) {
+      case QuickLogMealPath.reuseRecent:
+        UsageTelemetryService.instance.trackFeature('meal_reuse_recent', 'tap');
+        await Repo.saveMeal(res.meal);
+        UsageTelemetryService.instance.trackFeature(
+          'meal_reuse_recent',
+          'success',
+          durationMs: dur,
+        );
+        if (mounted) {
+          toast(
+            context,
+            l.quickMealSavedToast(res.meal.name, res.meal.calories.round().toString()),
+          );
+        }
+        _load();
+        break;
+      case QuickLogMealPath.quickSave:
+        UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
+        await Repo.saveMeal(res.meal);
+        UsageTelemetryService.instance.trackFeature(
+          'quick_log_diet',
+          'success',
+          durationMs: dur,
+        );
+        if (mounted) {
+          toast(
+            context,
+            l.quickMealSavedToast(res.meal.name, res.meal.calories.round().toString()),
+          );
+        }
+        _load();
+        break;
+      case QuickLogMealPath.openFullForm:
+        if (res.fallbackError != null) {
+          UsageTelemetryService.instance.trackFeature('quick_log_diet', 'tap');
+          UsageTelemetryService.instance.trackFeature(
+            'quick_log_diet',
+            'fail',
+            durationMs: dur,
+            errorMsg: res.fallbackError,
+          );
+          toast(context, l.quickMealFallbackToast);
+        }
+        await _openFullMealEdit(
+          initialDraft: res.meal,
+          defaultMealType: mealType,
+          recentMeals: recentMeals.take(6).toList(),
+        );
+        break;
     }
   }
 

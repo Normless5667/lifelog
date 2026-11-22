@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.4.2 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.5.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.4.2 (Build 31)';
+  String get aboutVersion => '版本 v3.5.0 (Build 32)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -3080,4 +3080,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String debugServerLiveConfigPreview(String fxRate, String threshold) {
     return '当前热调参数：汇率 $fxRate · 阈值 $threshold';
   }
+
+  @override
+  String get quickMealTitle => '吃了什么？';
+
+  @override
+  String get quickMealHint => '输入食物名称，如 牛肉粉、鸡胸肉饭';
+
+  @override
+  String get quickMealRecentHeader => '最近吃过（点一下直接记录）';
+
+  @override
+  String get quickMealNextBtn => '下一步';
+
+  @override
+  String quickMealEstimating(String name) {
+    return '正在估算「$name」的热量与营养…';
+  }
+
+  @override
+  String get quickMealConfirmTitle => '确认记录';
+
+  @override
+  String get quickMealSourceRecent => '已从历史记录带出';
+
+  @override
+  String get quickMealSourceAi => 'AI 已自动估算';
+
+  @override
+  String get quickMealEditFullBtn => '完整表单';
+
+  @override
+  String get quickMealBackBtn => '返回';
+
+  @override
+  String get quickMealSaveBtn => '确认保存';
+
+  @override
+  String quickMealSavedToast(String name, String kcal) {
+    return '已记录：$name · $kcal kcal';
+  }
+
+  @override
+  String get quickMealFallbackToast => '未能自动估算，已为你打开手动表单';
 }

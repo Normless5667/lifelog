@@ -587,7 +587,7 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v3.4.2 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v3.5.0 · 由大肥鱼协助开发",
 
   "usageSectionTitle": "使用数据与性能分析",
   "usageSwitchTitle": "记录使用情况与性能探针",
@@ -637,7 +637,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v3.4.2 (Build 31)",
+  "aboutVersion": "版本 v3.5.0 (Build 32)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
   "aboutCreditsTitle": "协作开发",
@@ -939,5 +939,18 @@
   "debugServerStoppedToast": "调试服务已关闭",
   "debugServerBannerText": "调试服务运行中 · {address} · 点击关闭",
   "debugServerTokenLabel": "Token：{token}",
-  "debugServerLiveConfigPreview": "当前热调参数：汇率 {fxRate} · 阈值 {threshold}"
+  "debugServerLiveConfigPreview": "当前热调参数：汇率 {fxRate} · 阈值 {threshold}",
+  "quickMealTitle": "吃了什么？",
+  "quickMealHint": "输入食物名称，如 牛肉粉、鸡胸肉饭",
+  "quickMealRecentHeader": "最近吃过（点一下直接记录）",
+  "quickMealNextBtn": "下一步",
+  "quickMealEstimating": "正在估算「{name}」的热量与营养…",
+  "quickMealConfirmTitle": "确认记录",
+  "quickMealSourceRecent": "已从历史记录带出",
+  "quickMealSourceAi": "AI 已自动估算",
+  "quickMealEditFullBtn": "完整表单",
+  "quickMealBackBtn": "返回",
+  "quickMealSaveBtn": "确认保存",
+  "quickMealSavedToast": "已记录：{name} · {kcal} kcal",
+  "quickMealFallbackToast": "未能自动估算，已为你打开手动表单"
 }

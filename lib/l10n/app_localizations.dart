@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.4.2 · Co-developed with DaFeiYu'**
+  /// **'Version v3.5.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.4.2 (Build 31)'**
+  /// **'Version v3.5.0 (Build 32)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5508,6 +5508,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live config: FX {fxRate} · Threshold {threshold}'**
   String debugServerLiveConfigPreview(String fxRate, String threshold);
+
+  /// No description provided for @quickMealTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you eat?'**
+  String get quickMealTitle;
+
+  /// No description provided for @quickMealHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Pho bo, Chicken rice'**
+  String get quickMealHint;
+
+  /// No description provided for @quickMealRecentHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently eaten (tap to log)'**
+  String get quickMealRecentHeader;
+
+  /// No description provided for @quickMealNextBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get quickMealNextBtn;
+
+  /// No description provided for @quickMealEstimating.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimating calories for \"{name}\"…'**
+  String quickMealEstimating(String name);
+
+  /// No description provided for @quickMealConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Meal'**
+  String get quickMealConfirmTitle;
+
+  /// No description provided for @quickMealSourceRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched from history'**
+  String get quickMealSourceRecent;
+
+  /// No description provided for @quickMealSourceAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated by AI'**
+  String get quickMealSourceAi;
+
+  /// No description provided for @quickMealEditFullBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Form'**
+  String get quickMealEditFullBtn;
+
+  /// No description provided for @quickMealBackBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get quickMealBackBtn;
+
+  /// No description provided for @quickMealSaveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get quickMealSaveBtn;
+
+  /// No description provided for @quickMealSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged: {name} · {kcal} kcal'**
+  String quickMealSavedToast(String name, String kcal);
+
+  /// No description provided for @quickMealFallbackToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t auto-estimate; opened full form'**
+  String get quickMealFallbackToast;
 }
 
 class _AppLocalizationsDelegate

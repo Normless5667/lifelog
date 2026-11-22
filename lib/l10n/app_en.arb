@@ -1119,7 +1119,7 @@
   "settingsExportCsvTitle": "Export Spreadsheets (CSV)",
   "settingsExportCsvSub": "View meals, weight & cardio history in Excel or Sheets",
   "settingsAboutTileTitle": "About Life Assistant",
-  "settingsAboutTileSub": "Version v3.4.2 · Co-developed with DaFeiYu",
+  "settingsAboutTileSub": "Version v3.5.0 · Co-developed with DaFeiYu",
 
   "usageSectionTitle": "Usage Telemetry & Analytics",
   "usageSwitchTitle": "Record App Usage & Performance",
@@ -1184,7 +1184,7 @@
   "diagTestSentToast": "Test alert sent (with alarm vibration + sound + banner)",
 
   "aboutTitle": "About · Life Assistant",
-  "aboutVersion": "Version v3.4.2 (Build 31)",
+  "aboutVersion": "Version v3.5.0 (Build 32)",
   "aboutBadge": "Co-developed & supervised by DaFeiYu · With you every day",
   "aboutDesc": "All-in-one personal assistant featuring class schedules, live shuttle bus timeline (built-in BUV + custom/JSON import), GPS weather, AI food calorie scan, strength & MET cardio tracking, pedometer, and DeepSeek AI coach.",
   "aboutCreditsTitle": "Built Together",
@@ -1809,5 +1809,29 @@
       "fxRate": { "type": "String" },
       "threshold": { "type": "String" }
     }
-  }
+  },
+  "quickMealTitle": "What did you eat?",
+  "quickMealHint": "e.g. Pho bo, Chicken rice",
+  "quickMealRecentHeader": "Recently eaten (tap to log)",
+  "quickMealNextBtn": "Next",
+  "quickMealEstimating": "Estimating calories for \"{name}\"…",
+  "@quickMealEstimating": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "quickMealConfirmTitle": "Confirm Meal",
+  "quickMealSourceRecent": "Matched from history",
+  "quickMealSourceAi": "Estimated by AI",
+  "quickMealEditFullBtn": "Full Form",
+  "quickMealBackBtn": "Back",
+  "quickMealSaveBtn": "Save",
+  "quickMealSavedToast": "Logged: {name} · {kcal} kcal",
+  "@quickMealSavedToast": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "kcal": { "type": "String" }
+    }
+  },
+  "quickMealFallbackToast": "Couldn't auto-estimate; opened full form"
 }

@@ -8,6 +8,7 @@ import '../../widgets/common.dart';
 class MealEditDialog extends StatefulWidget {
   final String date;
   final Meal? existing;
+  final Meal? initialDraft;
   final int initialMealType;
   final List<Meal> recentMeals;
 
@@ -15,6 +16,7 @@ class MealEditDialog extends StatefulWidget {
     super.key,
     required this.date,
     this.existing,
+    this.initialDraft,
     required this.initialMealType,
     this.recentMeals = const [],
   });
@@ -44,14 +46,23 @@ class _MealEditDialogState extends State<MealEditDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _mealType = e?.mealType ?? widget.initialMealType;
-    _showDetails = e != null;
-    _name = TextEditingController(text: e?.name ?? '');
-    _amount = TextEditingController(text: e?.amount ?? '');
-    _kcal = TextEditingController(text: e == null ? '' : e.calories.round().toString());
-    _p = TextEditingController(text: e == null ? '' : e.protein.round().toString());
-    _c = TextEditingController(text: e == null ? '' : e.carbs.round().toString());
-    _f = TextEditingController(text: e == null ? '' : e.fat.round().toString());
+    final seed = e ?? widget.initialDraft;
+    _mealType = seed?.mealType ?? widget.initialMealType;
+    _showDetails = e != null || widget.initialDraft != null;
+    _name = TextEditingController(text: seed?.name ?? '');
+    _amount = TextEditingController(text: seed?.amount ?? '');
+    _kcal = TextEditingController(
+      text: (seed == null || (e == null && seed.calories <= 0)) ? '' : seed.calories.round().toString(),
+    );
+    _p = TextEditingController(
+      text: (seed == null || (e == null && seed.protein <= 0)) ? '' : seed.protein.round().toString(),
+    );
+    _c = TextEditingController(
+      text: (seed == null || (e == null && seed.carbs <= 0)) ? '' : seed.carbs.round().toString(),
+    );
+    _f = TextEditingController(
+      text: (seed == null || (e == null && seed.fat <= 0)) ? '' : seed.fat.round().toString(),
+    );
   }
 
   void _applyRecentMeal(Meal m) {
