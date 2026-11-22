@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.2.0 · Co-developed with DaFeiYu'**
+  /// **'Version v3.3.0 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.2.0 (Build 22)'**
+  /// **'Version v3.3.0 (Build 23)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.
@@ -5220,6 +5220,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sprint'**
   String get paceZoneSprint;
+
+  /// No description provided for @menuOcrEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu OCR Lab (EN/VI)'**
+  String get menuOcrEntryTitle;
+
+  /// No description provided for @menuOcrEntrySub.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device ML Kit live Vietnamese & English OCR (offline)'**
+  String get menuOcrEntrySub;
+
+  /// No description provided for @menuOcrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu OCR Lab'**
+  String get menuOcrTitle;
+
+  /// No description provided for @menuOcrStatusLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live · {ms} ms · {count} blocks'**
+  String menuOcrStatusLive(int ms, int count);
+
+  /// No description provided for @menuOcrStatusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen · {count} blocks'**
+  String menuOcrStatusPaused(int count);
+
+  /// No description provided for @menuOcrStatusPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'HD Shot · {ms} ms · {count} blocks'**
+  String menuOcrStatusPhoto(int ms, int count);
+
+  /// No description provided for @menuOcrStatusGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery · {ms} ms · {count} blocks'**
+  String menuOcrStatusGallery(int ms, int count);
+
+  /// No description provided for @menuOcrPauseBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Freeze'**
+  String get menuOcrPauseBtn;
+
+  /// No description provided for @menuOcrResumeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get menuOcrResumeBtn;
+
+  /// No description provided for @menuOcrCaptureBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'HD Shot'**
+  String get menuOcrCaptureBtn;
+
+  /// No description provided for @menuOcrGalleryBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get menuOcrGalleryBtn;
+
+  /// No description provided for @menuOcrCopyBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get menuOcrCopyBtn;
+
+  /// No description provided for @menuOcrCopiedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognized text copied'**
+  String get menuOcrCopiedToast;
+
+  /// No description provided for @menuOcrEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at a Vietnamese or English menu (e.g. Phở bò / Bún chả). Text appears below in real time, or use HD Shot / Gallery.'**
+  String get menuOcrEmptyHint;
+
+  /// No description provided for @menuOcrCameraInit.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting camera & ML Kit recognizer…'**
+  String get menuOcrCameraInit;
+
+  /// No description provided for @menuOcrCameraError.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera unavailable: {error}\nYou can still tap Gallery to test a menu photo.'**
+  String menuOcrCameraError(String error);
+
+  /// No description provided for @menuOcrTorchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Flashlight'**
+  String get menuOcrTorchTooltip;
 }
 
 class _AppLocalizationsDelegate

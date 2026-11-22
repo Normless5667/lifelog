@@ -1919,7 +1919,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutTileTitle => '关于生活助手';
 
   @override
-  String get settingsAboutTileSub => '版本 v3.2.0 · 由大肥鱼协助开发';
+  String get settingsAboutTileSub => '版本 v3.3.0 · 由大肥鱼协助开发';
 
   @override
   String get usageSectionTitle => '使用数据与性能分析';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTitle => '关于 · 生活助手';
 
   @override
-  String get aboutVersion => '版本 v3.2.0 (Build 22)';
+  String get aboutVersion => '版本 v3.3.0 (Build 23)';
 
   @override
   String get aboutBadge => '由大肥鱼协助开发与监工 · 陪伴你的每一天';
@@ -2906,4 +2906,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paceZoneSprint => '冲刺';
+
+  @override
+  String get menuOcrEntryTitle => '菜单 OCR 验证（英/越）';
+
+  @override
+  String get menuOcrEntrySub => 'ML Kit 端侧实时识别越南语/英语菜单（离线免费）';
+
+  @override
+  String get menuOcrTitle => '菜单 OCR 验证';
+
+  @override
+  String menuOcrStatusLive(int ms, int count) {
+    return '实时 · $ms ms · $count 块';
+  }
+
+  @override
+  String menuOcrStatusPaused(int count) {
+    return '已定格 · $count 块';
+  }
+
+  @override
+  String menuOcrStatusPhoto(int ms, int count) {
+    return '高清拍照 · $ms ms · $count 块';
+  }
+
+  @override
+  String menuOcrStatusGallery(int ms, int count) {
+    return '相册测图 · $ms ms · $count 块';
+  }
+
+  @override
+  String get menuOcrPauseBtn => '定格画面';
+
+  @override
+  String get menuOcrResumeBtn => '继续实时';
+
+  @override
+  String get menuOcrCaptureBtn => '拍高清帧';
+
+  @override
+  String get menuOcrGalleryBtn => '相册测图';
+
+  @override
+  String get menuOcrCopyBtn => '复制文字';
+
+  @override
+  String get menuOcrCopiedToast => '已复制识别文本到剪贴板';
+
+  @override
+  String get menuOcrEmptyHint =>
+      '将镜头对准越南语或英语菜单（如 Phở bò / Bún chả），文字会实时出现在下方；也可点「拍高清帧」或「相册测图」验证。';
+
+  @override
+  String get menuOcrCameraInit => '正在启动相机与 ML Kit 识别器…';
+
+  @override
+  String menuOcrCameraError(String error) {
+    return '相机启动失败：$error\n你仍可点击「相册测图」验证本地菜单图片。';
+  }
+
+  @override
+  String get menuOcrTorchTooltip => '补光灯';
 }

@@ -108,3 +108,15 @@
   - 相邻跳点 `> 200m` 直接过滤断开不连线；采用前后各 2 点（5 点）滑动窗口算速度，消除单点 GPS 抖动全红毛刺；同档连续点聚合为多点 Polyline 并将 segment 总数控制在 `<= 300`（严格 `<= 400`），30 分钟数千点轨迹依然流畅不卡顿。
   - **跑步中 (`RunningActiveScreen`) 与详情回放 (`RunDetailScreen`) 同步支持实时/回放分色**，地图右下角展示五档图例，顶部提供 `[单色轨迹 | 速度分色]` 一键切换开关并持久化偏好。
 - [x] 验证：68/68 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.2.0_release.apk`。
+
+## v3.3.0 AR 菜单相机 + 调试后端（分批验证）
+### 第一批：ML Kit 端侧越南语/英语菜单 OCR 验证（v3.3.0+23）✅ 已完成并出包
+- [x] **新增依赖**：`camera: ^0.11.0`、`google_mlkit_text_recognition: ^1.0.3`、`google_mlkit_commons: ^1.0.3`（使用 `TextRecognitionScript.latin` 单识别器，原厂正式支持越南语与英语，零额外语言包）。
+- [x] **端侧 OCR 服务 (`lib/services/menu_ocr_service.dart`)**：
+  - 实时相机帧转换（Android 优先单平面 `NV21` 零拷贝 + 3-plane `YUV420 → NV21` 兼容兜底 + 精确旋转角计算）。
+  - 支持高清拍照与相册图片直接识别（`InputImage.fromFilePath`），返回每块文本、边界框与识别耗时（ms）。
+- [x] **临时验证页 (`lib/screens/diet/menu_ocr_lab_screen.dart`) & 入口**：
+  - 饮食页顶部快捷入口「菜单 OCR 验证（英/越）」直达。
+  - 上半区实时取景 + 闪光灯 + 实时耗时/块数胶囊；操作栏支持「定格画面 / 继续实时 / 拍高清帧 / 相册测图 / 复制文字」；下半区大字号展示识别文本块与坐标，便于实测 `Phở bò` / `Bún chả` 等越南语变音符。
+  - 严格遵守第一批边界：暂不接 AI、不做 AR 浮层、不碰调试后端，待实测准确率验收后进入第二批。
+- [x] 验证：71/71 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.0_release.apk`。

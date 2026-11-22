@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.2.0 · Co-developed with DaFeiYu';
+      'Version v3.3.0 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.2.0 (Build 22)';
+  String get aboutVersion => 'Version v3.3.0 (Build 23)';
 
   @override
   String get aboutBadge =>
@@ -3001,4 +3001,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paceZoneSprint => 'Sprint';
+
+  @override
+  String get menuOcrEntryTitle => 'Menu OCR Lab (EN/VI)';
+
+  @override
+  String get menuOcrEntrySub =>
+      'On-device ML Kit live Vietnamese & English OCR (offline)';
+
+  @override
+  String get menuOcrTitle => 'Menu OCR Lab';
+
+  @override
+  String menuOcrStatusLive(int ms, int count) {
+    return 'Live · $ms ms · $count blocks';
+  }
+
+  @override
+  String menuOcrStatusPaused(int count) {
+    return 'Frozen · $count blocks';
+  }
+
+  @override
+  String menuOcrStatusPhoto(int ms, int count) {
+    return 'HD Shot · $ms ms · $count blocks';
+  }
+
+  @override
+  String menuOcrStatusGallery(int ms, int count) {
+    return 'Gallery · $ms ms · $count blocks';
+  }
+
+  @override
+  String get menuOcrPauseBtn => 'Freeze';
+
+  @override
+  String get menuOcrResumeBtn => 'Live';
+
+  @override
+  String get menuOcrCaptureBtn => 'HD Shot';
+
+  @override
+  String get menuOcrGalleryBtn => 'Gallery';
+
+  @override
+  String get menuOcrCopyBtn => 'Copy';
+
+  @override
+  String get menuOcrCopiedToast => 'Recognized text copied';
+
+  @override
+  String get menuOcrEmptyHint =>
+      'Point the camera at a Vietnamese or English menu (e.g. Phở bò / Bún chả). Text appears below in real time, or use HD Shot / Gallery.';
+
+  @override
+  String get menuOcrCameraInit => 'Starting camera & ML Kit recognizer…';
+
+  @override
+  String menuOcrCameraError(String error) {
+    return 'Camera unavailable: $error\nYou can still tap Gallery to test a menu photo.';
+  }
+
+  @override
+  String get menuOcrTorchTooltip => 'Flashlight';
 }

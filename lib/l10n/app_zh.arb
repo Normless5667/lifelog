@@ -587,7 +587,7 @@
   "settingsExportCsvTitle": "导出 Excel 表格 (CSV)",
   "settingsExportCsvSub": "方便在电脑或手机表格中查看饮食、体重与有氧明细",
   "settingsAboutTileTitle": "关于生活助手",
-  "settingsAboutTileSub": "版本 v3.2.0 · 由大肥鱼协助开发",
+  "settingsAboutTileSub": "版本 v3.3.0 · 由大肥鱼协助开发",
 
   "usageSectionTitle": "使用数据与性能分析",
   "usageSwitchTitle": "记录使用情况与性能探针",
@@ -637,7 +637,7 @@
   "diagTestSentToast": "已发送测试强提醒（含闹钟级震动 + 声音 + 横幅）",
 
   "aboutTitle": "关于 · 生活助手",
-  "aboutVersion": "版本 v3.2.0 (Build 22)",
+  "aboutVersion": "版本 v3.3.0 (Build 23)",
   "aboutBadge": "由大肥鱼协助开发与监工 · 陪伴你的每一天",
   "aboutDesc": "集课程表、多路线校车起终点实时时间轴（内置 BUV 路线 + 自定义/JSON 导入）、GPS 实时天气、拍照热量识别、力量训练计时、MET 有氧与自动计步、DeepSeek AI 私人教练于一体的全能个人生活助手。",
   "aboutCreditsTitle": "协作开发",
@@ -890,5 +890,23 @@
   "paceZoneJog": "慢跑",
   "paceZoneNormal": "正常",
   "paceZoneFast": "快跑",
-  "paceZoneSprint": "冲刺"
+  "paceZoneSprint": "冲刺",
+
+  "menuOcrEntryTitle": "菜单 OCR 验证（英/越）",
+  "menuOcrEntrySub": "ML Kit 端侧实时识别越南语/英语菜单（离线免费）",
+  "menuOcrTitle": "菜单 OCR 验证",
+  "menuOcrStatusLive": "实时 · {ms} ms · {count} 块",
+  "menuOcrStatusPaused": "已定格 · {count} 块",
+  "menuOcrStatusPhoto": "高清拍照 · {ms} ms · {count} 块",
+  "menuOcrStatusGallery": "相册测图 · {ms} ms · {count} 块",
+  "menuOcrPauseBtn": "定格画面",
+  "menuOcrResumeBtn": "继续实时",
+  "menuOcrCaptureBtn": "拍高清帧",
+  "menuOcrGalleryBtn": "相册测图",
+  "menuOcrCopyBtn": "复制文字",
+  "menuOcrCopiedToast": "已复制识别文本到剪贴板",
+  "menuOcrEmptyHint": "将镜头对准越南语或英语菜单（如 Phở bò / Bún chả），文字会实时出现在下方；也可点「拍高清帧」或「相册测图」验证。",
+  "menuOcrCameraInit": "正在启动相机与 ML Kit 识别器…",
+  "menuOcrCameraError": "相机启动失败：{error}\n你仍可点击「相册测图」验证本地菜单图片。",
+  "menuOcrTorchTooltip": "补光灯"
 }

@@ -14,6 +14,7 @@ import '../../widgets/common.dart';
 import '../settings/settings_screen.dart';
 import 'food_confirm_sheet.dart';
 import 'meal_edit_dialog.dart';
+import 'menu_ocr_lab_screen.dart';
 
 /// 饮食记录页（v2.0）：按日查看、按餐分组、拍照估算热量、文字描述估算、手动添加
 class DietScreen extends StatefulWidget {
@@ -427,27 +428,69 @@ class _DietScreenState extends State<DietScreen> {
       );
     }
 
-    return Row(
+    return Column(
       children: [
-        tile(
-          icon: Icons.camera_alt_rounded,
-          label: l.dietScanFood,
-          color: dietColor,
-          onTap: () => _photoEstimate(ImageSource.camera),
+        Row(
+          children: [
+            tile(
+              icon: Icons.camera_alt_rounded,
+              label: l.dietScanFood,
+              color: dietColor,
+              onTap: () => _photoEstimate(ImageSource.camera),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            tile(
+              icon: Icons.photo_library_rounded,
+              label: l.dietPickGallery,
+              color: scheduleColor,
+              onTap: () => _photoEstimate(ImageSource.gallery),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            tile(
+              icon: Icons.auto_awesome_rounded,
+              label: l.dietAiTextEstimate,
+              color: aiColor,
+              onTap: _textEstimate,
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        tile(
-          icon: Icons.photo_library_rounded,
-          label: l.dietPickGallery,
-          color: scheduleColor,
-          onTap: () => _photoEstimate(ImageSource.gallery),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        tile(
-          icon: Icons.auto_awesome_rounded,
-          label: l.dietAiTextEstimate,
-          color: aiColor,
-          onTap: _textEstimate,
+        const SizedBox(height: AppSpacing.sm),
+        SurfaceCard(
+          key: const ValueKey('diet_menu_ocr_entry'),
+          padding: AppSpacing.cardCompactPadding,
+          backgroundColor: AppColors.softBg(context, scheduleColor, lightAlpha: 0.08, darkAlpha: 0.16),
+          borderColor: AppColors.softBorder(context, scheduleColor),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MenuOcrLabScreen()),
+            );
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.softBg(context, scheduleColor, lightAlpha: 0.16, darkAlpha: 0.26),
+                  borderRadius: AppRadius.bMd,
+                ),
+                child: Icon(Icons.document_scanner_rounded, color: scheduleColor, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l.menuOcrEntryTitle, style: AppTypography.cardTitle(context)),
+                    const SizedBox(height: 2),
+                    Text(l.menuOcrEntrySub, style: AppTypography.caption(context)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: scheduleColor),
+            ],
+          ),
         ),
       ],
     );
