@@ -173,3 +173,8 @@
   - 下行支持 `{"cmd":"update_config","fx_rate":...,"threshold":...}` 即时更新内存单例并通知菜单翻译页实时生效，控制台同步回显实时预览。
   - 电脑端深色控制台三区布局（状态/Token/IP、实时高亮日志流 + 过滤搜索 + 局域网 HTTP 兼容的一键复制全部日志、汇率/阈值热调与预览）。
 - [x] 验证：81/81 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.4.0_release.apk`。
+
+### P0 根因实锤修复：补齐 ML Kit R8 `-keep` 规则根治 `t22.<init>` 空指针（v3.4.1+30）✅ 已完成并出包
+- [x] **调试后端抓到真相**：通过 v3.4.0 Wi-Fi 调试台抓到完整堆栈 `NullPointerException at t22.<init>:57 / t22.k`，反查 R8 `mapping.txt` 实锤 `t22` 是被 R8 合并混淆的 `mlkit_vision_common.zzmr` + `mlkit_vision_text_common.zzum` + `mlkit_common.zzsr` + `datatransport`（并非图像格式问题）。
+- [x] **补全 R8 `-keep` 规则 (`android/app/proguard-rules.pro`)**：完整保留 `com.google.mlkit.**`、`com.google.android.gms.internal.mlkit_common/vision_common/vision_text_common.**`、`com.google.android.libraries.vision.visionkit.**`、`com.google.android.datatransport.**`、`com.google.firebase.components/encoders.**`、`com.google_mlkit_commons/text_recognition.**`、`io.flutter.plugin.common.**` 及注解/泛型/内部类属性；同时保持 R8 压缩开启控制包体体积。
+- [x] 验证：81/81 测试通过，`analyze` 0 error / 0 warning，反查新版 `mapping.txt` 确认 ML Kit 类零混淆零合并，APK：`LifeLog_v3.4.1_release.apk`。
