@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTileSub.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.3 · Co-developed with DaFeiYu'**
+  /// **'Version v3.3.4 · Co-developed with DaFeiYu'**
   String get settingsAboutTileSub;
 
   /// No description provided for @usageSectionTitle.
@@ -3765,7 +3765,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
-  /// **'Version v3.3.3 (Build 26)'**
+  /// **'Version v3.3.4 (Build 27)'**
   String get aboutVersion;
 
   /// No description provided for @aboutBadge.

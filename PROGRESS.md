@@ -147,3 +147,10 @@
   - 新增 `convertYPlaneToRgbaBitmap()` + `buildBitmapInputImageFromCameraImage()`：直接取全机型必有的 `planes[0]` Y 亮度平面生成紧凑 RGBA 位图走 `InputImage.fromBitmap`（Android `ARGB_8888 Bitmap`，彻底绕开 NV21/YUV 格式兼容问题，R=G=B=亮度且超 1280px 自动抽稀）。
   - 帧循环中首次命中 `InputImageConverterError` 立即自动切换 Bitmap 通道并在**同一帧**完成重试，零中断出字；同时取消错误条 `maxLines: 2` 截断并附带帧参数诊断信息。
 - [x] 验证：76/76 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.3_release.apk`。
+
+### P0 实时流终极修复：Y 亮度平面正立 8-bit 灰度 BMP + `InputImage.fromFilePath`（v3.3.4+27）✅ 已完成并出包
+- [x] **终极根治 `InputImageConverterError`**：v3.3.3 完整诊断确认 `google_mlkit_commons 1.0.3` 在 OPPO Find X8 上 `fromBytes`（NV21）与 `fromBitmap`（raw RGBA）两条通道均在 `InputImageConverter` 报异常。
+- [x] **改走 `InputImage.fromFilePath` 零兼容坑通路 (`MenuOcrService.encodeYPlaneToUprightGrayscaleBmp` + `processCameraImage`)**：
+  - 直接取 Android 全机型统一的 `planes[0]` Y 亮度平面，纯 Dart 同步完成 0/90/180/270 正立旋转并封装为标准 8-bit 灰度 BMP（含 54 字节头 + 1024 字节调色板 + 4 字节行对齐，720p 仅 ~0.9MB、编码 <3ms）。
+  - 复用单个缓存文件走 `InputImage.fromFilePath`（与高清拍照/相册测图完全同一条零坑原生链路，退出页面自动清理临时文件），且输出边界框直接是正立坐标系（为第三批 AR 浮层铺路）。
+- [x] 验证：77/77 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.3.4_release.apk`。

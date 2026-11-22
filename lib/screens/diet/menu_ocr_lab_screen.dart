@@ -56,7 +56,6 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
   bool _translating = false;
   int _resultTab = 1; // 默认进入先看实时 OCR 原文，点击翻译后自动切到 0=翻译卡片
   int _ocrRunCount = 0;
-  bool _useBitmapFallback = false;
 
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _cameraError;
@@ -211,58 +210,16 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     _processingFrame = true;
     _lastFrameAt = now;
     try {
-      final imgSize = Size(image.width.toDouble(), image.height.toDouble());
-      MenuOcrFrameResult? res;
-
-      if (!_useBitmapFallback) {
-        final input = MenuOcrService.buildInputImageFromCameraImage(
-          image: image,
-          camera: cam,
-          deviceOrientation: ctrl.value.deviceOrientation,
-        );
-        if (input != null) {
-          try {
-            res = await ocr.processInputImage(
-              input,
-              imageSize: imgSize,
-              source: 'stream',
-            );
-          } catch (e, st) {
-            if (e.toString().contains('InputImageConverterError')) {
-              debugPrint(
-                '[MenuOcrLab] NV21 InputImageConverterError (${image.width}x${image.height} '
-                'planes=${image.planes.length} fmt=${image.format.raw}), switching to Y-plane Bitmap fallback: $e\n$st',
-              );
-              _useBitmapFallback = true;
-            } else {
-              rethrow;
-            }
-          }
-        } else {
-          _useBitmapFallback = true;
-        }
-      }
-
-      if (res == null && _useBitmapFallback) {
-        final bmpInput = MenuOcrService.buildBitmapInputImageFromCameraImage(
-          image: image,
-          camera: cam,
-          deviceOrientation: ctrl.value.deviceOrientation,
-        );
-        if (bmpInput == null) return;
-        res = await ocr.processInputImage(
-          bmpInput,
-          imageSize: imgSize,
-          source: 'stream',
-        );
-      }
-
+      final res = await ocr.processCameraImage(
+        image: image,
+        camera: cam,
+        deviceOrientation: ctrl.value.deviceOrientation,
+      );
       if (res == null || !mounted || _paused) return;
-      final finalRes = res;
       setState(() {
         _ocrRunCount++;
         _streamError = null;
-        _latest = finalRes;
+        _latest = res;
         if (_translation == null && _translateError == null) {
           _resultTab = 1;
         }
@@ -272,7 +229,7 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       if (mounted) {
         setState(() {
           _streamError =
-              '$e [${image.width}x${image.height} p=${image.planes.length} fmt=${image.format.raw} bmp=$_useBitmapFallback]';
+              '$e [${image.width}x${image.height} p=${image.planes.length} fmt=${image.format.raw}]';
         });
       }
     } finally {

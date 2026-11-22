@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// 单块 OCR 识别文本与边界框（为后续 Batch 2/3 AI 解析与 AR 浮层坐标映射预留）
 class OcrTextItem {
@@ -41,6 +43,7 @@ class MenuOcrFrameResult {
 /// - 支持实时 CameraImage 流（Android NV21 零拷贝快路径 + YUV420 兜底转换）与高清拍照/相册文件识别
 class MenuOcrService {
   final TextRecognizer _recognizer;
+  File? _liveTempBmpFile;
 
   MenuOcrService({TextRecognizer? recognizer})
       : _recognizer = recognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
@@ -259,6 +262,175 @@ class MenuOcrService {
     );
   }
 
+  /// 将 CameraImage 的 Y 亮度平面编码为标准 8-bit 灰度正立 BMP（自底向上，4 字节行对齐，含 256 色灰度调色板）：
+  /// - 供 `InputImage.fromFilePath` 直接读取，彻底绕开 google_mlkit_commons 1.0.3 中
+  ///   `fromBytes` (NV21) 与 `fromBitmap` (raw RGBA) 的 `InputImageConverterError` 兼容性问题
+  /// - 同步完成 0/90/180/270 顺时针旋转，输出坐标即正立图像坐标
+  static ({Uint8List bmpBytes, int width, int height})
+      encodeYPlaneToUprightGrayscaleBmp({
+    required int width,
+    required int height,
+    required Uint8List yBytes,
+    required int yRowStride,
+    required int rotationDeg,
+    int maxEdge = 1280,
+  }) {
+    final longEdge = width > height ? width : height;
+    final step = longEdge > maxEdge ? ((longEdge + 959) ~/ 960) : 1;
+    final sw = (width + step - 1) ~/ step;
+    final sh = (height + step - 1) ~/ step;
+
+    final rot = ((rotationDeg % 360) + 360) % 360;
+    final swap = rot == 90 || rot == 270;
+    final outW = swap ? sh : sw;
+    final outH = swap ? sw : sh;
+
+    final rowStride = (outW + 3) & ~3;
+    const headerSize = 14 + 40;
+    const paletteSize = 256 * 4;
+    const pixelOffset = headerSize + paletteSize; // 1078
+    final pixelDataSize = rowStride * outH;
+    final fileSize = pixelOffset + pixelDataSize;
+
+    final out = Uint8List(fileSize);
+    final bd = ByteData.sublistView(out);
+
+    // BITMAPFILEHEADER (14 bytes)
+    out[0] = 0x42; // 'B'
+    out[1] = 0x4D; // 'M'
+    bd.setUint32(2, fileSize, Endian.little);
+    bd.setUint32(6, 0, Endian.little);
+    bd.setUint32(10, pixelOffset, Endian.little);
+
+    // BITMAPINFOHEADER (40 bytes)
+    bd.setUint32(14, 40, Endian.little);
+    bd.setInt32(18, outW, Endian.little);
+    bd.setInt32(22, outH, Endian.little); // 正数 = 标准自底向上，全版本 Android 兼容
+    bd.setUint16(26, 1, Endian.little); // biPlanes
+    bd.setUint16(28, 8, Endian.little); // biBitCount = 8-bit grayscale
+    bd.setUint32(30, 0, Endian.little); // BI_RGB
+    bd.setUint32(34, pixelDataSize, Endian.little);
+    bd.setInt32(38, 2835, Endian.little);
+    bd.setInt32(42, 2835, Endian.little);
+    bd.setUint32(46, 256, Endian.little);
+    bd.setUint32(50, 256, Endian.little);
+
+    // 256 色灰度调色板 (B, G, R, 0)
+    var pOff = headerSize;
+    for (var i = 0; i < 256; i++) {
+      out[pOff++] = i;
+      out[pOff++] = i;
+      out[pOff++] = i;
+      out[pOff++] = 0;
+    }
+
+    // 旋转并写入像素（BMP 自底向上：outY=0 存在最后一行）
+    for (var outY = 0; outY < outH; outY++) {
+      final bmpRow = outH - 1 - outY;
+      final dstRowOff = pixelOffset + bmpRow * rowStride;
+      for (var outX = 0; outX < outW; outX++) {
+        final int sx;
+        final int sy;
+        switch (rot) {
+          case 90:
+            sx = outY;
+            sy = sh - 1 - outX;
+            break;
+          case 180:
+            sx = sw - 1 - outX;
+            sy = sh - 1 - outY;
+            break;
+          case 270:
+            sx = sw - 1 - outY;
+            sy = outX;
+            break;
+          default:
+            sx = outX;
+            sy = outY;
+            break;
+        }
+        final srcIdx = (sy * step) * yRowStride + (sx * step);
+        out[dstRowOff + outX] = srcIdx < yBytes.length ? yBytes[srcIdx] : 0;
+      }
+    }
+
+    return (bmpBytes: out, width: outW, height: outH);
+  }
+
+  /// 对实时相机帧执行 OCR：
+  /// - Android 走「Y 平面正立灰度 BMP → 复用临时文件 → InputImage.fromFilePath」通用路径，
+  ///   彻底规避 google_mlkit_commons 1.0.3 的 InputImageConverterError 且免去大字节数组跨 Channel 拷贝
+  /// - iOS 走标准 BGRA8888 `InputImage.fromBytes`
+  Future<MenuOcrFrameResult?> processCameraImage({
+    required CameraImage image,
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) async {
+    if (image.planes.isEmpty || image.width <= 0 || image.height <= 0) {
+      return null;
+    }
+    if (Platform.isIOS) {
+      final input = buildInputImageFromCameraImage(
+        image: image,
+        camera: camera,
+        deviceOrientation: deviceOrientation,
+      );
+      if (input == null) return null;
+      return processInputImage(
+        input,
+        imageSize: Size(image.width.toDouble(), image.height.toDouble()),
+        source: 'stream',
+      );
+    }
+
+    final sw = Stopwatch()..start();
+    final rotationDeg = computeAndroidRotationDegrees(
+      sensorOrientation: camera.sensorOrientation,
+      deviceOrientation: deviceOrientation,
+      lensDirection: camera.lensDirection,
+    );
+    final yPlane = image.planes.first;
+    final encoded = encodeYPlaneToUprightGrayscaleBmp(
+      width: image.width,
+      height: image.height,
+      yBytes: yPlane.bytes,
+      yRowStride: yPlane.bytesPerRow,
+      rotationDeg: rotationDeg,
+    );
+
+    _liveTempBmpFile ??= File(
+      '${(await getTemporaryDirectory()).path}${Platform.pathSeparator}lifelog_ocr_live.bmp',
+    );
+    await _liveTempBmpFile!.writeAsBytes(encoded.bmpBytes, flush: false);
+
+    final input = InputImage.fromFilePath(_liveTempBmpFile!.path);
+    final recognized = await _recognizer.processImage(input);
+    sw.stop();
+
+    final items = <OcrTextItem>[];
+    for (final b in recognized.blocks) {
+      final text = b.text.trim();
+      if (text.isEmpty) continue;
+      final lines = [
+        for (final line in b.lines)
+          if (line.text.trim().isNotEmpty) line.text.trim(),
+      ];
+      items.add(OcrTextItem(
+        text: text,
+        boundingBox: b.boundingBox,
+        lines: lines,
+      ));
+    }
+
+    return MenuOcrFrameResult(
+      blocks: items,
+      fullText: recognized.text.trim(),
+      elapsedMs: sw.elapsedMilliseconds,
+      imageSize: Size(encoded.width.toDouble(), encoded.height.toDouble()),
+      source: 'stream',
+    );
+  }
+
   /// 对单帧 InputImage 执行端侧 OCR 并返回文本块、边界框与耗时
   Future<MenuOcrFrameResult> processInputImage(
     InputImage inputImage, {
@@ -308,5 +480,12 @@ class MenuOcrService {
 
   Future<void> dispose() async {
     await _recognizer.close();
+    final f = _liveTempBmpFile;
+    _liveTempBmpFile = null;
+    if (f != null) {
+      try {
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+    }
   }
 }

@@ -106,6 +106,41 @@ void main() {
       expect(dec.width, lessThanOrEqualTo(960));
       expect(dec.rgba.length, dec.width * dec.height * 4);
     });
+
+    test('encodeYPlaneToUprightGrayscaleBmp builds valid 8-bit BMP with 90deg CW rotation & 4-byte padding', () {
+      // 3x2 source image:
+      // row 0: [10, 20, 30]
+      // row 1: [40, 50, 60]
+      final yBytes = Uint8List.fromList([
+        10, 20, 30, 99, // stride=4
+        40, 50, 60, 99,
+      ]);
+      // 90 deg CW => 2x3 upright image:
+      // outY=0: [40, 10]
+      // outY=1: [50, 20]
+      // outY=2: [60, 30]
+      final enc = MenuOcrService.encodeYPlaneToUprightGrayscaleBmp(
+        width: 3,
+        height: 2,
+        yBytes: yBytes,
+        yRowStride: 4,
+        rotationDeg: 90,
+      );
+      expect(enc.width, 2);
+      expect(enc.height, 3);
+      // Magic 'BM'
+      expect(enc.bmpBytes[0], 0x42);
+      expect(enc.bmpBytes[1], 0x4D);
+      // rowStride = (2 + 3) & ~3 = 4, pixelOffset = 1078, total = 1078 + 4*3 = 1090
+      expect(enc.bmpBytes.length, 1090);
+      // Bottom-up BMP:
+      // bmpRow 0 = outY=2 => [60, 30]
+      expect(enc.bmpBytes.sublist(1078, 1080), [60, 30]);
+      // bmpRow 1 = outY=1 => [50, 20]
+      expect(enc.bmpBytes.sublist(1082, 1084), [50, 20]);
+      // bmpRow 2 = outY=0 => [40, 10]
+      expect(enc.bmpBytes.sublist(1086, 1088), [40, 10]);
+    });
   });
 
   group('v3.3.0 Batch 1 MenuOcrLabScreen widget verification', () {
