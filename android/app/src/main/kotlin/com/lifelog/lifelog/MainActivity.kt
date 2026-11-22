@@ -8,6 +8,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -24,9 +27,14 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.exifinterface.media.ExifInterface
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.FileOutputStream
+import java.util.concurrent.Executors
+import kotlin.math.max
 
 class MainActivity : FlutterActivity(), SensorEventListener {
     private val channelName = "com.lifelog/reminders"
@@ -41,6 +49,7 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     private var latestRawStepCounter: Int = -1
     private var lastStepEventHandledMs: Long = 0L
     private var lastStepWidgetSyncMs: Long = 0L
+    private val imageExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +73,11 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         } catch (_: Exception) {}
         LifeAssistantWidgetProvider.refreshAll(this)
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        imageExecutor.shutdownNow()
+        super.onDestroy()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -278,6 +292,19 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                     }
                     "openSystemWeather" -> {
                         result.success(openSystemWeatherApp())
+                    }
+                    "compressImageForOcr" -> {
+                        val path = call.argument<String>("path")
+                        val maxEdge = call.argument<Int>("maxEdge") ?: 1280
+                        val quality = (call.argument<Int>("quality") ?: 80).coerceIn(50, 95)
+                        if (path.isNullOrEmpty()) {
+                            result.success(null)
+                        } else {
+                            imageExecutor.execute {
+                                val out = compressImageForOcrSync(path, maxEdge, quality)
+                                runOnUiThread { result.success(out) }
+                            }
+                        }
                     }
                     else -> result.notImplemented()
                 }
@@ -528,6 +555,95 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             } catch (_: Exception) {}
         }
         return false
+    }
+
+    private fun compressImageForOcrSync(
+        srcPath: String,
+        maxEdge: Int,
+        quality: Int
+    ): Map<String, Any>? {
+        val srcFile = File(srcPath)
+        if (!srcFile.exists()) return null
+        val origBytes = srcFile.length()
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(srcPath, bounds)
+            val origW = bounds.outWidth
+            val origH = bounds.outHeight
+            if (origW <= 0 || origH <= 0) return null
+
+            val longEdge = max(origW, origH)
+            if (longEdge <= maxEdge && origBytes <= 450_000L) {
+                return mapOf(
+                    "path" to srcPath,
+                    "width" to origW,
+                    "height" to origH,
+                    "origWidth" to origW,
+                    "origHeight" to origH,
+                    "origBytes" to origBytes,
+                    "compressedBytes" to origBytes,
+                    "compressed" to false
+                )
+            }
+
+            var inSample = 1
+            while ((longEdge / (inSample * 2)) >= maxEdge) {
+                inSample *= 2
+            }
+            val decodeOpts = BitmapFactory.Options().apply {
+                inSampleSize = inSample
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+            var bmp = BitmapFactory.decodeFile(srcPath, decodeOpts) ?: return null
+
+            val exifRot = try {
+                when (ExifInterface(srcPath).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+            } catch (_: Exception) {
+                0f
+            }
+
+            val curLong = max(bmp.width, bmp.height)
+            val scale = if (curLong > maxEdge) maxEdge.toFloat() / curLong.toFloat() else 1f
+            if (scale < 0.99f || exifRot != 0f) {
+                val matrix = Matrix()
+                if (scale < 0.99f) matrix.postScale(scale, scale)
+                if (exifRot != 0f) matrix.postRotate(exifRot)
+                val transformed = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+                if (transformed !== bmp) {
+                    bmp.recycle()
+                    bmp = transformed
+                }
+            }
+
+            val outW = bmp.width
+            val outH = bmp.height
+            val outFile = File(srcFile.parentFile ?: cacheDir, "${srcFile.nameWithoutExtension}_ocr.jpg")
+            FileOutputStream(outFile).use { fos ->
+                bmp.compress(Bitmap.CompressFormat.JPEG, quality, fos)
+            }
+            bmp.recycle()
+
+            mapOf(
+                "path" to outFile.absolutePath,
+                "width" to outW,
+                "height" to outH,
+                "origWidth" to origW,
+                "origHeight" to origH,
+                "origBytes" to origBytes,
+                "compressedBytes" to outFile.length(),
+                "compressed" to true
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun openSystemWeatherApp(): Boolean {

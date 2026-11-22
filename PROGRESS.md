@@ -207,3 +207,10 @@
   - `parse` 阶段：`_tryParsePlanJson` 不再吞异常，保留具体失败原因；`_send` 收到计划回复若解析失败或缺失 JSON 立即上报 `fail` (`stage: 'parse'`) 并在聊天气泡折叠卡片里展示具体原因；
   - `save` 阶段：`_importPlan` 保存前校验空计划（`stage: 'parse'`），`Repo.saveTrainingPlan` 异常捕获上报 `fail` (`stage: 'save'`)、推堆栈至调试台并弹窗展示错误。
 - [x] 验证：90/90 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.5.1_release.apk`。
+
+### 第三批：OCR 拍后原生 1280px/Q80 压缩 + 双临时文件清理 + 内存专项治理（v3.5.2+34）✅ 已完成并出包
+- [x] **原生后台压图降体积降峰值内存 (`MainActivity.kt` `compressImageForOcr` + `MenuOcrService.processCapturedFile`)**：
+  - 针对部分机型 `CameraX takePicture()` 忽略 `medium` 预设直接吐 1.5–1.6MB 全分辨率图（导致 ML Kit 单帧解码产生 ~96MB 峰值内存与高闪存消耗）的问题，在原生后台线程池通过 `BitmapFactory` `inSampleSize` + `RGB_565` + `ExifInterface` 扶正并缩放至**长边 ≤ 1280px、JPEG Quality 80**（~200–350KB），解码峰值内存从 ~96MB 骤降至 ~4MB，压缩后立即 `bitmap.recycle()` 并删除原始大图，OCR 完成后 `finally` 删除压缩图，两份临时文件 100% 不留残留。
+  - `MenuOcrLabScreen` 初始化显式设 `FocusMode.auto`，将 `previewSize` 及每帧 `原始尺寸(KB)->压缩尺寸(KB)` 实时推至调试台；退出相机时立即释放 `CameraController` 并清理 `imageCache` 活跃图片缓存。
+- [x] **跑步轨迹内存清理 (`RunningTracker.dispose`)**：退出跑步页释放 tracker 时调用 `_processor.reset()` 清空 `RoutePoint` 分段列表。
+- [x] 验证：91/91 测试通过，`analyze` 0 error / 0 warning，UI 规范检查 0 问题，APK：`LifeLog_v3.5.2_release.apk`。

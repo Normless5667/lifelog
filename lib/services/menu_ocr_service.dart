@@ -1,7 +1,40 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+
+/// 单帧抓拍图压缩前后的诊断信息（长边 <= 1280px, JPEG Q80）
+class OcrImagePrepResult {
+  final String path;
+  final int width;
+  final int height;
+  final int origWidth;
+  final int origHeight;
+  final int origBytes;
+  final int compressedBytes;
+  final bool compressed;
+
+  const OcrImagePrepResult({
+    required this.path,
+    required this.width,
+    required this.height,
+    required this.origWidth,
+    required this.origHeight,
+    required this.origBytes,
+    required this.compressedBytes,
+    required this.compressed,
+  });
+
+  String summary() {
+    final dim = (width > 0 && height > 0) ? '${width}x$height' : 'orig';
+    final origDim = (origWidth > 0 && origHeight > 0) ? '${origWidth}x$origHeight' : '?';
+    if (compressed) {
+      return '$origDim(${origBytes ~/ 1024}KB)->$dim(${compressedBytes ~/ 1024}KB)';
+    }
+    return '$dim(${compressedBytes ~/ 1024}KB)';
+  }
+}
 
 /// 单块 OCR 识别文本与边界框（为后续 Batch 2/3 AI 解析与 AR 浮层坐标映射预留）
 class OcrTextItem {
@@ -40,10 +73,101 @@ class MenuOcrFrameResult {
 /// - 统一走标准 `InputImage.fromFilePath` 彩色原图通道（相机定时 `takePicture()` / 高清拍照 / 相册），
 ///   不做任何手写 YUV/NV21/BMP 格式转换，保留完整色彩对比度与越南语声调符号清晰度
 class MenuOcrService {
+  static const MethodChannel _nativeChannel = MethodChannel('com.lifelog/reminders');
   final TextRecognizer _recognizer;
 
   MenuOcrService({TextRecognizer? recognizer})
       : _recognizer = recognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
+
+  /// 将相机拍出的高分辨率原图（部分机型忽略 medium 预设直接吐 1.5MB+ 全分辨率图）
+  /// 在原生后台线程按长边 <= [maxEdge]px + JPEG quality=[quality] 压缩至 ~200–350KB，
+  /// 大幅降低 ML Kit 解码峰值内存（从 ~96MB 降至 ~4MB）与存储占用。
+  static Future<OcrImagePrepResult> compressImageForOcr(
+    String rawPath, {
+    int maxEdge = 1280,
+    int quality = 80,
+  }) async {
+    final rawFile = File(rawPath);
+    final rawBytes = rawFile.existsSync() ? rawFile.lengthSync() : 0;
+    if (Platform.isAndroid) {
+      try {
+        final res = await _nativeChannel.invokeMethod<Map<dynamic, dynamic>>(
+          'compressImageForOcr',
+          <String, Object>{
+            'path': rawPath,
+            'maxEdge': maxEdge,
+            'quality': quality,
+          },
+        );
+        if (res != null && res['path'] is String) {
+          return OcrImagePrepResult(
+            path: res['path'] as String,
+            width: (res['width'] as num?)?.toInt() ?? 0,
+            height: (res['height'] as num?)?.toInt() ?? 0,
+            origWidth: (res['origWidth'] as num?)?.toInt() ?? 0,
+            origHeight: (res['origHeight'] as num?)?.toInt() ?? 0,
+            origBytes: (res['origBytes'] as num?)?.toInt() ?? rawBytes,
+            compressedBytes: (res['compressedBytes'] as num?)?.toInt() ?? rawBytes,
+            compressed: res['compressed'] == true,
+          );
+        }
+      } catch (_) {}
+    }
+    return OcrImagePrepResult(
+      path: rawPath,
+      width: 0,
+      height: 0,
+      origWidth: 0,
+      origHeight: 0,
+      origBytes: rawBytes,
+      compressedBytes: rawBytes,
+      compressed: false,
+    );
+  }
+
+  /// 抓拍文件专用通道：先压图（长边 <= 1280px, JPEG Q80）→ 立刻删原始大图 → 喂 ML Kit → finally 删压缩图。
+  /// 确保两份临时文件在正常和异常分支均 100% 彻底清理。
+  Future<({MenuOcrFrameResult result, OcrImagePrepResult prep})> processCapturedFile(
+    String rawPath, {
+    String source = 'stream',
+    int maxEdge = 1280,
+    int quality = 80,
+    Future<OcrImagePrepResult> Function(String path)? compressOverrideForTest,
+  }) async {
+    OcrImagePrepResult? prep;
+    try {
+      prep = compressOverrideForTest != null
+          ? await compressOverrideForTest(rawPath)
+          : await compressImageForOcr(rawPath, maxEdge: maxEdge, quality: quality);
+
+      // 压缩产生新文件后立刻删除原始 1.5MB 大图，避免两份临时文件同时驻留磁盘
+      if (prep.path != rawPath) {
+        await _safeDeleteFile(rawPath);
+      }
+
+      final input = InputImage.fromFilePath(prep.path);
+      final res = await processInputImage(
+        input,
+        imageSize: Size(prep.width.toDouble(), prep.height.toDouble()),
+        source: source,
+      );
+      return (result: res, prep: prep);
+    } finally {
+      await _safeDeleteFile(rawPath);
+      if (prep != null && prep.path != rawPath) {
+        await _safeDeleteFile(prep.path);
+      }
+    }
+  }
+
+  static Future<void> _safeDeleteFile(String path) async {
+    try {
+      final f = File(path);
+      if (await f.exists()) {
+        await f.delete();
+      }
+    } catch (_) {}
+  }
 
   /// 对单帧 InputImage 执行端侧 OCR 并返回文本块、边界框与耗时
   Future<MenuOcrFrameResult> processInputImage(

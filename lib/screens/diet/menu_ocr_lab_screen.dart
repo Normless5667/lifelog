@@ -166,6 +166,9 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     try {
       await ctrl.dispose();
     } catch (_) {}
+    try {
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (_) {}
   }
 
   Future<void> _initCamera({ResolutionPreset preset = ResolutionPreset.medium}) async {
@@ -183,8 +186,8 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
-      // 默认使用 ResolutionPreset.medium（720p 左右，单帧仅 ~250-350KB 降低闪存写入与耗电），
-      // 走标准 takePicture + InputImage.fromFilePath 通道，不做任何格式转换
+      // 默认使用 ResolutionPreset.medium，并显式设自动对焦 + 拍后原生压缩至长边 1280px / JPEG Q80，
+      // 彻底解决部分机型忽略 medium 预设吐 1.5MB+ 全分辨率图的问题
       final ctrl = CameraController(
         back,
         preset,
@@ -195,11 +198,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
         // 默认关闭自动闪光灯，避免暗光环境下定时 takePicture() 连续闪光
         await ctrl.setFlashMode(_torchOn ? FlashMode.torch : FlashMode.off);
       } catch (_) {}
+      try {
+        await ctrl.setFocusMode(FocusMode.auto);
+      } catch (_) {}
       if (!mounted) {
         await ctrl.dispose();
         return;
       }
       _cameraCtrl = ctrl;
+      DebugServer.instance.log(
+        'Camera ready: preset=$preset, previewSize=${ctrl.value.previewSize}',
+        tag: 'OCR',
+      );
       setState(() => _initializing = false);
       if (!_paused) {
         _startLivePolling();
@@ -232,17 +242,17 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
     try {
       final photo = await ctrl.takePicture();
       tempPath = photo.path;
-      final f = File(photo.path);
-      final exists = f.existsSync();
-      final bytes = exists ? f.lengthSync() : -1;
-      fileDiag = 'path=${photo.path}, exists=$exists, bytes=$bytes';
+      fileDiag = 'path=${photo.path}';
       if (!mounted || _paused) return;
-      final res = await ocr.processFilePath(
+      final out = await ocr.processCapturedFile(
         photo.path,
         source: 'stream',
-        deleteAfter: true,
+        maxEdge: 1280,
+        quality: 80,
       );
-      tempPath = null;
+      tempPath = null; // 原始图与压缩图均已由 processCapturedFile 清理
+      final res = out.result;
+      fileDiag = out.prep.summary();
       if (!mounted || _paused) return;
       _liveCaptureAttempt++;
       // 前 2 帧若对焦/曝光尚未稳定导致 0 块，静默丢弃不刷到界面，避免顶部闪烁「0 块」
@@ -323,19 +333,18 @@ class _MenuOcrLabScreenState extends State<MenuOcrLabScreen>
       }
       final photo = await ctrl.takePicture();
       tempPath = photo.path;
-      final f = File(photo.path);
-      final exists = f.existsSync();
-      final bytes = exists ? f.lengthSync() : -1;
-      fileDiag = 'path=${photo.path}, exists=$exists, bytes=$bytes';
-      DebugServer.instance.log('HD capture started ($fileDiag)', tag: 'OCR');
-      final res = await ocr.processFilePath(
+      fileDiag = 'path=${photo.path}';
+      final out = await ocr.processCapturedFile(
         photo.path,
         source: 'photo',
-        deleteAfter: true,
+        maxEdge: 1280,
+        quality: 80,
       );
-      tempPath = null;
+      tempPath = null; // 原始图与压缩图均已由 processCapturedFile 清理
+      final res = out.result;
+      fileDiag = out.prep.summary();
       DebugServer.instance.log(
-        'HD capture OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}\n${res.fullText}',
+        'HD capture OCR ok: ${res.elapsedMs}ms, blocks=${res.blocks.length}, $fileDiag\n${res.fullText}',
         tag: 'OCR',
       );
       if (!mounted) return;

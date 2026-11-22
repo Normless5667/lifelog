@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutTileSub =>
-      'Version v3.5.1 · Co-developed with DaFeiYu';
+      'Version v3.5.2 · Co-developed with DaFeiYu';
 
   @override
   String get usageSectionTitle => 'Usage Telemetry & Analytics';
@@ -2134,7 +2134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTitle => 'About · Life Assistant';
 
   @override
-  String get aboutVersion => 'Version v3.5.1 (Build 33)';
+  String get aboutVersion => 'Version v3.5.2 (Build 34)';
 
   @override
   String get aboutBadge =>

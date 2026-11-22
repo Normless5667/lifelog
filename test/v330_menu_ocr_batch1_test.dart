@@ -234,5 +234,77 @@ Hot Chocolate 48K
       final stats = MenuOcrService.cleanMenuOcrWithStats('AB\n--');
       expect(stats.cleanedText, isNotEmpty);
     });
+
+    test('processCapturedFile deletes BOTH raw & compressed temp files on success and on error', () async {
+      final ts = DateTime.now().microsecondsSinceEpoch;
+      final rawOk = File('${Directory.systemTemp.path}${Platform.pathSeparator}lifelog_raw_ok_$ts.jpg');
+      final cmpOk = File('${Directory.systemTemp.path}${Platform.pathSeparator}lifelog_cmp_ok_$ts.jpg');
+      final rawErr = File('${Directory.systemTemp.path}${Platform.pathSeparator}lifelog_raw_err_$ts.jpg');
+      final cmpErr = File('${Directory.systemTemp.path}${Platform.pathSeparator}lifelog_cmp_err_$ts.jpg');
+      await rawOk.writeAsBytes(List<int>.filled(1024, 1));
+      await rawErr.writeAsBytes(List<int>.filled(1024, 2));
+
+      try {
+        final okSvc = MenuOcrService(
+          recognizer: _FakeTextRecognizer(
+            (input) async {
+              expect(input.filePath, cmpOk.path);
+              // 原始大图在压缩后应已被提前删除
+              expect(await rawOk.exists(), isFalse);
+              return RecognizedText(text: 'Cà phê đen · 45K', blocks: const []);
+            },
+          ),
+        );
+        final out = await okSvc.processCapturedFile(
+          rawOk.path,
+          compressOverrideForTest: (_) async {
+            await cmpOk.writeAsBytes(List<int>.filled(256, 3));
+            return OcrImagePrepResult(
+              path: cmpOk.path,
+              width: 720,
+              height: 1280,
+              origWidth: 3000,
+              origHeight: 4000,
+              origBytes: 1500000,
+              compressedBytes: 260000,
+              compressed: true,
+            );
+          },
+        );
+        expect(out.result.fullText, 'Cà phê đen · 45K');
+        expect(out.prep.summary(), '3000x4000(1464KB)->720x1280(253KB)');
+        expect(await rawOk.exists(), isFalse);
+        expect(await cmpOk.exists(), isFalse);
+
+        final errSvc = MenuOcrService(
+          recognizer: _FakeTextRecognizer((_) async => throw StateError('ocr error')),
+        );
+        await expectLater(
+          errSvc.processCapturedFile(
+            rawErr.path,
+            compressOverrideForTest: (_) async {
+              await cmpErr.writeAsBytes(List<int>.filled(200, 4));
+              return OcrImagePrepResult(
+                path: cmpErr.path,
+                width: 720,
+                height: 1280,
+                origWidth: 3000,
+                origHeight: 4000,
+                origBytes: 1500000,
+                compressedBytes: 200000,
+                compressed: true,
+              );
+            },
+          ),
+          throwsStateError,
+        );
+        expect(await rawErr.exists(), isFalse);
+        expect(await cmpErr.exists(), isFalse);
+      } finally {
+        for (final f in [rawOk, cmpOk, rawErr, cmpErr]) {
+          if (await f.exists()) await f.delete();
+        }
+      }
+    });
   });
 }

@@ -181,6 +181,14 @@ class RunTrackProcessor {
     _lastRawAccepted = null;
   }
 
+  /// 跑步结束并释放控制器时主动清空轨迹点，避免长距离跑步点集滞留内存
+  void reset() {
+    _segments.clear();
+    _currentSegment = [];
+    _lastRawAccepted = null;
+    _distanceMeters = 0;
+  }
+
   /// 注入一个原始 GPS 点；返回 true 表示点有效并计入轨迹
   bool addRawPoint(RoutePoint raw, {required bool isPaused}) {
     if (isPaused) return false;
@@ -870,6 +878,7 @@ class RunningTrackerController extends ChangeNotifier {
   void dispose() {
     _uiTicker?.cancel();
     _posSub?.cancel();
+    _processor.reset();
     voiceCoach.dispose();
     if (!_finished && !_skipPlatformSideEffects) {
       WakelockPlus.disable().catchError((_) {});
